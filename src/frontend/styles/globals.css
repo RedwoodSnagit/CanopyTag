@@ -1,0 +1,26 @@
+@import './tokens.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Font size scaling */
+[data-font="small"] { font-size: 87.5%; }
+[data-font="medium"] { font-size: 100%; }
+[data-font="large"] { font-size: 112.5%; }
+
+/* Global focus-visible ring */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Remove default focus for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}

@@ -1,0 +1,959 @@
+{
+  "version": 1,
+  "repo_root": ".",
+  "last_modified_at": "2026-04-07T22:00:00-06:00",
+  "agent_notes": [
+    {
+      "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
+      "agent": "claude-opus",
+      "created_at": "2026-03-27T12:00:00-06:00",
+      "acknowledged": false
+    },
+    {
+      "text": "Current public docs are README.md, AGENTS.md, docs/cli-cheatsheet.md, and docs/roadmap.md. Compare/MCP/docs are now wired; use canopytag compare when deciding trust order between exact files.",
+      "agent": "claude-opus",
+      "created_at": "2026-03-27T13:00:00-06:00",
+      "acknowledged": false
+    }
+  ],
+  "files": {
+    "src/shared/types.ts": {
+      "title": "Canopy Schema & Authority Health",
+      "summary": "Single source of truth for every type in the system: FileCanopy, Todo, Comment, Feature, AuthorityHealth, RelationType, Closeness, IoMetadata, and the authority-vs-quality health check algorithm. All CLI tools, routes, and frontend components import from here. On-disk format is snake_case; TypeScript is camelCase — the case-transform boundary is documented but lives in a sibling file.",
+      "validity": 5,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "standard",
+      "status": "active",
+      "tags": ["schema", "core"],
+      "feature_id": "annotation-engine",
+      "todos": [
+        {
+          "id": "RT-001",
+          "text": "EXTENSION_KIND_MAP is incomplete — no .go, .rs, .c, .cpp, .java, .rb, .php, .swift, .kt extensions. Any non-JS/TS/Python repo will show all files as 'unknown' kind in stats output.",
+          "priority": 3,
+          "difficulty": 1,
+          "status": "done",
+          "completed_at": "2026-03-27T12:00:00-06:00",
+          "tags": ["completeness", "onboarding"],
+          "created_at": "2026-03-27T12:00:00-06:00",
+          "created_by": {"role": "agent", "name": "claude-opus"}
+        }
+      ],
+      "comments": [
+        {
+          "id": "RC-001",
+          "text": "checkAuthorityHealth only flags promotion-candidate if authorityLevel !== 'standard'. This means a standard-level file can never be flagged as overscored, which is probably correct but worth stating explicitly — standards are the ceiling.",
+          "type": "finding",
+          "confidence": 4,
+          "created_at": "2026-03-27T12:00:00-06:00",
+          "author": {"role": "agent", "name": "claude-opus"}
+        }
+      ],
+      "related_files": [
+        {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "implements"},
+        {"path": "src/cli/health.ts", "closeness": 4, "relation": "implements"},
+        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3, "relation": "doc-for"}
+      ]
+    },
+    "src/backend/lib/canopy.ts": {
+      "title": "Canopy Read/Write & Archive Engine",
+      "summary": "All disk I/O for canopy.json, settings.json, and canopy_archive.json. Handles snake↔camel case transformation at the read/write boundary, auto-generates RT-NNN and RC-NNN IDs, and runs archive sweeps that move completed TODOs to the archive after the retention window. Every route that mutates annotation data calls through here.",
+      "validity": 5,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["core", "persistence"],
+      "feature_id": "annotation-engine",
+      "todos": [
+        {
+          "id": "RT-002",
+          "text": "writeCanopy uses fs.writeFileSync with no error handling or atomic write (write to temp + rename). A crash mid-write could corrupt canopy.json.",
+          "priority": 2,
+          "difficulty": 3,
+          "status": "done",
+          "completed_at": "2026-03-27T12:00:00-06:00",
+          "tags": ["reliability", "data-safety"],
+          "created_at": "2026-03-27T12:00:00-06:00",
+          "created_by": {"role": "agent", "name": "claude-opus"}
+        },
+        {
+          "id": "RT-003",
+          "text": "runArchiveSweep iterates all files on every TODO mutation. Fine for small repos but O(files × todos) on each write. Consider lazy sweep (sweep on read, or on interval).",
+          "priority": 4,
+          "difficulty": 3,
+          "status": "open",
+          "tags": ["performance"],
+          "created_at": "2026-03-27T12:00:00-06:00",
+          "created_by": {"role": "agent", "name": "claude-opus"}
+        }
+      ],
+      "comments": [],
+      "related_files": [
+        {"path": "src/shared/types.ts", "closeness": 5, "relation": "implements"},
+        {"path": "src/backend/routes/todo.ts", "closeness": 4},
+        {"path": "src/backend/routes/comment.ts", "closeness": 4},
+        {"path": "src/backend/routes/file.ts", "closeness": 4}
+      ]
+    },
+    "src/cli/stats.ts": {
+      "title": "canopytag stats — Orient Before You Dive",
+      "summary": "The first CLI call an agent should make. Reads canopy.json and prints file counts by kind (CODE/DOCS/TEST/CONFIG), authority distribution within each kind, open TODO count, and a next-step hint. Scoped by --feature or --tag. Output is compact enough for a prompt window. Detects file kind from extension + path conventions (test_ prefix, /test/ directory).",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["cli", "agent-interface"],
+      "feature_id": "cli-tools",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "src/cli/ls.ts", "closeness": 4},
+        {"path": "src/cli/query.ts", "closeness": 3},
+        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"}
+      ]
+    },
+    "src/cli/ls.ts": {
+      "title": "canopytag ls — Top N Files by Authority",
+      "summary": "Lightweight summary table: FILE | AUTH | STATUS | FEATURE | TODOS | SUMMARY. Sorts by authority descending, then open TODO count. Default shows top 3 (--limit N or --all). Filtered by --feature or --tag. The step between `stats` (what exists) and `query` (deep dive).",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 5,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["cli", "agent-interface"],
+      "feature_id": "cli-tools",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "src/cli/stats.ts", "closeness": 4},
+        {"path": "src/cli/query.ts", "closeness": 4},
+        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"}
+      ]
+    },
+    "src/cli/query.ts": {
+      "title": "canopytag query — Progressive Depth Navigation",
+      "summary": "Core agent navigation tool. Detail 1 shows top files by authority. Detail 2 adds tight one-hop connections and open TODOs. Detail 3+ progressively walks connections-of-connections while lowering the closeness threshold; detail 5 performs an unrestricted connection walk. Supports --relation filter (e.g. 'show me only implementations'). Self-documenting footer tells agents what's hidden and how to widen.",
+      "validity": 5,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 3,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["cli", "agent-interface", "graph-traversal"],
+      "feature_id": "cli-tools",
+      "todos": [
+        {
+          "id": "RT-004",
+          "text": "Connection walk is single-hop only — follows relatedFiles from direct matches but doesn't transitively follow connections-of-connections. For feature graphs deeper than 2 levels, agents miss files that are reachable but not directly linked from the top-authority file.",
+          "priority": 3,
+          "difficulty": 4,
+          "status": "done",
+          "tags": ["graph-traversal", "feature-gap"],
+          "created_at": "2026-03-27T12:00:00-06:00",
+          "completed_at": "2026-04-24T19:15:00.000Z",
+          "created_by": {"role": "agent", "name": "claude-opus"}
+        }
+      ],
+      "comments": [
+        {
+          "id": "RC-002",
+          "text": "Stability scored 3 because the depth model (numeric 1-5 with named aliases) and self-documenting footer are design bets that haven't been validated with real agent usage yet. The interface works but may evolve after dogfooding.",
+          "type": "note",
+          "confidence": 3,
+          "created_at": "2026-03-27T12:00:00-06:00",
+          "author": {"role": "agent", "name": "claude-opus"}
+        }
+      ],
+      "related_files": [
+        {"path": "src/shared/types.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/cli/ls.ts", "closeness": 4},
+        {"path": "src/cli/stats.ts", "closeness": 3},
+        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3, "relation": "doc-for"}
+      ]
+    },
+    "src/cli/health.ts": {
+      "title": "canopytag health — Authority vs Quality Mismatch Detector",
+      "summary": "Surfaces files where declared authority doesn't match quality scores. !! = underscored (spec with low quality — red flag). ^^ = promotion candidate (idea scoring like a guideline). ?? = unscored (has authority but no scores). Uses checkAuthorityHealth() from types.ts. Compact output — 105 lines total.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 5,
+      "stability": 5,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["cli", "agent-interface", "quality"],
+      "feature_id": "cli-tools",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "src/shared/types.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"}
+      ]
+    },
+    "src/cli/todos.ts": {
+      "title": "canopytag todos — Flat TODO Query",
+      "summary": "Flat view of all TODOs across the repo, sorted by priority. Filters by --tag (matches TODO tags or file tags), --feature, --priority (max). The missing piece in the agent workflow: stats tells you how many TODOs exist, ls shows per-file counts, query shows TODOs scoped to a feature — but todos gives you the global prioritized list without needing to know which feature to ask about first.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["cli", "agent-interface"],
+      "feature_id": "cli-tools",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "src/cli/ls.ts", "closeness": 4},
+        {"path": "src/cli/stats.ts", "closeness": 3},
+        {"path": "src/cli/query.ts", "closeness": 3},
+        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"}
+      ]
+    },
+    "src/backend/routes/file.ts": {
+      "title": "File Metadata API",
+      "summary": "GET /api/file returns a merged record (repo_index + canopy + git lastModified) for any file path — even unannotated files get an empty detail panel. POST /api/file/meta upserts individual fields without touching todos or comments. Auto-stamps lastReviewed on every human edit. The primary write path for the UI's ScoreDisplay, TagEditor, SummaryEditor, and RelatedFiles components.",
+      "validity": 5,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["api", "persistence"],
+      "feature_id": "web-ui",
+      "todos": [],
+      "comments": [
+        {
+          "id": "RC-003",
+          "text": "POST /api/file/meta accepts any string for authorityLevel and status with a bare cast to FileCanopy types. Invalid values (e.g. authorityLevel: 'potato') will be saved to canopy.json and silently break health checks and query sorting.",
+          "type": "finding",
+          "confidence": 5,
+          "created_at": "2026-03-27T12:00:00-06:00",
+          "author": {"role": "agent", "name": "claude-opus"}
+        }
+      ],
+      "related_files": [
+        {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/frontend/components/FileDetail.tsx", "closeness": 4},
+        {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"}
+      ]
+    },
+    "src/backend/routes/todo.ts": {
+      "title": "TODO CRUD API",
+      "summary": "POST /api/todo creates (text+priority required) or updates (by id) TODOs. Auto-generates RT-NNN IDs, timestamps createdAt, stamps completedAt when status→done. DELETE by path+todoId. Runs archive sweep after every write. Both create and update paths initialize the file entry and todos array if missing.",
+      "validity": 5,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["api", "persistence"],
+      "feature_id": "web-ui",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/backend/routes/comment.ts", "closeness": 3}
+      ]
+    },
+    "src/backend/routes/comment.ts": {
+      "title": "Comment CRUD API",
+      "summary": "POST /api/comment creates comments with auto-generated RC-NNN IDs, optional type (finding/bug/improvement/note), and optional confidence (1-5). DELETE by path+commentId. Runs archive sweep after every write. Structurally parallel to todo.ts but simpler — comments are append-only (no update path).",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 3,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["api", "persistence"],
+      "feature_id": "web-ui",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/backend/routes/todo.ts", "closeness": 3}
+      ]
+    },
+    "src/backend/routes/tree.ts": {
+      "title": "File Tree API",
+      "summary": "GET /api/tree — walks the repo root and returns a recursive TreeNode structure for the sidebar. Delegates to tree-walker.ts. 10 lines of route code.",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 3,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["api"],
+      "feature_id": "web-ui",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "src/frontend/App.tsx", "closeness": 3}
+      ]
+    },
+    "src/backend/routes/directory.ts": {
+      "title": "Directory Summary API",
+      "summary": "GET /api/directory returns file count and open TODO count under a directory path. POST /api/directory/meta stores human-written directory summaries in canopy.directories. Used when clicking folders in the sidebar — gives navigational context without file-level detail.",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 3,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["api"],
+      "feature_id": "web-ui",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"}
+      ]
+    },
+    "src/backend/routes/features.ts": {
+      "title": "Feature CRUD API",
+      "summary": "GET/POST/DELETE for the features registry (canopy.features). Features group files by product concern — agents use feature_id to scope queries. Requires kebab-case ID + name on create. Simple passthrough to canopy.features with writeCanopy.",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 3,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["api"],
+      "feature_id": "web-ui",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/shared/types.ts", "closeness": 3, "relation": "fed-by"}
+      ]
+    },
+    "src/frontend/App.tsx": {
+      "title": "Root Layout & View Router",
+      "summary": "Top-level React component. Two modes: WelcomeScreen (not connected) or main layout (header + sidebar file tree + content area). Content area switches between Explorer view (FileDetail/DirectoryDetail) and TableView based on viewMode. Header shows repo name, save notice, settings, and view toggle. AgentBanner renders unacknowledged agent notes at the top of the content area.",
+      "validity": 5,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 3,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["frontend", "layout"],
+      "feature_id": "web-ui",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "src/frontend/stores/workspace.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/frontend/components/FileDetail.tsx", "closeness": 4},
+        {"path": "src/frontend/components/ScoreDisplay.tsx", "closeness": 3}
+      ]
+    },
+    "src/frontend/components/FileDetail.tsx": {
+      "title": "File Annotation Editor",
+      "summary": "The main editing surface for a single file's metadata. Two-column layout: left column has title (click-to-edit), summary (markdown), tags, I/O metadata, related files, TODOs, and comments. Right column (320px) has ScoreDisplay and FileDates. Composes 8 child components. Every field mutation calls POST /api/file/meta then refreshes the workspace store.",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 3,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["frontend", "editing"],
+      "feature_id": "web-ui",
+      "todos": [
+        {
+          "id": "RT-005",
+          "text": "No optimistic UI — every edit round-trips to the server and refreshes the full file record. Feels fine locally but would lag on remote backends.",
+          "priority": 4,
+          "difficulty": 3,
+          "status": "open",
+          "tags": ["ux", "performance"],
+          "created_at": "2026-03-27T12:00:00-06:00",
+          "created_by": {"role": "agent", "name": "claude-opus"}
+        }
+      ],
+      "comments": [],
+      "related_files": [
+        {"path": "src/frontend/components/ScoreDisplay.tsx", "closeness": 5},
+        {"path": "src/backend/routes/file.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/frontend/stores/workspace.ts", "closeness": 4, "relation": "fed-by"}
+      ]
+    },
+    "src/frontend/components/ScoreDisplay.tsx": {
+      "title": "Quality Scores & Authority Level UI",
+      "summary": "Renders the four quality dimensions (validity, clarity, completeness, stability) as clickable 1-5 dot rows, plus the authority level as a stepped progression (Idea→Standard). Each dimension shows a tooltip description. Click a dot to set score; click the active dot to clear it. Includes the FileDates sub-component showing lastModified (git) vs lastReviewed (canopy) and a scoresReviewed toggle. Demonstrates the scoring model visually — good reference for understanding what the numbers mean.",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 3,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["frontend", "scoring"],
+      "feature_id": "web-ui",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "src/frontend/components/FileDetail.tsx", "closeness": 5},
+        {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"}
+      ]
+    },
+    "src/frontend/stores/workspace.ts": {
+      "title": "Global UI State (Zustand)",
+      "summary": "Single Zustand store managing: repo connection state, file tree, selected file/directory, annotation index, tags vocabulary, features, agent notes, view mode, and search. initialize() loads all data on connect. selectFile() fetches the merged record. flashSave() shows a 2.5s 'Saved → canopy.json' notice. Every UI component reads from here; every mutation refreshes through here.",
+      "validity": 5,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 3,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["frontend", "state"],
+      "feature_id": "web-ui",
+      "todos": [],
+      "comments": [
+        {
+          "id": "RC-004",
+          "text": "State shape is growing — 14 state fields plus 10 actions in a single store. Not a problem yet, but if features (like multi-tab or undo) get added, consider splitting into slices.",
+          "type": "improvement",
+          "confidence": 3,
+          "created_at": "2026-03-27T12:00:00-06:00",
+          "author": {"role": "agent", "name": "claude-opus"}
+        }
+      ],
+      "related_files": [
+        {"path": "src/frontend/App.tsx", "closeness": 5},
+        {"path": "src/frontend/components/FileDetail.tsx", "closeness": 4},
+        {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"}
+      ]
+    },
+    "README.md": {
+      "title": "Public-Facing Project Overview",
+      "summary": "What CanopyTag is, quick start, layout description, scoring conventions, authority levels, and the agent workflow. The first thing a human visitor reads. Currently references 'workspace/canopy.json' as the data path — needs updating to '.canopytag/canopy.json' for the open-source release.",
+      "validity": 4,
+      "clarity": 5,
+      "completeness": 3,
+      "stability": 3,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["docs", "onboarding"],
+      "feature_id": "docs",
+      "todos": [
+        {
+          "id": "RT-006",
+          "text": "README still says 'workspace/canopy.json' — needs to reference .canopytag/canopy.json for public release. Also references 'cd tools/repositree' which is an internal monorepo path.",
+          "priority": 2,
+          "difficulty": 1,
+          "status": "done",
+          "completed_at": "2026-03-27T12:00:00-06:00",
+          "tags": ["docs", "release-blocker"],
+          "created_at": "2026-03-27T12:00:00-06:00",
+          "created_by": {"role": "agent", "name": "claude-opus"}
+        },
+        {
+          "id": "RT-007",
+          "text": "No mention of CLI tools (stats, ls, query, health) in README. These are the primary agent interface and should be prominently documented.",
+          "priority": 2,
+          "difficulty": 2,
+          "status": "done",
+          "completed_at": "2026-03-27T12:00:00-06:00",
+          "tags": ["docs", "cli"],
+          "created_at": "2026-03-27T12:00:00-06:00",
+          "created_by": {"role": "agent", "name": "claude-opus"}
+        }
+      ],
+      "comments": [],
+      "related_files": [
+        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3, "relation": "doc-for"},
+        {"path": "docs/cli-cheatsheet.md", "closeness": 4, "relation": "doc-for"},
+        {"path": "docs/roadmap.md", "closeness": 3}
+      ]
+    },
+    "docs/cli-cheatsheet.md": {
+      "title": "CLI Cheatsheet",
+      "summary": "Short public command reference for the agent workflow: orient with stats, search with rg, enrich with context, compare exact files for trust order, explore features with query, review TODOs/health/analytics, and install MCP/hooks. Complements the longer README by giving agents a compact operational sequence.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-25",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["docs", "cli", "agent-interface"],
+      "feature_id": "docs",
+      "related_files": [
+        {"path": "README.md", "closeness": 4, "relation": "doc-for"},
+        {"path": "src/cli/compare.ts", "closeness": 3, "relation": "doc-for"},
+        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3}
+      ]
+    },
+    "docs/roadmap.md": {
+      "title": "Public Roadmap",
+      "summary": "Curated public roadmap replacing the old root TODO log. Captures current prerelease status, release blockers, near-term product work, agent navigation ideas, analytics and benchmarking plans, multi-repo ideas, structural-data/cartography philosophy, and design principles to preserve.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 2,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-25",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["docs", "roadmap", "decisions"],
+      "feature_id": "docs",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "README.md", "closeness": 3},
+        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3},
+        {"path": "docs/architecture-md-and-codeowners.md", "closeness": 3}
+      ]
+    },
+    "docs/canopytag-vs-ripgrep.md": {
+      "title": "Positioning: When Metadata Beats Text Search",
+      "summary": "Side-by-side comparison of agent workflows using ripgrep vs CanopyTag. Shows where each tool wins: ripgrep for symbols, imports, and specific text; CanopyTag for routing tasks, understanding context, finding next work, and progressive disclosure. Includes the key insight that they complement rather than compete. Also documents where CanopyTag's annotation cost must be justified by frequency of navigation.",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["docs", "positioning", "strategy"],
+      "feature_id": "docs",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "docs/architecture-md-and-codeowners.md", "closeness": 4},
+        {"path": "docs/roadmap.md", "closeness": 3},
+        {"path": "README.md", "closeness": 3}
+      ]
+    },
+    "docs/architecture-md-and-codeowners.md": {
+      "title": "Where CanopyTag Fits in the Metadata Ecosystem",
+      "summary": "Reference doc comparing CanopyTag against ARCHITECTURE.md, CODEOWNERS, ADRs, AGENTS.md, and Notion/Confluence. Key distinction: those tools are prose for humans or rules for CI — CanopyTag is structured JSON for tooling and agents. Helps answer 'do I need CanopyTag if I already have X?' (yes, they coexist).",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 3,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-03-27",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["docs", "positioning", "strategy"],
+      "feature_id": "docs",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 4},
+        {"path": "docs/roadmap.md", "closeness": 3}
+      ]
+    },
+    "src/cli/shared.ts": {
+      "title": "CLI Shared Utilities — The Foundation Layer",
+      "summary": "Every CLI tool and MCP read tool imports from here. Provides resolveRepoRoot/resolveCanopyPath (canopytag/ or .canopytag/ lookup), fileKind (extension+path→module/doc/test/config/asset/data), AUTHORITY_RANK for sorting, aggregateScore/warningCount for health checks, and the full filter+sort pipeline (FileFilters, parseBaseFilters, filterFiles, sortFiles). Defines 9 sort keys including 'attention' (composite: warnings + unreviewed + TODOs weighted by authority). Also handles git date integration for --git-after/--git-before filters.",
+      "validity": 5,
+      "clarity": 4,
+      "completeness": 5,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["cli", "core"],
+      "feature_id": "cli-tools",
+      "related_files": [
+        {"path": "src/shared/types.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/backend/lib/git-info.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/cli/stats.ts", "closeness": 4},
+        {"path": "src/cli/ls.ts", "closeness": 4},
+        {"path": "src/cli/query.ts", "closeness": 4},
+        {"path": "src/cli/compare.ts", "closeness": 4},
+        {"path": "src/mcp/tools/reads.ts", "closeness": 4}
+      ]
+    },
+    "src/cli/context.ts": {
+      "title": "canopytag context — Compact Agent Prompt Injection",
+      "summary": "Renders compact context blocks for files or features, designed for injecting into agent prompts. Three modes: single file, multi-file (after grep), and feature (aggregated). Per-file output shows summary, dimension warnings (scores below authority-level minimums), finding comments, open TODOs, relations (filtered by closeness >= depth), and tags. Feature mode aggregates dimension averages, flags weakest dimension, collects all TODOs. The bridge between annotation data and agent context windows.",
+      "validity": 5,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 3,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["cli", "agent-interface"],
+      "feature_id": "cli-tools",
+      "related_files": [
+        {"path": "src/shared/types.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/cli/shared.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/cli/query.ts", "closeness": 3}
+      ]
+    },
+    "src/cli/compare.ts": {
+      "title": "canopytag compare - File Trust Comparator",
+      "summary": "Compares exact files by authority rank, quality composite, freshness, warning count, TODO pressure, per-dimension scores, summaries, and trust order. This is the agent-facing tool for deciding which document or source file should win when multiple search hits conflict. Reuses shared authorityScore, aggregateScore, warningCount, and freshness helpers, and tracks explicit compared files as canopy queries.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-25",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["cli", "agent-interface", "quality"],
+      "feature_id": "cli-tools",
+      "related_files": [
+        {"path": "src/cli/shared.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/cli/context.ts", "closeness": 4},
+        {"path": "src/cli/health.ts", "closeness": 4},
+        {"path": "src/mcp/tools/reads.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "docs/cli-cheatsheet.md", "closeness": 3, "relation": "doc-for"}
+      ]
+    },
+    "src/cli/coverage.ts": {
+      "title": "canopytag coverage — Annotation Coverage & Orphan Detection",
+      "summary": "Reports what percentage of repo files are annotated, groups unannotated files by kind, and detects orphaned canopy entries (annotated files that no longer exist on disk). Two core functions: discoverRepoFiles (git ls-files + .ctagignore filtering, excludes canopy dir) and buildCoverage (pure set-diff computation). Optional --detail shows per-file field completeness sorted by least complete first. Only kind filter applies to coverage — tag/feature filters can't work on unannotated files since they have no canopy entry. Also registered as canopytag_coverage MCP tool.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["cli", "agent-interface"],
+      "feature_id": "cli-tools",
+      "related_files": [
+        {"path": "src/cli/shared.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/mcp/tools/reads.ts", "closeness": 4},
+        {"path": "src/cli/stats.ts", "closeness": 3}
+      ]
+    },
+    "src/cli/graph.ts": {
+      "title": "Relation Graph Walker — Fan-in/Fan-out Engine",
+      "summary": "BFS graph traversal over relatedFiles edges. Builds a reverse index (who points at this file?) for fan-in, walks forward edges for fan-out. Returns a GraphNode tree with hop count, relation type, and closeness at each node. Configurable: hops (max depth), minCloseness (edge filter), relation (type filter). Renders as indented text with directional arrows (← fan-in, → fan-out). Used by canopytag_fan_in and canopytag_fan_out MCP tools. Pure computation — no I/O.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["cli", "graph-traversal"],
+      "feature_id": "cli-tools",
+      "related_files": [
+        {"path": "src/shared/types.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/mcp/tools/reads.ts", "closeness": 4},
+        {"path": "src/cli/query.ts", "closeness": 3}
+      ]
+    },
+    "src/cli/init.ts": {
+      "title": "canopytag init — Repo Bootstrap",
+      "summary": "Creates canopytag/ directory with empty canopy.json and default settings.json. Safe to run on already-initialized repos — detects existing canopytag/ or .canopytag/ and prints status without overwriting. Prints next-step guidance pointing to stats, ls, and MCP tools. Simple script — no guard needed since it's only invoked directly.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 5,
+      "stability": 5,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["cli", "onboarding"],
+      "feature_id": "cli-tools",
+      "related_files": [
+        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/cli/shared.ts", "closeness": 4, "relation": "fed-by"}
+      ]
+    },
+    "src/mcp/server.ts": {
+      "title": "MCP Server Entry Point",
+      "summary": "17-line entry point — creates McpServer, registers read and write tools via separate modules, connects over stdio transport. Agents invoke this via Claude Code's MCP config. No business logic here; all tool implementations are in reads.ts and writes-registration.ts.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 5,
+      "stability": 5,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["mcp", "core"],
+      "feature_id": "mcp-server",
+      "related_files": [
+        {"path": "src/mcp/tools/reads.ts", "closeness": 5},
+        {"path": "src/mcp/tools/writes-registration.ts", "closeness": 5}
+      ]
+    },
+    "src/mcp/tools/reads.ts": {
+      "title": "MCP Read Tools — Agent Query Interface",
+      "summary": "Registers 10 read-only MCP tools: stats, ls, query, context, todos, health, tags, fan_in, fan_out, coverage. Each tool resolves paths, reads canopy, calls the corresponding build*() function from CLI modules, and returns text content. Uses Zod schemas for parameter validation. Shared filterParams object provides consistent filter options across tools. Also wires analytics tracking — canopytag_query and canopytag_context record which files agents access via incrementFile().",
+      "validity": 5,
+      "clarity": 4,
+      "completeness": 5,
+      "stability": 3,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["mcp", "agent-interface"],
+      "feature_id": "mcp-server",
+      "comments": [
+        {
+          "id": "RC-READS-COMPARE",
+          "text": "MCP read tools now include canopytag_compare for exact-file authority and quality comparison. It wraps src/cli/compare.ts and tracks matched files as canopy queries.",
+          "type": "note",
+          "confidence": 5,
+          "created_at": "2026-04-25T00:00:00Z",
+          "author": {"role": "agent", "name": "codex"}
+        }
+      ],
+      "related_files": [
+        {"path": "src/mcp/server.ts", "closeness": 5},
+        {"path": "src/cli/shared.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/cli/compare.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/cli/coverage.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/cli/graph.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/backend/lib/analytics.ts", "closeness": 3}
+      ]
+    },
+    "src/mcp/tools/writes.ts": {
+      "title": "MCP Write Handlers — Mutation Logic",
+      "summary": "MCP mutation handlers for canopy writes and sidecar suggestions. handleAddComment is always allowed, handleAnnotate and handleAddTodo respect locked files, handleRenameTag bulk-renames tags, and handleStageSuggestion writes non-canonical review-feed entries. All applied writes append agent_manifest.json activity with undo metadata. Agent attribution is dynamic via tool parameters or CANOPYTAG_AGENT_NAME / CANOPYTAG_AGENT_SESSION. Tag writes include fuzzy duplicate detection.",
+      "validity": 5,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["mcp", "persistence"],
+      "feature_id": "mcp-server",
+      "todos": [
+        {
+          "id": "RT-009",
+          "text": "AGENT_AUTHOR is hardcoded to { role: 'agent', name: 'claude' }. Should be dynamic to support non-Claude agents writing annotations.",
+          "priority": 3,
+          "difficulty": 2,
+          "status": "done",
+          "tags": ["extensibility"],
+          "created_at": "2026-04-07T00:00:00-06:00",
+          "completed_at": "2026-04-24T19:15:00.000Z",
+          "created_by": {"role": "agent", "name": "claude-opus"}
+        }
+      ],
+      "related_files": [
+        {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/mcp/tools/tags.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/mcp/tools/writes-registration.ts", "closeness": 5},
+        {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"}
+      ]
+    },
+    "src/mcp/tools/writes-registration.ts": {
+      "title": "MCP Write Tools — Zod Registration Layer",
+      "summary": "Registers 4 MCP write tools (add_comment, annotate, add_todo, rename_tag) with Zod parameter schemas. Thin wiring layer — each tool calls the corresponding handler from writes.ts with try/catch for error responses. Separated from writes.ts so handler logic is independently testable without MCP SDK dependencies.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 5,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["mcp"],
+      "feature_id": "mcp-server",
+      "related_files": [
+        {"path": "src/mcp/tools/writes.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/mcp/server.ts", "closeness": 5}
+      ]
+    },
+    "src/mcp/tools/tags.ts": {
+      "title": "Tag Vocabulary Engine",
+      "summary": "Collects live tag vocabulary from canopy.json with usage counts. Supports search (substring match, alphabetical) and browse (top N by count). Includes fuzzy duplicate detection: Levenshtein distance <=2 and separator normalization (dash/underscore). buildTags() renders the full output with duplicate warnings. Used by canopytag_tags tool and by writes.ts to warn when new tags are near-duplicates of existing vocabulary.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["mcp", "core"],
+      "feature_id": "mcp-server",
+      "related_files": [
+        {"path": "src/mcp/tools/writes.ts", "closeness": 5},
+        {"path": "src/mcp/tools/reads.ts", "closeness": 4},
+        {"path": "src/shared/types.ts", "closeness": 3, "relation": "fed-by"}
+      ]
+    },
+    "src/backend/server.ts": {
+      "title": "Fastify Web Server — Bootstrap & Route Registration",
+      "summary": "205-line entry point for the web UI backend. Resolves repo root (CLI arg > REPO_ROOT env > auto-detect), finds canopytag/ or .canopytag/ directory, loads canopy.json + settings + optional repo_index.json + tag vocabulary. Registers 14 route modules via Fastify plugins. Runs archive sweep on startup (moves completed TODOs older than retention window). Decorates Fastify with shared ServerState accessible to all routes. CORS restricted to localhost:5180 (Vite dev server).",
+      "validity": 5,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 3,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["api", "core"],
+      "feature_id": "web-ui",
+      "related_files": [
+        {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/backend/routes/file.ts", "closeness": 4},
+        {"path": "src/backend/routes/tree.ts", "closeness": 4},
+        {"path": "src/backend/lib/tree-walker.ts", "closeness": 3, "relation": "fed-by"},
+        {"path": "src/frontend/App.tsx", "closeness": 3}
+      ]
+    },
+    "src/backend/lib/analytics.ts": {
+      "title": "Agent Activity Analytics Engine",
+      "summary": "Tracks per-file read/edit/write/canopyQuery counts with daily bucketing. Stores in .analytics.json alongside canopy.json. incrementFile() updates both total and daily bucket, tracks uniqueFilesAccessed per day. incrementDaily() counts grep/glob operations. engagementScore() computes a windowed score (reads + 2x edits + 2x writes + queries) for heatmap visualization. windowedTotals() provides the r/e/w/q breakdown for CLI output. Atomic writes via temp+rename pattern.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["core", "persistence"],
+      "feature_id": "annotation-engine",
+      "related_files": [
+        {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/mcp/tools/reads.ts", "closeness": 3},
+        {"path": "src/cli/shared.ts", "closeness": 3, "relation": "fed-by"}
+      ]
+    },
+    "src/backend/lib/git-info.ts": {
+      "title": "Git Date Lookup",
+      "summary": "Two functions: getLastModified (git log -1 for a single file) and getLastModifiedBatch (iterates getLastModified for multiple files). Returns ISO date strings. Used by shared.ts for --git-after/--git-before filters and --modified sort key. Currently O(n) shell calls for batch — TODO notes optimization with git log --name-only.",
+      "validity": 4,
+      "clarity": 5,
+      "completeness": 3,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["core"],
+      "feature_id": "annotation-engine",
+      "related_files": [
+        {"path": "src/cli/shared.ts", "closeness": 4}
+      ]
+    },
+    "src/backend/lib/tree-walker.ts": {
+      "title": "File System Tree Walker",
+      "summary": "Recursive directory walker that builds TreeNode structures for the sidebar file tree. Filters with ALWAYS_SKIP set (30+ entries: .git, node_modules, dist, IDE dirs, lock files, etc.), .gitignore patterns, and .ctagignore patterns. Folders sorted before files, then alphabetical. Used by the /api/tree endpoint. Separate from coverage's discoverRepoFiles which uses git ls-files instead of fs.readdir.",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-07",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["core"],
+      "feature_id": "web-ui",
+      "related_files": [
+        {"path": "src/backend/routes/tree.ts", "closeness": 5},
+        {"path": "src/shared/types.ts", "closeness": 3, "relation": "fed-by"},
+        {"path": "src/cli/coverage.ts", "closeness": 2}
+      ]
+    }
+  },
+  "directories": {
+    "src/cli": {
+      "summary": "Agent-facing CLI tools: stats (orient), ls (browse), query (dive), context (prompt injection), health (validate), coverage (annotation gaps), todos (global TODO list). shared.ts is the foundation — filter/sort/fileKind utilities used by every tool. graph.ts powers fan-in/fan-out traversal. Each tool reads canopy.json directly — no server required."
+    },
+    "src/mcp": {
+      "summary": "MCP server for Claude Code integration. server.ts is a 17-line entry point. tools/reads.ts registers 10 read tools wrapping CLI build functions. tools/writes.ts has mutation handlers (annotate, comment, TODO, tag rename). tools/tags.ts manages live tag vocabulary with fuzzy duplicate detection."
+    },
+    "src/backend/lib": {
+      "summary": "Core libraries: canopy.ts (read/write/archive), analytics.ts (agent activity tracking), git-info.ts (git date lookups), tree-walker.ts (file system tree for sidebar), case-transform.ts (snake↔camel), merge.ts (canopy merging)."
+    },
+    "src/backend/routes": {
+      "summary": "Fastify REST API routes. file.ts and todo.ts handle most mutations. All routes share serverState (canopy, repoIndex, settings) via app.serverState."
+    },
+    "src/frontend/components": {
+      "summary": "React components for the annotation UI. FileDetail.tsx is the main editing surface; ScoreDisplay.tsx renders the scoring model; TableView.tsx provides the alternate flat-list view."
+    },
+    "docs": {
+      "summary": "Positioning and strategy docs. roadmap.md is the public backlog, canopytag-vs-ripgrep.md is the core search-positioning argument, and architecture-md-and-codeowners.md explains the ecosystem fit."
+    }
+  },
+  "features": {
+    "annotation-engine": {
+      "name": "Annotation Engine",
+      "description": "Schema, persistence, and health checks — the core data model that everything reads from and writes to.",
+      "tags": ["core", "schema"],
+      "status": "active"
+    },
+    "cli-tools": {
+      "name": "Agent-Facing CLI",
+      "description": "stats → ls → query → health: the progressive disclosure pipeline agents use to navigate a tagged repo without reading raw JSON.",
+      "tags": ["cli", "agent-interface"],
+      "status": "active"
+    },
+    "web-ui": {
+      "name": "Web UI",
+      "description": "React + Fastify dashboard for humans to browse, score, and annotate files. Explorer view (tree + detail panel) and Table view (flat sortable lists).",
+      "tags": ["frontend", "api"],
+      "status": "active"
+    },
+    "mcp-server": {
+      "name": "MCP Server",
+      "description": "Local stdio-based MCP server that exposes CanopyTag tools to Claude Code agents. 10 read tools + 4 write tools, with tag vocabulary management and analytics tracking. Thin wrapper over CLI build functions — no logic duplication.",
+      "tags": ["mcp", "agent-interface"],
+      "status": "active"
+    },
+    "docs": {
+      "name": "Documentation & Positioning",
+      "description": "README, roadmap, and strategy docs that explain what CanopyTag is, why it exists, and where it fits relative to ripgrep, Notion, ARCHITECTURE.md, etc.",
+      "tags": ["docs", "strategy"],
+      "status": "active"
+    }
+  }
+}

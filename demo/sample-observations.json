@@ -1,0 +1,49 @@
+{
+  "observations": [
+    {
+      "species": "red oak",
+      "role": "producer",
+      "count": 7,
+      "native": true,
+      "canopy_layer": "canopy",
+      "threat_score": 1,
+      "tags": ["canopy", "keystone"]
+    },
+    {
+      "species": "black-capped chickadee",
+      "role": "consumer",
+      "count": 5,
+      "native": true,
+      "canopy_layer": "understory",
+      "threat_score": 1,
+      "tags": ["food-web", "indicator"]
+    },
+    {
+      "species": "mycorrhizal fungi",
+      "role": "decomposer",
+      "count": 9,
+      "native": true,
+      "canopy_layer": "forest-floor",
+      "threat_score": 0,
+      "tags": ["roots", "soil"]
+    },
+    {
+      "species": "unknown invasive vine",
+      "role": "competitor",
+      "count": 3,
+      "native": false,
+      "canopy_layer": "canopy",
+      "threat_score": 5,
+      "tags": ["invasive", "review"]
+    },
+    {
+      "species": "",
+      "role": "unknown",
+      "count": 2,
+      "native": true,
+      "canopy_layer": "understory",
+      "threat_score": 0,
+      "tags": ["invalid"]
+    }
+  ]
+}

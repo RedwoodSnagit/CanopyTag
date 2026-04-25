@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "AM-001",
+      "file": "src/utils.py",
+      "created_at": "2026-04-24T16:10:00.000Z",
+      "author": { "role": "agent", "name": "demo-agent" },
+      "status": "pending",
+      "kind": "comment",
+      "headline": "Agent flagged unused invasive-pressure limit",
+      "fields": ["comments"],
+      "applied": true,
+      "can_reject": true,
+      "comment": "summarize_habitat never consults max_invasive_pressure, so invasive observations can inflate the habitat health score.",
+      "follow_ups": ["src/config.py", "tests/test_utils.py"],
+      "rationale": "This is a useful demo of an agent-authored finding that is live immediately but still wants human review.",
+      "undo": {
+        "type": "comment",
+        "comment_id": "DC-003",
+        "comment": {
+          "id": "DC-003",
+          "text": "summarize_habitat never consults max_invasive_pressure, so invasive observations can inflate the habitat health score.",
+          "type": "finding",
+          "confidence": 4,
+          "created_at": "2026-04-24T16:10:00.000Z",
+          "author": { "role": "agent", "name": "demo-agent" }
+        }
+      }
+    },
+    {
+      "id": "AM-002",
+      "file": "docs/api-guide.md",
+      "created_at": "2026-04-24T16:18:00.000Z",
+      "author": { "role": "agent", "name": "demo-agent" },
+      "status": "fixed",
+      "kind": "suggestion",
+      "headline": "Suggested stale review on species import notes",
+      "fields": ["suggested_freshness"],
+      "applied": false,
+      "can_reject": false,
+      "suggested_freshness": "stale",
+      "reviewed_at": "2026-04-24T16:30:00.000Z",
+      "reviewer": { "role": "human", "name": "demo-reviewer" },
+      "review_note": "Keep the stale signal as a sidecar note until the import API exists.",
+      "follow_ups": ["docs/architecture.md"],
+      "rationale": "Shows how stale can be captured as a review recommendation without becoming canonical file freshness yet.",
+      "undo": { "type": "suggestion" }
+    },
+    {
+      "id": "AM-003",
+      "file": "README.md",
+      "created_at": "2026-04-24T16:25:00.000Z",
+      "author": { "role": "agent", "name": "demo-agent" },
+      "status": "agreed",
+      "kind": "annotate",
+      "headline": "Added demo orientation metadata",
+      "fields": ["summary", "tags", "authority_level", "related_files"],
+      "applied": true,
+      "can_reject": true,
+      "reviewed_at": "2026-04-24T16:40:00.000Z",
+      "reviewer": { "role": "human", "name": "demo-reviewer" },
+      "review_note": "Good orientation entry.",
+      "proposal": {
+        "summary": "Entry document that teaches the demo shape and points users toward the metadata workflow.",
+        "tags": ["docs", "demo", "forest-ecosystem"],
+        "authority_level": "guideline",
+        "related_files": [{ "path": "docs/README.md", "closeness": 4, "relation": "doc-for" }]
+      },
+      "undo": {
+        "type": "annotate",
+        "before": {},
+        "after": {
+          "summary": "Entry document that teaches the demo shape and points users toward the metadata workflow.",
+          "tags": ["docs", "demo", "forest-ecosystem"],
+          "authority_level": "guideline"
+        }
+      }
+    }
+  ]
+}

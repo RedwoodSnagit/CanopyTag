@@ -1,0 +1,685 @@
+{
+  "version": 1,
+  "repo_root": ".",
+  "last_modified_at": "2026-04-25T06:15:58.920Z",
+  "agent_notes": [
+    {
+      "text": "Start with docs/architecture.md, then inspect src/main.py and src/utils.py. The Activity table contains examples of agree, fix, and pending review states.",
+      "agent": "demo-author",
+      "created_at": "2026-04-24T16:55:00.000Z",
+      "acknowledged": false
+    }
+  ],
+  "files": {
+    "README.md": {
+      "title": "Demo Orientation",
+      "summary": "Entry document that explains forest_repo_demo and invites users to inspect the Graph and Activity views.",
+      "io_metadata": {
+        "inputs": [
+          "reader with no CanopyTag context"
+        ],
+        "outputs": [
+          "quick-start path through the demo"
+        ]
+      },
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": true,
+      "last_reviewed": "2026-04-24",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": [
+        "docs",
+        "demo",
+        "forest-ecosystem"
+      ],
+      "feature_id": "demo-onboarding",
+      "todos": [],
+      "comments": [
+        {
+          "id": "DC-001",
+          "text": "Good first stop for humans. It describes why the metadata is more interesting than the tiny sample code.",
+          "type": "note",
+          "confidence": 5,
+          "created_at": "2026-04-24T15:45:00.000Z",
+          "author": {
+            "role": "human",
+            "name": "demo-reviewer"
+          }
+        }
+      ],
+      "related_files": [
+        {
+          "path": "docs/README.md",
+          "closeness": 4,
+          "relation": "doc-for"
+        },
+        {
+          "path": "canopytag/agent_manifest.json",
+          "closeness": 3,
+          "relation": "audit-of"
+        }
+      ]
+    },
+    "docs/README.md": {
+      "title": "Docs Index",
+      "summary": "Short index for the demo documentation. Useful as a simple doc-for relation target.",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 3,
+      "stability": 4,
+      "scores_reviewed": true,
+      "last_reviewed": "2026-04-24",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": [
+        "docs",
+        "demo"
+      ],
+      "feature_id": "demo-onboarding",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {
+          "path": "README.md",
+          "closeness": 4,
+          "relation": "doc-for"
+        },
+        {
+          "path": "docs/architecture.md",
+          "closeness": 5,
+          "relation": "doc-for"
+        },
+        {
+          "path": "docs/api-guide.md",
+          "closeness": 3,
+          "relation": "doc-for"
+        }
+      ]
+    },
+    "docs/architecture.md": {
+      "title": "Forest Repo Demo Architecture",
+      "summary": "Authoritative architecture note describing the CLI, configuration, ecosystem scoring helper, and data flow.",
+      "io_metadata": {
+        "inputs": [
+          "current source layout",
+          "demo learning goals"
+        ],
+        "outputs": [
+          "reading order and intended responsibilities"
+        ]
+      },
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 5,
+      "stability": 5,
+      "scores_reviewed": true,
+      "last_reviewed": "2026-04-24",
+      "authority_level": "standard",
+      "status": "active",
+      "tags": [
+        "architecture",
+        "docs",
+        "forest-ecosystem"
+      ],
+      "feature_id": "habitat-health",
+      "locked": true,
+      "todos": [],
+      "comments": [
+        {
+          "id": "DC-002",
+          "text": "Locked on purpose: this file demonstrates that high-authority metadata can reject direct MCP annotation edits while still allowing comments.",
+          "type": "note",
+          "confidence": 5,
+          "created_at": "2026-04-24T15:55:00.000Z",
+          "author": {
+            "role": "human",
+            "name": "demo-reviewer"
+          }
+        }
+      ],
+      "related_files": [
+        {
+          "path": "src/main.py",
+          "closeness": 5,
+          "relation": "implements"
+        },
+        {
+          "path": "src/utils.py",
+          "closeness": 5,
+          "relation": "implements"
+        },
+        {
+          "path": "tests/test_utils.py",
+          "closeness": 4,
+          "relation": "test-of"
+        }
+      ]
+    },
+    "docs/api-guide.md": {
+      "title": "Species Import Notes",
+      "summary": "Draft future input contract for species observation JSON. Useful contrast with the standard architecture doc.",
+      "validity": 3,
+      "clarity": 3,
+      "completeness": 2,
+      "stability": 2,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-25",
+      "authority_level": "idea",
+      "status": "draft",
+      "tags": [
+        "api",
+        "docs",
+        "species-import",
+        "food-web"
+      ],
+      "feature_id": "species-import",
+      "todos": [
+        {
+          "id": "DT-001",
+          "text": "Decide whether imported observations must include confidence scores before promoting this note above idea.",
+          "priority": 2,
+          "difficulty": 3,
+          "status": "open",
+          "tags": [
+            "api",
+            "review"
+          ],
+          "created_at": "2026-04-24T14:20:00.000Z",
+          "created_by": {
+            "role": "human",
+            "name": "demo-reviewer"
+          }
+        }
+      ],
+      "comments": [
+        {
+          "id": "DC-004",
+          "text": "This is intentionally under-specified. It should stay draft until the CLI actually consumes the proposed full schema.",
+          "type": "improvement",
+          "confidence": 4,
+          "created_at": "2026-04-24T16:18:00.000Z",
+          "author": {
+            "role": "agent",
+            "name": "demo-agent"
+          }
+        }
+      ],
+      "related_files": [
+        {
+          "path": "sample-observations.json",
+          "closeness": 4,
+          "relation": "sample-for"
+        },
+        {
+          "path": "src/main.py",
+          "closeness": 3,
+          "relation": "implements"
+        }
+      ]
+    },
+    "src/main.py": {
+      "title": "CLI Entry Point",
+      "summary": "Loads optional species observations, asks the helper layer for a habitat summary, and prints terminal output.",
+      "io_metadata": {
+        "inputs": [
+          "optional species-observation JSON path",
+          "default runtime config"
+        ],
+        "outputs": [
+          "terminal habitat summary",
+          "process exit code"
+        ]
+      },
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 3,
+      "stability": 3,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-24",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": [
+        "forest-ecosystem",
+        "io",
+        "habitat-health"
+      ],
+      "feature_id": "habitat-health",
+      "todos": [
+        {
+          "id": "DT-002",
+          "text": "Return a non-zero exit code when the species observation JSON path exists but cannot be parsed.",
+          "priority": 2,
+          "difficulty": 2,
+          "status": "open",
+          "tags": [
+            "io",
+            "testing"
+          ],
+          "created_at": "2026-04-24T14:35:00.000Z",
+          "created_by": {
+            "role": "agent",
+            "name": "demo-agent"
+          }
+        }
+      ],
+      "comments": [
+        {
+          "id": "DC-005",
+          "text": "Missing JSON parse error handling. A malformed observation file will raise instead of producing an agent-readable failure.",
+          "type": "finding",
+          "confidence": 5,
+          "created_at": "2026-04-24T15:05:00.000Z",
+          "author": {
+            "role": "agent",
+            "name": "demo-agent"
+          }
+        }
+      ],
+      "related_files": [
+        {
+          "path": "docs/architecture.md",
+          "closeness": 5,
+          "relation": "doc-for"
+        },
+        {
+          "path": "src/config.py",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/utils.py",
+          "closeness": 5,
+          "relation": "implements"
+        },
+        {
+          "path": "tests/test_main.py",
+          "closeness": 4,
+          "relation": "test-of"
+        }
+      ]
+    },
+    "src/config.py": {
+      "title": "Forest Defaults",
+      "summary": "Defines runtime defaults such as target health score and maximum invasive pressure.",
+      "io_metadata": {
+        "inputs": [
+          "optional JSON config path"
+        ],
+        "outputs": [
+          "merged runtime config dictionary"
+        ]
+      },
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 3,
+      "stability": 3,
+      "scores_reviewed": true,
+      "last_reviewed": "2026-04-24",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": [
+        "config",
+        "habitat-health",
+        "invasive-pressure"
+      ],
+      "feature_id": "habitat-health",
+      "todos": [],
+      "comments": [
+        {
+          "id": "DC-006",
+          "text": "max_invasive_pressure is declared but not yet enforced by src/utils.py.",
+          "type": "finding",
+          "confidence": 4,
+          "created_at": "2026-04-24T16:05:00.000Z",
+          "author": {
+            "role": "agent",
+            "name": "demo-agent"
+          }
+        }
+      ],
+      "related_files": [
+        {
+          "path": "src/main.py",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/utils.py",
+          "closeness": 3,
+          "relation": "implements"
+        }
+      ]
+    },
+    "src/utils.py": {
+      "title": "Ecosystem Scoring Helpers",
+      "summary": "Scores species observations by habitat value, filters invalid observations, and formats the terminal report.",
+      "io_metadata": {
+        "inputs": [
+          "list of species observation dictionaries",
+          "target health score"
+        ],
+        "outputs": [
+          "selected observation list",
+          "formatted habitat report"
+        ]
+      },
+      "validity": 3,
+      "clarity": 4,
+      "completeness": 3,
+      "stability": 3,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-24",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": [
+        "habitat-health",
+        "food-web",
+        "forest-ecosystem"
+      ],
+      "feature_id": "habitat-health",
+      "todos": [
+        {
+          "id": "DT-003",
+          "text": "Teach summarize_habitat to reject observations above max_invasive_pressure once config is threaded through.",
+          "priority": 1,
+          "difficulty": 3,
+          "status": "in_progress",
+          "tags": [
+            "invasive-pressure",
+            "finding"
+          ],
+          "created_at": "2026-04-24T16:12:00.000Z",
+          "created_by": {
+            "role": "agent",
+            "name": "demo-agent"
+          }
+        }
+      ],
+      "comments": [
+        {
+          "id": "DC-003",
+          "text": "summarize_habitat never consults max_invasive_pressure, so invasive observations can inflate the habitat health score.",
+          "type": "finding",
+          "confidence": 4,
+          "created_at": "2026-04-24T16:10:00.000Z",
+          "author": {
+            "role": "agent",
+            "name": "demo-agent"
+          }
+        },
+        {
+          "id": "DC-007",
+          "text": "The habitat-value sort is simple enough for a demo, but a real forest model should include seasonality and species interaction constraints.",
+          "type": "improvement",
+          "confidence": 3,
+          "created_at": "2026-04-24T16:14:00.000Z",
+          "author": {
+            "role": "human",
+            "name": "demo-reviewer"
+          }
+        }
+      ],
+      "related_files": [
+        {
+          "path": "docs/architecture.md",
+          "closeness": 5,
+          "relation": "doc-for"
+        },
+        {
+          "path": "src/main.py",
+          "closeness": 5,
+          "relation": "implements"
+        },
+        {
+          "path": "tests/test_utils.py",
+          "closeness": 5,
+          "relation": "test-of"
+        },
+        {
+          "path": "sample-observations.json",
+          "closeness": 4,
+          "relation": "sample-for"
+        }
+      ]
+    },
+    "tests/test_main.py": {
+      "title": "CLI Smoke Test",
+      "summary": "Verifies that the CLI entry point returns success with no observation input.",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 2,
+      "stability": 4,
+      "scores_reviewed": true,
+      "last_reviewed": "2026-04-24",
+      "authority_level": "blueprint",
+      "status": "active",
+      "tags": [
+        "testing",
+        "forest-ecosystem"
+      ],
+      "feature_id": "habitat-health",
+      "todos": [
+        {
+          "id": "DT-004",
+          "text": "Add a temp-file test for valid species observation JSON input.",
+          "priority": 3,
+          "difficulty": 2,
+          "status": "open",
+          "tags": [
+            "testing",
+            "io"
+          ],
+          "created_at": "2026-04-24T14:50:00.000Z",
+          "created_by": {
+            "role": "human",
+            "name": "demo-reviewer"
+          }
+        }
+      ],
+      "comments": [],
+      "related_files": [
+        {
+          "path": "src/main.py",
+          "closeness": 4,
+          "relation": "test-of"
+        }
+      ]
+    },
+    "tests/test_utils.py": {
+      "title": "Ecosystem Helper Tests",
+      "summary": "Exercises habitat value, invalid observation filtering, and output formatting.",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 3,
+      "stability": 4,
+      "scores_reviewed": true,
+      "last_reviewed": "2026-04-24",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": [
+        "testing",
+        "habitat-health"
+      ],
+      "feature_id": "habitat-health",
+      "todos": [],
+      "comments": [
+        {
+          "id": "DC-008",
+          "text": "Tests cover invalid zero-count observations, but not high-threat invasive observations. That gap matches the active finding on src/utils.py.",
+          "type": "finding",
+          "confidence": 4,
+          "created_at": "2026-04-24T16:20:00.000Z",
+          "author": {
+            "role": "agent",
+            "name": "demo-agent"
+          }
+        }
+      ],
+      "related_files": [
+        {
+          "path": "src/utils.py",
+          "closeness": 5,
+          "relation": "test-of"
+        },
+        {
+          "path": "src/config.py",
+          "closeness": 3,
+          "relation": "fed-by"
+        }
+      ]
+    },
+    "sample-observations.json": {
+      "title": "Sample Species Observations",
+      "summary": "Small JSON fixture consumed by the quick-start command and related to the future import API notes.",
+      "io_metadata": {
+        "inputs": [
+          "human-authored species observations"
+        ],
+        "outputs": [
+          "demo input for src/main.py and src/utils.py"
+        ]
+      },
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 3,
+      "stability": 3,
+      "scores_reviewed": true,
+      "last_reviewed": "2026-04-24",
+      "authority_level": "blueprint",
+      "status": "active",
+      "tags": [
+        "io",
+        "species-import",
+        "food-web",
+        "demo"
+      ],
+      "feature_id": "species-import",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {
+          "path": "docs/api-guide.md",
+          "closeness": 4,
+          "relation": "sample-for"
+        },
+        {
+          "path": "src/main.py",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/utils.py",
+          "closeness": 4,
+          "relation": "fed-by"
+        }
+      ]
+    },
+    "setup.py": {
+      "title": "Legacy Setup Script",
+      "summary": "Deprecated packaging shim kept only to demonstrate file lifecycle status.",
+      "validity": 3,
+      "clarity": 4,
+      "completeness": 2,
+      "stability": 4,
+      "scores_reviewed": true,
+      "last_reviewed": "2026-04-24",
+      "authority_level": "idea",
+      "status": "deprecated",
+      "tags": [
+        "config",
+        "demo"
+      ],
+      "feature_id": "demo-onboarding",
+      "todos": [],
+      "comments": [
+        {
+          "id": "DC-009",
+          "text": "Deprecated on purpose. This lets the table and filters show lifecycle status without needing a larger project.",
+          "type": "note",
+          "confidence": 5,
+          "created_at": "2026-04-24T16:22:00.000Z",
+          "author": {
+            "role": "human",
+            "name": "demo-reviewer"
+          }
+        }
+      ],
+      "related_files": []
+    }
+  },
+  "directories": {
+    "docs": {
+      "summary": "Human-readable design and draft species-import notes. Directories intentionally carry summaries only."
+    },
+    "src": {
+      "summary": "Tiny implementation surface for the Forest Repo Demo ecosystem reporter."
+    },
+    "tests": {
+      "summary": "Regression tests showing how CanopyTag links tests back to implementation files."
+    }
+  },
+  "features": {
+    "demo-onboarding": {
+      "name": "Demo Onboarding",
+      "description": "Files that teach how to read the demo and why the metadata exists.",
+      "tags": [
+        "demo",
+        "docs"
+      ],
+      "status": "active",
+      "canonical_file": "README.md",
+      "owners": [
+        {
+          "role": "human",
+          "name": "demo-reviewer"
+        }
+      ],
+      "open_questions": [],
+      "promotion_status": "endorsed"
+    },
+    "habitat-health": {
+      "name": "Habitat Health",
+      "description": "The stable local CLI flow from species observations to a forest health report.",
+      "tags": [
+        "forest-ecosystem",
+        "habitat-health"
+      ],
+      "status": "active",
+      "canonical_file": "docs/architecture.md",
+      "owners": [
+        {
+          "role": "agent",
+          "name": "demo-agent"
+        }
+      ],
+      "open_questions": [
+        "Should the reporter enforce max_invasive_pressure before scoring observations?"
+      ],
+      "promotion_status": "endorsed"
+    },
+    "species-import": {
+      "name": "Species Import",
+      "description": "Draft input-contract work for future structured species observation imports.",
+      "tags": [
+        "api",
+        "io",
+        "food-web"
+      ],
+      "status": "draft",
+      "canonical_file": "docs/api-guide.md",
+      "owners": [
+        {
+          "role": "agent",
+          "name": "demo-agent"
+        }
+      ],
+      "open_questions": [
+        "What validation errors should become friendly CLI messages instead of Python exceptions?"
+      ],
+      "promotion_status": "emerging"
+    }
+  }
+}
