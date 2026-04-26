@@ -5,19 +5,70 @@
 </p>
 
 <p align="center">
-  <strong>Repo-local context for agents and humans.</strong>
+  <strong>A semantic map for codebases that agents and humans can actually use.</strong>
 </p>
 
-CanopyTag is a local-first annotation layer for codebases. It stores brief,
-structured metadata next to your code so agents and humans can quickly see what
-a file does, how trustworthy it is, what depends on it, what needs review, and
-where to look next.
+Coding agents are smart in 2026, but they still navigate most repositories the
+hard way: search, open files, infer intent, repeat. They can brute-force their
+way through a codebase, or a human can point them around, but neither path gives
+them durable context they can reuse next session.
 
-It does not replace grep, your editor, or reading the source. It adds judgment
-around those workflows: authority, freshness, quality scores, TODOs, comments,
-relationships, agent activity, and lightweight repo visualizations.
+CanopyTag gives your repo that missing map.
 
-## Status
+It stores structured, repo-local context next to your code: file summaries,
+authority levels, quality scores, TODOs, comments, related files, hot spots,
+tags, feature clusters, and agent activity. Humans can browse and maintain the
+map in the web UI. Agents can query it through the CLI or MCP before they burn
+tokens guessing which files matter.
+
+README.md and AGENTS.md can explain the basics. CanopyTag turns that context
+into a queryable, per-file navigation layer: what is this file, how important is
+it, what depends on it, how fresh is the knowledge, what needs work, and what
+should I read next?
+
+## What It Gives You
+
+- A web UI with Explorer, Table, Graph, Analytics, and Activity views
+- A CLI for orientation, search-result enrichment, TODOs, health checks, and analytics
+- An MCP server so agents can read and write repo context directly
+- File relationships and feature clustering so agents can follow meaning, not just folders
+- Authority, quality, freshness, and attention signals so agents know what to trust
+- Hot spots from recent reads, writes, and searches
+- A review feed for agent-authored metadata changes
+- A Claude Code analytics hook for recent file/search heat
+- A small forest-themed demo repo that shows the full workflow
+
+## Why This Matters For Agents
+
+Most agent navigation still starts with brute-force discovery:
+
+```bash
+rg -l "validateToken" src tests
+```
+
+That finds files, but it does not answer the questions that decide what happens
+next:
+
+- Which result is canonical?
+- Which file is stale, experimental, or deprecated?
+- Which doc explains the intent?
+- Which test proves the behavior?
+- Which related files should be read together?
+- Which TODOs or review notes change the risk of the edit?
+
+CanopyTag is the layer after search:
+
+```bash
+canopytag context src/auth/middleware.ts src/auth/tokens.ts
+canopytag query --feature auth --detail 4
+```
+
+Instead of reading every plausible hit, an agent gets a compact map: summaries,
+authority, status, warnings, relationships, TODOs, and suggested next files. The
+result is less context waste, fewer wrong turns, and a codebase that gets easier
+to navigate each time humans or agents improve the annotations.
+
+## Current Release
 
 CanopyTag is prerelease and currently installed from source. The package is not
 published to npm yet.
@@ -29,15 +80,6 @@ The project is designed to be local-first:
 - No source-file modification
 - Repo annotations live in `canopytag/canopy.json`
 - Local-only activity and identity files are git-ignored
-
-## What It Gives You
-
-- A web UI with Explorer, Table, Graph, Analytics, and Activity views
-- A CLI for orientation, search-result enrichment, TODOs, health checks, and analytics
-- An MCP server so agents can read and write repo context directly
-- A review feed for agent-authored metadata changes
-- A Claude Code analytics hook for recent file/search heat
-- A small forest-themed demo repo that shows the full workflow
 
 ## Quick Start
 
@@ -359,13 +401,19 @@ Freshness is separate from status:
 persisted stale override editor, so UI, CLI, and MCP currently emit `Fresh`,
 `Review Drift`, and `Unknown`.
 
-## Design Boundaries
+## Honest Scope
 
-- Not an IDE: CanopyTag does not show or edit source code.
-- Not a task board: TODOs are repo context, not a project-management system.
-- Not a parser: Graph views visualize metadata relationships, not import graphs.
-- Not a replacement for grep: Search first, then ask CanopyTag what matters.
-- Local-first: Annotations travel with the repo, and local-only files stay ignored.
+CanopyTag is most useful when its annotations are maintained by humans, agents,
+or both. The metadata is deliberately explicit: it gets more valuable as the repo
+is revisited, corrected, and connected over time.
+
+- Use search, your editor, and code reading for source truth.
+- Use CanopyTag to order that work: importance, trust, freshness, TODOs,
+  relationships, hot spots, and feature clusters.
+- CanopyTag does not show or edit source code; it is the map beside the code.
+- TODOs are repo context, not a full project-management system.
+- Graph views visualize CanopyTag relationships, not language import graphs.
+- Annotations travel with the repo, and local-only files stay ignored.
 
 ## Development
 
