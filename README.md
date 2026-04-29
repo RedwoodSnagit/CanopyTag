@@ -79,7 +79,10 @@ The project is designed to be local-first:
 - No auth
 - No source-file modification
 - Repo annotations live in `canopytag/canopy.json`
-- Local-only activity and identity files are git-ignored
+- Local-only activity, identity, MCP, and hook config should stay uncommitted
+
+For the exact boundary between shared repo metadata and local-only operating
+files, see [Repo-local data and public repo hygiene](./docs/repo-local-data.md).
 
 ## Quick Start
 
@@ -152,6 +155,11 @@ your-repo/
 The visible `canopytag/` directory is intentional. Agents discover it more
 reliably than hidden metadata folders. Legacy `.canopytag/` repos still resolve
 for backward compatibility.
+
+New `canopy.json` files keep `repo_root` blank by default. CanopyTag resolves
+the active repo from `--repo`, `REPO_ROOT`, the current working directory, or the
+web UI repo picker so shared metadata does not need to contain a local absolute
+path.
 
 Terminology note: **CanopyTag checkout** means this tool repository. **`canopytag/`
 directory** means the metadata folder inside whatever repo you are annotating.
@@ -246,6 +254,9 @@ canopytag mcp --repo /path/to/your/repo
 This writes `/path/to/your/repo/.mcp.json` with a `canopytag` server entry that
 points at this checkout and sets `REPO_ROOT` to the target repo.
 
+The generated `.mcp.json` contains local absolute paths. Keep it uncommitted or
+review it before sharing a public repo.
+
 Preview the merged config:
 
 ```bash
@@ -328,6 +339,9 @@ to `canopytag/.analytics.json`.
 Search query strings are not stored. When tool output includes result paths,
 CanopyTag records those files as search hits so they contribute to heat without
 counting as opened files.
+
+The generated `.claude/settings.json` hook entry may contain a local absolute
+path. Keep it uncommitted or review it before sharing a public repo.
 
 ## Review And Attribution
 
@@ -413,7 +427,8 @@ is revisited, corrected, and connected over time.
 - CanopyTag does not show or edit source code; it is the map beside the code.
 - TODOs are repo context, not a full project-management system.
 - Graph views visualize CanopyTag relationships, not language import graphs.
-- Annotations travel with the repo, and local-only files stay ignored.
+- Annotations travel with the repo; local-only files should stay uncommitted or
+  be explicitly reviewed before sharing.
 
 ## Development
 
@@ -443,6 +458,7 @@ are always excluded.
 
 - [CanopyTag vs ripgrep](./docs/canopytag-vs-ripgrep.md)
 - [CLI cheatsheet](./docs/cli-cheatsheet.md)
+- [Repo-local data and public repo hygiene](./docs/repo-local-data.md)
 - [Roadmap](./docs/roadmap.md)
 - [Agent analytics design](./docs/design/agent-analytics.md)
 - [Agent guide](./AGENTS.md)

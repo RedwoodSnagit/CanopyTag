@@ -7,6 +7,7 @@ compact operating guide, not a historical handoff log.
 
 - `README.md` - public overview, install, demo, CLI, MCP, and concepts
 - `docs/cli-cheatsheet.md` - short command flow for agents
+- `docs/repo-local-data.md` - shared metadata vs local-only files
 - `docs/roadmap.md` - current roadmap and future ideas
 - `canopytag/canopy.json` - CanopyTag dogfooding metadata for this repo
 
@@ -52,7 +53,7 @@ hooks/               Claude Code analytics hook
 - Not a parser: graph views visualize metadata relationships, not import graphs.
 - Not a search replacement: use `rg` first, then ask CanopyTag what matters.
 - Local-first: shared annotations live in `canopytag/canopy.json`; local-only
-  identity and analytics files stay ignored.
+  identity, analytics, MCP, and hook config stay ignored or explicitly reviewed.
 
 ## Data Conventions
 
@@ -61,7 +62,12 @@ hooks/               Claude Code analytics hook
 - Path-like keys are not case-transformed.
 - New repos should use visible `canopytag/`.
 - Legacy `.canopytag/` still resolves for backward compatibility.
+- New `canopy.json` files should keep `repo_root` blank; use runtime repo
+  selection (`--repo`, `REPO_ROOT`, cwd, or the web UI) instead of committed
+  local absolute paths.
 - Never commit `profile.local.json` or local `.analytics.json` files.
+- Review `.mcp.json` and `.claude/settings.json` before committing; generated
+  versions may contain local absolute paths.
 
 ## Agent Workflow
 

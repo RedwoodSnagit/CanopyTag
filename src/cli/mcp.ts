@@ -17,6 +17,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { parseArgs } from 'node:util';
+import { parseJsonFile } from '../backend/lib/canopy.js';
 import { CORE_OPTIONS, resolveRepoRoot } from './shared.js';
 
 const require = createRequire(import.meta.url);
@@ -65,7 +66,7 @@ export function readMcpConfig(configPath: string): McpConfig {
   if (!fs.existsSync(configPath)) return {};
   let parsed: unknown;
   try {
-    parsed = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    parsed = parseJsonFile(configPath);
   } catch {
     throw new Error(`${configPath} exists but is not valid JSON.`);
   }
@@ -180,6 +181,7 @@ if (isDirectRun) {
     process.stdout.write(`  1. Restart your MCP client/session so it reloads .mcp.json\n`);
     process.stdout.write(`  2. Run claude mcp list to confirm canopytag is registered\n`);
     process.stdout.write(`  3. Optional: run canopytag hook install for Claude analytics hooks\n`);
+    process.stdout.write(`\nNote: .mcp.json contains local absolute paths. Keep it uncommitted or review it before sharing a public repo.\n`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(`Error: ${message}\n`);

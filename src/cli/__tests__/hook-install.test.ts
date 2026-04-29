@@ -68,4 +68,18 @@ describe('canopytag hook install', () => {
     expect(command).toContain('canopytag-analytics.mjs');
     expect(command).not.toBe('node hooks/canopytag-analytics.mjs');
   });
+
+  it('reads existing Claude settings with a UTF-8 BOM', () => {
+    fs.mkdirSync(path.join(TEST_DIR, '.claude'), { recursive: true });
+    fs.writeFileSync(path.join(TEST_DIR, '.claude', 'settings.json'), '\uFEFF' + JSON.stringify({
+      note: 'keep me',
+    }, null, 2));
+
+    const output = runHookInstall(TEST_DIR);
+    const settings = readSettings(TEST_DIR);
+
+    expect(output).toContain('Analytics hook installed');
+    expect(settings.note).toBe('keep me');
+    expect(settings.hooks.PostToolUse[0].matcher).toBe('Read|Edit|Write|Grep|Glob|Bash');
+  });
 });

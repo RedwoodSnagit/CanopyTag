@@ -8,6 +8,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { parseJsonFile } from '../backend/lib/canopy.js';
 
 const HOOK_MATCHER = 'Read|Edit|Write|Grep|Glob|Bash';
 
@@ -35,7 +36,7 @@ function run() {
   let settings: Record<string, any> = {};
   if (fs.existsSync(settingsPath)) {
     try {
-      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      settings = parseJsonFile(settingsPath) as Record<string, any>;
     } catch {
       console.error('Error: .claude/settings.json exists but is not valid JSON.');
       process.exit(1);
@@ -61,11 +62,13 @@ function run() {
     console.log('Analytics hook updated in .claude/settings.json');
     console.log(`Hook matcher: ${hookEntry.matcher}`);
     console.log(`Hook command: ${hookEntry.hooks[0].command}`);
+    console.log('Note: .claude/settings.json may contain local absolute paths. Keep it uncommitted or review it before sharing a public repo.');
     process.exit(0);
   }
 
   if (alreadyInstalled) {
     console.log('Analytics hook already installed in .claude/settings.json');
+    console.log('Note: .claude/settings.json may contain local absolute paths. Keep it uncommitted or review it before sharing a public repo.');
     process.exit(0);
   }
 
@@ -84,6 +87,7 @@ function run() {
   console.log(`Analytics hook installed in .claude/settings.json`);
   console.log(`Hook command: ${hookEntry.hooks[0].command}`);
   console.log(`MCP config is separate: run \`canopytag mcp --repo ${process.cwd()}\` to scaffold .mcp.json.`);
+  console.log('Note: .claude/settings.json may contain local absolute paths. Keep it uncommitted or review it before sharing a public repo.');
 }
 
 run();

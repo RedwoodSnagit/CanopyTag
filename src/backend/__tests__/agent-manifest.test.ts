@@ -39,6 +39,16 @@ afterEach(() => {
 });
 
 describe('reviewAgentManifestEntry', () => {
+  it('reads agent manifests with a UTF-8 BOM', () => {
+    fs.writeFileSync(manifestPath, '\uFEFF' + JSON.stringify({
+      version: 1,
+      entries: [],
+    }));
+
+    expect(() => readAgentManifest(manifestPath)).not.toThrow();
+    expect(readAgentManifest(manifestPath).version).toBe(1);
+  });
+
   it('rejects an annotate entry by restoring the previous values', () => {
     handleAnnotate(canopyPath, {
       file: 'src/auth.ts',

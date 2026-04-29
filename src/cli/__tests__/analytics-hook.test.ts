@@ -97,4 +97,32 @@ describe('canopytag analytics hook search tracking', () => {
       fs.rmSync(repoRoot, { recursive: true, force: true });
     }
   });
+
+  it('reads canopy and settings metadata with a UTF-8 BOM', () => {
+    const repoRoot = makeRepo();
+    try {
+      const canopyDir = path.join(repoRoot, 'canopytag');
+      fs.writeFileSync(path.join(canopyDir, 'canopy.json'), '\uFEFF' + JSON.stringify({
+        version: 1,
+        repo_root: '.',
+        files: {},
+        features: {},
+      }));
+      fs.writeFileSync(path.join(canopyDir, 'settings.json'), '\uFEFF' + JSON.stringify({
+        analytics_enabled: true,
+      }));
+
+      runHook(repoRoot, {
+        tool_name: 'Read',
+        tool_input: { file_path: path.join(repoRoot, 'src', 'main.py') },
+      });
+
+      const analytics = readAnalytics(repoRoot);
+      const today = new Date().toISOString().slice(0, 10);
+
+      expect(analytics.files['src/main.py'].days[today].readCount).toBe(1);
+    } finally {
+      fs.rmSync(repoRoot, { recursive: true, force: true });
+    }
+  });
 });

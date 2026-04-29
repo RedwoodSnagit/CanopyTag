@@ -28,6 +28,9 @@ Working now:
   settled.
 - Keep package dry-runs clean: no local screenshots, profiles, analytics,
   workspaces, or test outputs.
+- Keep public-repo hygiene clear: shared `canopytag/` metadata should be
+  reviewable, while `.mcp.json`, `.claude/settings.json`, profiles, analytics,
+  and local paths stay uncommitted or explicitly reviewed.
 - Validate setup on a clean machine: clone, `npm install`, `npm link`,
   `npm run dev`, `canopytag init`, `canopytag mcp`, and `canopytag compare`.
 - Keep `AGENTS.md`, README, and CLI cheatsheet aligned with current commands.

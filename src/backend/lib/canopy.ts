@@ -31,6 +31,11 @@ const EMPTY_CANOPY: Canopy = {
   features: {},
 };
 
+export function parseJsonFile(filePath: string): unknown {
+  const text = fs.readFileSync(filePath, 'utf-8').replace(/^\uFEFF/, '');
+  return JSON.parse(text);
+}
+
 function isPlainObject(val: unknown): val is Record<string, unknown> {
   return typeof val === 'object' && val !== null && !Array.isArray(val);
 }
@@ -59,7 +64,7 @@ export function readCanopy(filePath: string): Canopy {
   if (!fs.existsSync(filePath)) {
     return { ...EMPTY_CANOPY };
   }
-  const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  const raw = parseJsonFile(filePath);
   return validateCanopyShape(snakeToCamel(raw));
 }
 
@@ -113,7 +118,7 @@ const VALID_RETENTIONS = new Set<string>(['off', '1d', '7d', '30d']);
 export function readSettings(settingsPath: string): CanopySettings {
   try {
     if (fs.existsSync(settingsPath)) {
-      const raw = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      const raw = parseJsonFile(settingsPath);
       const parsed = snakeToCamel(raw) as Record<string, unknown>;
       return {
         archiveRetention: VALID_RETENTIONS.has(parsed.archiveRetention as string)
@@ -145,7 +150,7 @@ export function writeSettings(settingsPath: string, settings: CanopySettings): v
 export function readArchive(archivePath: string): CanopyArchive {
   try {
     if (fs.existsSync(archivePath)) {
-      return snakeToCamel(JSON.parse(fs.readFileSync(archivePath, 'utf-8'))) as CanopyArchive;
+      return snakeToCamel(parseJsonFile(archivePath)) as CanopyArchive;
     }
   } catch { /* ignore */ }
   return { version: 1, items: [] };

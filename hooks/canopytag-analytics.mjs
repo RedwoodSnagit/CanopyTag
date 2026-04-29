@@ -19,7 +19,7 @@ function nowIso() {
 
 function readJson(filePath) {
   try {
-    return JSON.parse(readFileSync(filePath, 'utf-8'));
+    return JSON.parse(readFileSync(filePath, 'utf-8').replace(/^\uFEFF/, ''));
   } catch {
     return null;
   }
@@ -198,7 +198,7 @@ function extractResultPaths(payload, repoRoot) {
 let payload;
 try {
   const stdin = readFileSync(0, 'utf-8');  // fd 0 = stdin, works on Windows + Unix
-  payload = JSON.parse(stdin);
+  payload = JSON.parse(stdin.replace(/^\uFEFF/, ''));
 } catch {
   process.exit(0);
 }

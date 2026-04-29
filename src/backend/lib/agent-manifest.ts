@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { snakeToCamel, camelToSnake } from '../../shared/case-transform';
-import { nextCommentId, readCanopy, writeCanopy } from './canopy.js';
+import { nextCommentId, parseJsonFile, readCanopy, writeCanopy } from './canopy.js';
 import type {
   AgentManifest,
   AgentManifestEntry,
@@ -66,7 +66,7 @@ export function readAgentManifest(filePath: string): AgentManifest {
   if (!fs.existsSync(filePath)) {
     return emptyAgentManifest();
   }
-  const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  const raw = parseJsonFile(filePath);
   const manifest = validateManifestShape(snakeToCamel(raw));
   manifest.entries = manifest.entries.map(normalizeManifestEntry);
   return manifest;

@@ -74,7 +74,7 @@ if (!fs.existsSync(canopyDir)) {
 // Write empty canopy.json
 const empty: Canopy = {
   version: 1,
-  repoRoot: repoRoot,
+  repoRoot: '',
   lastModifiedAt: '',
   files: {},
   features: {},
@@ -107,5 +107,6 @@ process.stdout.write(`Next steps:\n`);
 process.stdout.write(`  canopytag stats --repo ${repoRoot}   # check annotation status\n`);
 process.stdout.write(`  canopytag ls --repo ${repoRoot}       # browse annotated files\n`);
 process.stdout.write(`  canopytag mcp --repo ${repoRoot}      # write ${path.join(repoRoot, '.mcp.json')}\n`);
+process.stdout.write(`\nNote: if you later generate MCP or hook config, review local absolute paths before sharing a public repo.\n`);
 process.stdout.write(`\nTo annotate files, use the web UI (canopytag serve) or MCP tools.\n`);
 process.stdout.write(`Agents can populate canopy.json via canopytag_annotate or stage suggestions in agent_manifest.json via canopytag_stage_suggestion.\n`);

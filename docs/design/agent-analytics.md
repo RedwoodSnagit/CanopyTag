@@ -7,6 +7,9 @@
 
 Passive behavioral telemetry for CanopyTag repos. A Claude Code `PostToolUse` hook and MCP-side increments record which files agents read, edit, write, and query — silently, with no agent awareness, no token cost, and no impact on existing workflows. Data is stored locally in `<canopyDir>/.analytics.json` (gitignored, dot-hidden, not MCP-exposed) and surfaced as a heatmap in a new Analytics view mode in the UI.
 
+Target repos should treat `.analytics.json` as local-only even if their own
+ignore rules do not yet include it.
+
 The secondary value is a navigation benchmark: tracking aggregate Grep/Glob/rg counts per day gives a proxy metric for CanopyTag effectiveness. If annotation coverage grows and blind-search counts trend down, agents are navigating via CanopyTag instead of searching blind. When hook output includes result paths, those files also receive lightweight search-hit heat.
 
 ## What Is Not Being Built
@@ -38,7 +41,7 @@ The analytics file always lives at `<canopyDir>/.analytics.json`.
 
 ## Schema — `<canopyDir>/.analytics.json`
 
-Gitignored. Not committed. Not exposed via MCP tools or API routes. The dot-prefix hides it from casual agent reads; the MCP boundary prevents intentional reads.
+Local-only. Not committed. Not exposed via MCP tools or API routes. The dot-prefix hides it from casual agent reads; the MCP boundary prevents intentional reads. Add an ignore rule in target repos if needed.
 
 ```json
 {

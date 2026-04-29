@@ -5,7 +5,7 @@ import path from 'node:path';
 import { snakeToCamel, camelToSnake } from '../../shared/case-transform';
 import type { Author, AuthorSignature, CanopyProfile } from '../../shared/types';
 import { normalizeAuthor } from '../../shared/types';
-import { resolveCanopyDir } from './canopy';
+import { parseJsonFile, resolveCanopyDir } from './canopy';
 
 export const PROFILE_FILENAME = 'profile.local.json';
 
@@ -97,7 +97,7 @@ export function readProfile(profilePath: string, repoRoot?: string): CanopyProfi
     };
   }
 
-  const raw = JSON.parse(fs.readFileSync(profilePath, 'utf-8'));
+  const raw = parseJsonFile(profilePath);
   return normalizeProfile(raw, repoRoot);
 }
 

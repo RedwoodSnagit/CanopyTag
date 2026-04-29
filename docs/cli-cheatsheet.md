@@ -70,3 +70,8 @@ canopytag hook install
 
 `mcp` writes project-local MCP config. `hook install` is Claude Code-specific
 and records recent read/edit/search heat in `canopytag/.analytics.json`.
+
+For public repos, review or keep local the generated `.mcp.json` and
+`.claude/settings.json`; both may contain absolute paths from your machine. See
+[repo-local data hygiene](./repo-local-data.md) for the shared vs local file
+boundary.

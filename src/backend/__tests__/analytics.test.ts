@@ -1,11 +1,32 @@
 import { describe, it, expect } from 'vitest';
 import {
   emptyAnalytics,
+  readAnalytics,
   incrementFile,
   incrementDaily,
   engagementScore,
 } from '../lib/analytics.js';
-import type { CanopyAnalytics } from '../../shared/types.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+describe('readAnalytics', () => {
+  it('reads analytics files with a UTF-8 BOM', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-analytics-'));
+    const analyticsPath = path.join(tmpDir, '.analytics.json');
+    try {
+      fs.writeFileSync(analyticsPath, '\uFEFF' + JSON.stringify({
+        version: 1,
+        files: {},
+        daily: {},
+      }));
+
+      expect(readAnalytics(analyticsPath).version).toBe(1);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
 
 describe('incrementFile', () => {
   it('initializes a new file entry with all counters at zero except the incremented one', () => {

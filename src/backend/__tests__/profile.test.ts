@@ -56,6 +56,20 @@ describe('profile local identity', () => {
     });
   });
 
+  it('reads local profiles with a UTF-8 BOM', () => {
+    const profilePath = path.join(TEST_DIR, 'canopytag', 'profile.local.json');
+    fs.mkdirSync(path.dirname(profilePath), { recursive: true });
+    fs.writeFileSync(profilePath, '\uFEFF' + JSON.stringify({
+      version: 1,
+      current_author: { role: 'human', name: 'Local Reviewer' },
+    }));
+
+    expect(readProfile(profilePath, TEST_DIR).currentAuthor).toEqual({
+      role: 'human',
+      name: 'Local Reviewer',
+    });
+  });
+
   it('adds the local profile to git info exclude when available', () => {
     execFileSync('git', ['init'], { cwd: TEST_DIR, stdio: 'ignore' });
     const profilePath = path.join(TEST_DIR, 'canopytag', 'profile.local.json');

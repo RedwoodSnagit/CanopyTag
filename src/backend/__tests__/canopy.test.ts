@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { readCanopy, writeCanopy, nextTodoId } from '../lib/canopy';
+import { readCanopy, readSettings, readArchive, writeCanopy, nextTodoId } from '../lib/canopy';
 
 const TEST_DIR = path.join(import.meta.dirname, '__test_workspace__');
 const TEST_CANOPY = path.join(TEST_DIR, 'canopy.json');
+const TEST_SETTINGS = path.join(TEST_DIR, 'settings.json');
+const TEST_ARCHIVE = path.join(TEST_DIR, 'canopy_archive.json');
 
 beforeEach(() => {
   fs.mkdirSync(TEST_DIR, { recursive: true });
@@ -38,6 +40,19 @@ describe('readCanopy', () => {
     const canopy = readCanopy(TEST_CANOPY);
     expect(canopy.files['test.py']).toBeDefined();
     expect(canopy.repoRoot).toBe('/test');
+  });
+
+  it('reads canopy files with a UTF-8 BOM', () => {
+    fs.writeFileSync(TEST_CANOPY, '\uFEFF' + JSON.stringify({
+      version: 1,
+      repo_root: '',
+      last_modified_at: '',
+      files: {},
+      features: {},
+    }));
+
+    expect(() => readCanopy(TEST_CANOPY)).not.toThrow();
+    expect(readCanopy(TEST_CANOPY).version).toBe(1);
   });
 });
 
@@ -87,6 +102,25 @@ describe('readCanopy validation', () => {
       version: 1, files: {}, features: {}, custom_field: 'hello'
     }));
     expect(() => readCanopy(TEST_CANOPY)).not.toThrow();
+  });
+});
+
+describe('metadata JSON readers', () => {
+  it('reads settings files with a UTF-8 BOM', () => {
+    fs.writeFileSync(TEST_SETTINGS, '\uFEFF' + JSON.stringify({
+      archive_retention: '30d',
+    }));
+
+    expect(readSettings(TEST_SETTINGS).archiveRetention).toBe('30d');
+  });
+
+  it('reads archive files with a UTF-8 BOM', () => {
+    fs.writeFileSync(TEST_ARCHIVE, '\uFEFF' + JSON.stringify({
+      version: 1,
+      items: [],
+    }));
+
+    expect(readArchive(TEST_ARCHIVE).version).toBe(1);
   });
 });
 

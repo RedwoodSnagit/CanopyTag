@@ -503,6 +503,7 @@
       "related_files": [
         {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3, "relation": "doc-for"},
         {"path": "docs/cli-cheatsheet.md", "closeness": 4, "relation": "doc-for"},
+        {"path": "docs/repo-local-data.md", "closeness": 5, "relation": "doc-for"},
         {"path": "docs/roadmap.md", "closeness": 3}
       ]
     },
@@ -521,8 +522,30 @@
       "feature_id": "docs",
       "related_files": [
         {"path": "README.md", "closeness": 4, "relation": "doc-for"},
+        {"path": "docs/repo-local-data.md", "closeness": 3, "relation": "doc-for"},
         {"path": "src/cli/compare.ts", "closeness": 3, "relation": "doc-for"},
         {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3}
+      ]
+    },
+    "docs/repo-local-data.md": {
+      "title": "Repo-Local Data And Public Repo Hygiene",
+      "summary": "Canonical public guidance for what CanopyTag stores in the target repo, what should stay local-only, how to sanitize public repos, and how BOM-tolerant JSON reads fit with UTF-8-without-BOM writes. Explains that new canopy.json files keep repo_root blank and runtime tools use --repo, REPO_ROOT, cwd, or the web UI selection.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-04-29",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["docs", "privacy", "local-first", "public-release"],
+      "feature_id": "docs",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "README.md", "closeness": 5, "relation": "doc-for"},
+        {"path": "docs/cli-cheatsheet.md", "closeness": 3, "relation": "doc-for"},
+        {"path": "docs/roadmap.md", "closeness": 3}
       ]
     },
     "docs/roadmap.md": {
@@ -542,6 +565,7 @@
       "comments": [],
       "related_files": [
         {"path": "README.md", "closeness": 3},
+        {"path": "docs/repo-local-data.md", "closeness": 3},
         {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3},
         {"path": "docs/architecture-md-and-codeowners.md", "closeness": 3}
       ]

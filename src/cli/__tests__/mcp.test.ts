@@ -58,6 +58,20 @@ describe('canopytag mcp helpers', () => {
     }
   });
 
+  it('reads existing MCP configs with a UTF-8 BOM', () => {
+    const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-mcp-bom-'));
+    try {
+      const configPath = getMcpConfigPath(repoRoot);
+      fs.writeFileSync(configPath, '\uFEFF' + JSON.stringify({
+        note: 'keep me',
+      }, null, 2));
+
+      expect(readMcpConfig(configPath).note).toBe('keep me');
+    } finally {
+      fs.rmSync(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   it('refuses to overwrite a different canopytag entry without --force', () => {
     const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-mcp-conflict-'));
     try {

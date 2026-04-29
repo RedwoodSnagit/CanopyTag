@@ -3,7 +3,7 @@ import path from 'path';
 import { parseArgs } from 'util';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import { readCanopy, readSettings, readArchive, writeCanopy, writeArchive, runArchiveSweep, ensureCommentIds, resolveCanopyDir } from './lib/canopy';
+import { readCanopy, readSettings, readArchive, writeCanopy, writeArchive, runArchiveSweep, ensureCommentIds, resolveCanopyDir, parseJsonFile } from './lib/canopy';
 import { ensureProfileIgnored, readOrCreateProfile, resolveProfilePath } from './lib/profile';
 import { snakeToCamel } from '../shared/case-transform';
 import type { Canopy, RepoIndexItem, CanopySettings, CanopyProfile } from '../shared/types';
@@ -74,7 +74,7 @@ if (explicitRoot) {
   const canopyTagPkg = path.join(canopyTagRoot, 'package.json');
   let isCanopyTagInstall = false;
   try {
-    const pkg = JSON.parse(fs.readFileSync(canopyTagPkg, 'utf-8'));
+    const pkg = parseJsonFile(canopyTagPkg) as { name?: string };
     isCanopyTagInstall = pkg.name === 'canopytag';
   } catch {
     // Not a CanopyTag install
@@ -117,8 +117,8 @@ ensureCommentIds(canopy);
 const repoIndex = new Map<string, RepoIndexItem>();
 const indexPath = path.join(repoRoot, 'docs', '_meta', 'repo_index.json');
 if (fs.existsSync(indexPath)) {
-  const rawIndex = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
-  const items: RepoIndexItem[] = snakeToCamel(rawIndex.items);
+  const rawIndex = parseJsonFile(indexPath) as { items: unknown };
+  const items = snakeToCamel(rawIndex.items) as RepoIndexItem[];
   for (const item of items) {
     repoIndex.set(item.path, item);
   }
@@ -132,11 +132,11 @@ const canopyTagsPath = path.join(canopyDir, 'tags.json');
 const legacyTagPolicyPath = path.join(repoRoot, 'docs', 'tag_policy.json');
 
 if (fs.existsSync(canopyTagsPath)) {
-  const tagData = JSON.parse(fs.readFileSync(canopyTagsPath, 'utf-8'));
+  const tagData = parseJsonFile(canopyTagsPath) as any;
   tags = Array.isArray(tagData) ? tagData : Object.keys(tagData.tags ?? tagData);
   console.log(`[canopytag] Loaded ${tags.length} tags from ${path.relative(repoRoot, canopyTagsPath)}`);
 } else if (fs.existsSync(legacyTagPolicyPath)) {
-  const tagPolicy = JSON.parse(fs.readFileSync(legacyTagPolicyPath, 'utf-8'));
+  const tagPolicy = parseJsonFile(legacyTagPolicyPath) as any;
   tags = Object.keys(tagPolicy.tags);
   console.log(`[canopytag] Loaded ${tags.length} tags from tag_policy.json (legacy)`);
 } else {

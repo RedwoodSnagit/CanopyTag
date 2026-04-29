@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { FastifyInstance } from 'fastify';
-import { readCanopy, readSettings, readArchive, writeCanopy, writeArchive, runArchiveSweep, ensureCommentIds, resolveCanopyDir } from '../lib/canopy';
+import { readCanopy, readSettings, readArchive, writeCanopy, writeArchive, runArchiveSweep, ensureCommentIds, resolveCanopyDir, parseJsonFile } from '../lib/canopy';
 import { ensureProfileIgnored, readOrCreateProfile, resolveProfilePath } from '../lib/profile';
 import { snakeToCamel } from '../../shared/case-transform';
 import type { RepoIndexItem } from '../../shared/types';
@@ -54,8 +54,8 @@ export async function configRoutes(app: FastifyInstance) {
     const repoIndex = new Map<string, RepoIndexItem>();
     const indexPath = path.join(newRoot, 'docs', '_meta', 'repo_index.json');
     if (fs.existsSync(indexPath)) {
-      const rawIndex = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
-      const items: RepoIndexItem[] = snakeToCamel(rawIndex.items);
+      const rawIndex = parseJsonFile(indexPath) as { items: unknown };
+      const items = snakeToCamel(rawIndex.items) as RepoIndexItem[];
       for (const item of items) {
         repoIndex.set(item.path, item);
       }
@@ -66,10 +66,10 @@ export async function configRoutes(app: FastifyInstance) {
     const canopyTagsPath = path.join(canopyDir, 'tags.json');
     const legacyTagPolicyPath = path.join(newRoot, 'docs', 'tag_policy.json');
     if (fs.existsSync(canopyTagsPath)) {
-      const tagData = JSON.parse(fs.readFileSync(canopyTagsPath, 'utf-8'));
+      const tagData = parseJsonFile(canopyTagsPath) as any;
       tags = Array.isArray(tagData) ? tagData : Object.keys(tagData.tags ?? tagData);
     } else if (fs.existsSync(legacyTagPolicyPath)) {
-      const tagPolicy = JSON.parse(fs.readFileSync(legacyTagPolicyPath, 'utf-8'));
+      const tagPolicy = parseJsonFile(legacyTagPolicyPath) as any;
       tags = Object.keys(tagPolicy.tags);
     } else {
       const tagSet = new Set<string>();

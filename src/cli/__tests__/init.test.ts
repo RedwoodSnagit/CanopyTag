@@ -35,6 +35,7 @@ describe('canopytag init', () => {
 
     const canopy = JSON.parse(fs.readFileSync(path.join(canopyDir, 'canopy.json'), 'utf-8'));
     expect(canopy.version).toBe(1);
+    expect(canopy.repo_root).toBe('');
     expect(canopy.files).toEqual({});
 
     const manifest = JSON.parse(fs.readFileSync(path.join(canopyDir, 'agent_manifest.json'), 'utf-8'));

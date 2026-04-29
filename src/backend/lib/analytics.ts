@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { resolveCanopyPath } from '../../cli/shared.js';
+import { parseJsonFile } from './canopy.js';
 import type {
   CanopyAnalytics, FileAnalytics, FileAnalyticsTotal,
   FileAnalyticsDayBucket, DailyAnalytics,
@@ -53,7 +54,7 @@ export function resolveAnalyticsPath(repoRoot?: string): string {
 export function readAnalytics(analyticsPath: string): CanopyAnalytics {
   try {
     if (fs.existsSync(analyticsPath)) {
-      return JSON.parse(fs.readFileSync(analyticsPath, 'utf-8')) as CanopyAnalytics;
+      return parseJsonFile(analyticsPath) as CanopyAnalytics;
     }
   } catch { /* ignore */ }
   return emptyAnalytics();
