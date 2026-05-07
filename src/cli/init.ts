@@ -52,7 +52,7 @@ const settingsPath = path.join(canopyDir, 'settings.json');
 const manifestPath = resolveAgentManifestPath(values.repo as string | undefined);
 const profilePath = resolveProfilePath(repoRoot);
 
-// Check if already initialized (resolveCanopyPath checks both canopytag/ and .canopytag/)
+// Check if already initialized.
 if (fs.existsSync(canopyJsonPath)) {
   const stat = fs.statSync(canopyJsonPath);
   ensureProfileIgnored(repoRoot, profilePath);

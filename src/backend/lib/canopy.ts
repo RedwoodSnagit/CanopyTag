@@ -10,17 +10,11 @@ function atomicWrite(filePath: string, content: string): void {
 }
 
 /**
- * Resolve the canopy directory for a repo. Prefers unhidden `canopytag/`
- * (current convention, exposed for agent discoverability), falls back to
- * legacy `.canopytag/`. When neither exists, returns the preferred path
- * so callers can create it.
+ * Resolve the canopy directory for a repo.
+ * CanopyTag uses the visible `canopytag/` directory for agent discoverability.
  */
 export function resolveCanopyDir(repoRoot: string): string {
-  const unhidden = path.join(repoRoot, 'canopytag');
-  const hidden = path.join(repoRoot, '.canopytag');
-  if (fs.existsSync(path.join(unhidden, 'canopy.json'))) return unhidden;
-  if (fs.existsSync(path.join(hidden, 'canopy.json'))) return hidden;
-  return unhidden;
+  return path.join(repoRoot, 'canopytag');
 }
 
 const EMPTY_CANOPY: Canopy = {

@@ -34,8 +34,6 @@ function atomicWrite(filePath, data) {
 function resolveCanopyDir(cwd) {
   const unhidden = path.join(cwd, 'canopytag');
   if (existsSync(path.join(unhidden, 'canopy.json'))) return unhidden;
-  const hidden = path.join(cwd, '.canopytag');
-  if (existsSync(path.join(hidden, 'canopy.json'))) return hidden;
   return null;
 }
 
@@ -124,7 +122,6 @@ function normalizeRepoRelativePath(rawPath, repoRoot) {
     !candidate ||
     candidate.startsWith('../') ||
     candidate.startsWith('canopytag/') ||
-    candidate.startsWith('.canopytag/') ||
     (!candidate.includes('/') && !candidate.includes('.')) ||
     candidate.includes('\0')
   ) {

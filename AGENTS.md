@@ -60,8 +60,7 @@ hooks/               Claude Code analytics hook
 - On disk, JSON uses `snake_case`.
 - TypeScript uses `camelCase`.
 - Path-like keys are not case-transformed.
-- New repos should use visible `canopytag/`.
-- Legacy `.canopytag/` still resolves for backward compatibility.
+- Repos use the visible `canopytag/` metadata directory.
 - New `canopy.json` files should keep `repo_root` blank; use runtime repo
   selection (`--repo`, `REPO_ROOT`, cwd, or the web UI) instead of committed
   local absolute paths.

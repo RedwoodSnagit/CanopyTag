@@ -82,7 +82,6 @@ export function discoverRepoFiles(repoRoot: string, canopyDir: string): Set<stri
 function loadCtagignore(repoRoot: string): ReturnType<typeof ignore> | null {
   const candidates = [
     path.join(repoRoot, 'canopytag', '.ctagignore'),
-    path.join(repoRoot, '.canopytag', '.ctagignore'),
     path.join(repoRoot, '.ctagignore'),
   ];
   for (const p of candidates) {

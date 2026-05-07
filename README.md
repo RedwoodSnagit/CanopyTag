@@ -153,8 +153,8 @@ your-repo/
 ```
 
 The visible `canopytag/` directory is intentional. Agents discover it more
-reliably than hidden metadata folders. Legacy `.canopytag/` repos still resolve
-for backward compatibility.
+reliably than hidden metadata folders, and CanopyTag treats it as the canonical
+metadata location.
 
 New `canopy.json` files keep `repo_root` blank by default. CanopyTag resolves
 the active repo from `--repo`, `REPO_ROOT`, the current working directory, or the

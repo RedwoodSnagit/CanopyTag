@@ -31,7 +31,7 @@ export async function configRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Path is not a directory' });
     }
 
-    // Resolve canopy dir: prefer unhidden canopytag/, fall back to legacy .canopytag/
+    // Resolve canopy dir.
     const canopyDir = resolveCanopyDir(newRoot);
     if (!fs.existsSync(canopyDir)) {
       fs.mkdirSync(canopyDir, { recursive: true });
@@ -139,9 +139,7 @@ export async function configRoutes(app: FastifyInstance) {
       .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 
     const isGitRepo = fs.existsSync(path.join(resolved, '.git'));
-    const hasCanopytag =
-      fs.existsSync(path.join(resolved, 'canopytag', 'canopy.json')) ||
-      fs.existsSync(path.join(resolved, '.canopytag', 'canopy.json'));
+    const hasCanopytag = fs.existsSync(path.join(resolved, 'canopytag', 'canopy.json'));
 
     return {
       path: fwd(resolved),

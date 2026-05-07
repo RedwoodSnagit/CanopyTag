@@ -464,7 +464,7 @@
     },
     "README.md": {
       "title": "Public-Facing Project Overview",
-      "summary": "What CanopyTag is, quick start, layout description, scoring conventions, authority levels, and the agent workflow. The first thing a human visitor reads. Currently references 'workspace/canopy.json' as the data path — needs updating to '.canopytag/canopy.json' for the open-source release.",
+      "summary": "What CanopyTag is, quick start, layout description, scoring conventions, authority levels, and the agent workflow. The first thing a human visitor reads. Documents `canopytag/canopy.json` as the shared repo-local metadata path and points local-only state to ignored files.",
       "validity": 4,
       "clarity": 5,
       "completeness": 3,
@@ -478,7 +478,7 @@
       "todos": [
         {
           "id": "RT-006",
-          "text": "README still says 'workspace/canopy.json' — needs to reference .canopytag/canopy.json for public release. Also references 'cd tools/repositree' which is an internal monorepo path.",
+          "text": "README previously referenced legacy/internal metadata paths; public guidance now points to canopytag/canopy.json.",
           "priority": 2,
           "difficulty": 1,
           "status": "done",
@@ -613,7 +613,7 @@
     },
     "src/cli/shared.ts": {
       "title": "CLI Shared Utilities — The Foundation Layer",
-      "summary": "Every CLI tool and MCP read tool imports from here. Provides resolveRepoRoot/resolveCanopyPath (canopytag/ or .canopytag/ lookup), fileKind (extension+path→module/doc/test/config/asset/data), AUTHORITY_RANK for sorting, aggregateScore/warningCount for health checks, and the full filter+sort pipeline (FileFilters, parseBaseFilters, filterFiles, sortFiles). Defines 9 sort keys including 'attention' (composite: warnings + unreviewed + TODOs weighted by authority). Also handles git date integration for --git-after/--git-before filters.",
+      "summary": "Every CLI tool and MCP read tool imports from here. Provides resolveRepoRoot/resolveCanopyPath (canonical canopytag/canopy.json path), fileKind (extension+path→module/doc/test/config/asset/data), AUTHORITY_RANK for sorting, aggregateScore/warningCount for health checks, and the full filter+sort pipeline (FileFilters, parseBaseFilters, filterFiles, sortFiles). Defines 9 sort keys including 'attention' (composite: warnings + unreviewed + TODOs weighted by authority). Also handles git date integration for --git-after/--git-before filters.",
       "validity": 5,
       "clarity": 4,
       "completeness": 5,
@@ -714,7 +714,7 @@
     },
     "src/cli/init.ts": {
       "title": "canopytag init — Repo Bootstrap",
-      "summary": "Creates canopytag/ directory with empty canopy.json and default settings.json. Safe to run on already-initialized repos — detects existing canopytag/ or .canopytag/ and prints status without overwriting. Prints next-step guidance pointing to stats, ls, and MCP tools. Simple script — no guard needed since it's only invoked directly.",
+      "summary": "Creates canopytag/ directory with empty canopy.json and default settings.json. Safe to run on already-initialized repos — detects existing canopytag/canopy.json and prints status without overwriting. Prints next-step guidance pointing to stats, ls, and MCP tools. Simple script — no guard needed since it's only invoked directly.",
       "validity": 5,
       "clarity": 5,
       "completeness": 5,
@@ -853,7 +853,7 @@
     },
     "src/backend/server.ts": {
       "title": "Fastify Web Server — Bootstrap & Route Registration",
-      "summary": "205-line entry point for the web UI backend. Resolves repo root (CLI arg > REPO_ROOT env > auto-detect), finds canopytag/ or .canopytag/ directory, loads canopy.json + settings + optional repo_index.json + tag vocabulary. Registers 14 route modules via Fastify plugins. Runs archive sweep on startup (moves completed TODOs older than retention window). Decorates Fastify with shared ServerState accessible to all routes. CORS restricted to localhost:5180 (Vite dev server).",
+      "summary": "205-line entry point for the web UI backend. Resolves repo root (CLI arg > REPO_ROOT env > auto-detect), uses the canonical canopytag/ directory, loads canopy.json + settings + optional repo_index.json + tag vocabulary. Registers 14 route modules via Fastify plugins. Runs archive sweep on startup (moves completed TODOs older than retention window). Decorates Fastify with shared ServerState accessible to all routes. CORS restricted to localhost:5180 (Vite dev server).",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,

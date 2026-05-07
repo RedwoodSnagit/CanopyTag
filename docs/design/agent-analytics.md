@@ -24,11 +24,10 @@ The secondary value is a navigation benchmark: tracking aggregate Grep/Glob/rg c
 
 ## Directory Resolution
 
-CanopyTag supports two directory names for backward compatibility: `canopytag/` (preferred, unhidden) and `.canopytag/` (legacy, hidden). The resolution logic from `resolveCanopyPath()` in `src/cli/shared.ts` is the canonical pattern for CLI and hook:
+CanopyTag uses `canopytag/` as the canonical metadata directory. The resolution logic from `resolveCanopyPath()` in `src/cli/shared.ts` is the canonical pattern for CLI and hook:
 
-1. Check `<repoRoot>/canopytag/` first
-2. Fall back to `<repoRoot>/.canopytag/`
-3. Default to `canopytag/` for new files if neither exists
+1. Use `<repoRoot>/canopytag/`
+2. Default to that path for new files if it does not exist yet
 
 The backend server resolves the same directory at startup and derives
 `analyticsPath` from that resolved `canopyDir` as
@@ -208,7 +207,7 @@ The hook is a `.mjs` file and cannot import TypeScript source directly. The incr
 
 **Startup sequence:**
 1. Parse stdin JSON — exit 0 if malformed (hook must never error visibly)
-2. Locate `canopy.json` in cwd using the `canopytag/` → `.canopytag/` resolution order — if neither exists, exit 0 (not a CanopyTag repo)
+2. Locate `canopy.json` in `canopytag/` under cwd; if it does not exist, exit 0 (not a CanopyTag repo)
 3. Read `<canopyDir>/settings.json` — if `analyticsEnabled: false`, exit 0
 4. **Branch on tool type:**
    - For `Read`, `Edit`, `Write`: extract `tool_input.file_path`; if the path does not start with `repoRoot`, exit 0; proceed to `incrementFile`
@@ -385,7 +384,7 @@ Third mode alongside `explorer` and `table`. Layout mirrors explorer: file tree 
 | `src/backend/lib/analytics.ts` | New — analytics read/write library |
 | `src/backend/lib/canopy.ts` | Update `readSettings` and `writeSettings` to handle `analyticsEnabled` field |
 | `src/backend/routes/analytics.ts` | New — `GET /api/analytics` |
-| `src/backend/server.ts` | Resolve `canopyDir` with `canopytag/` before `.canopytag/`; add `analyticsPath` to `ServerState`; compute from resolved `canopyDir`; pass to analytics route; register analytics route |
+| `src/backend/server.ts` | Resolve `canopyDir` to `canopytag/`; add `analyticsPath` to `ServerState`; compute from resolved `canopyDir`; pass to analytics route; register analytics route |
 | `src/mcp/tools/reads.ts` | Passive `canopyQueryCount` increments on 4 tools; refactor `buildQuery` to return `{ text, matchedPaths }` |
 | `src/cli/analytics.ts` | New — `canopytag analytics` command |
 | `src/cli/hook.ts` | New — `canopytag-hook install` subcommand |
@@ -399,7 +398,7 @@ Third mode alongside `explorer` and `table`. Layout mirrors explorer: file tree 
 | `src/frontend/components/ViewToggle.tsx` | Add analytics mode |
 | `src/frontend/App.tsx` | Render analytics mode |
 | `src/frontend/components/Settings.tsx` | `analyticsEnabled` toggle |
-| `.gitignore` | Add `canopytag/.analytics.json` and `.canopytag/.analytics.json` |
+| `.gitignore` | Add `canopytag/.analytics.json` |
 
 ---
 

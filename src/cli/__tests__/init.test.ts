@@ -71,17 +71,4 @@ describe('canopytag init', () => {
     expect(canopy.files['a.ts']).toBeDefined();
   });
 
-  it('detects existing .canopytag/ (hidden) and reports it', () => {
-    const hiddenDir = path.join(TEST_DIR, '.canopytag');
-    fs.mkdirSync(hiddenDir, { recursive: true });
-    fs.writeFileSync(path.join(hiddenDir, 'canopy.json'), JSON.stringify({
-      version: 1, files: {}, features: {}
-    }));
-
-    const output = runInit(TEST_DIR);
-    expect(output).toContain('Already initialized');
-    expect(output).toContain('.canopytag');
-
-    expect(fs.existsSync(path.join(TEST_DIR, 'canopytag', 'canopy.json'))).toBe(false);
-  });
 });

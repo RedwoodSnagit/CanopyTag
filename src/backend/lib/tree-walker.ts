@@ -17,7 +17,7 @@ const ALWAYS_SKIP = new Set([
   // Tool caches & temp
   '.pytest_tmp', '.test_tmp', '.pytest_cache', '.mypy_cache', '.ruff_cache',
   // Agent / tool workspace directories
-  '.superpowers', '.claude', '.canopytag', 'canopytag',
+  '.superpowers', '.claude', 'canopytag',
   // Common root-level config dotfiles (not useful to annotate)
   '.ctagignore', '.gitignore', '.flake8', '.nvmrc', '.rgignore',
   '.pre-commit-config.yaml', '.stylelintignore', '.eslintrc', '.eslintrc.js',
@@ -40,11 +40,9 @@ export function walkTree(rootDir: string): TreeNode[] {
   }
 
   // Load .ctagignore for project-specific CanopyTag exclusions.
-  // Check unhidden canopytag/ first (current convention), then legacy .canopytag/,
-  // then the repo root as a final fallback.
+  // Check canopytag/ first, then the repo root as a final fallback.
   const ctagignoreCandidates = [
     path.join(rootDir, 'canopytag', '.ctagignore'),
-    path.join(rootDir, '.canopytag', '.ctagignore'),
     path.join(rootDir, '.ctagignore'),
   ];
   for (const ctagignorePath of ctagignoreCandidates) {

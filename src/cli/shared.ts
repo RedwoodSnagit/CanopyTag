@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import type { FileCanopy, FileKind, FreshnessStatus } from '../shared/types.js';
 import { EXTENSION_KIND_MAP, checkFreshness, normalizeRelation } from '../shared/types.js';
@@ -12,11 +11,7 @@ export function resolveRepoRoot(repoArg?: string): string {
 
 export function resolveCanopyPath(repoArg?: string): string {
   const root = resolveRepoRoot(repoArg);
-  const unhidden = path.join(root, 'canopytag', 'canopy.json');
-  if (fs.existsSync(unhidden)) return unhidden;
-  const hidden = path.join(root, '.canopytag', 'canopy.json');
-  if (fs.existsSync(hidden)) return hidden;
-  return unhidden;  // default to preferred path (for init/error scenarios)
+  return path.join(root, 'canopytag', 'canopy.json');
 }
 
 export function truncate(s: string, max: number): string {

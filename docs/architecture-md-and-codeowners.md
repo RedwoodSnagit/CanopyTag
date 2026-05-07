@@ -142,7 +142,7 @@ This is remarkably close to what CanopyTag does. The comparison matters because 
 | **No agent attribution** | Notion tracks human edits. It has no concept of "Claude Opus wrote this annotation during session X." As agents become co-authors of project knowledge, this gap grows. |
 | **Drift is invisible** | A Notion page about `auth.ts` doesn't know that `auth.ts` was refactored last week. There's no `lastReviewed` vs git-modification comparison. Staleness is silent. |
 | **Schema isn't optimized for agent consumption** | Notion's data model (blocks, pages, databases) is designed for human browsing. Extracting structured data requires the Notion API, pagination, and block parsing. CanopyTag's flat JSON is one `fs.readFile` call. |
-| **Doesn't travel with forks/clones** | When someone forks a repo, they get the code but not the Notion workspace. CanopyTag's `.canopytag/` directory is part of the repo. |
+| **Doesn't travel with forks/clones** | When someone forks a repo, they get the code but not the Notion workspace. CanopyTag's `canopytag/` directory is part of the repo. |
 
 ### The Real Comparison
 

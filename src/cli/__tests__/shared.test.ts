@@ -11,23 +11,21 @@ describe('resolveCanopyPath', () => {
     vi.restoreAllMocks();
   });
 
-  it('prefers canopytag/ over .canopytag/', () => {
+  it('uses canopytag/ even when another similarly named directory exists', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-'));
     fs.mkdirSync(path.join(tmpDir, 'canopytag'), { recursive: true });
     fs.writeFileSync(path.join(tmpDir, 'canopytag', 'canopy.json'), '{}');
-    fs.mkdirSync(path.join(tmpDir, '.canopytag'), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, '.canopytag', 'canopy.json'), '{}');
+    fs.mkdirSync(path.join(tmpDir, 'other-canopytag'), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, 'other-canopytag', 'canopy.json'), '{}');
     const result = resolveCanopyPath(tmpDir);
     expect(result).toBe(path.join(tmpDir, 'canopytag', 'canopy.json'));
     fs.rmSync(tmpDir, { recursive: true });
   });
 
-  it('falls back to .canopytag/ when canopytag/ does not exist', () => {
+  it('returns canopytag/ path when canopytag/ does not exist yet', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-'));
-    fs.mkdirSync(path.join(tmpDir, '.canopytag'), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, '.canopytag', 'canopy.json'), '{}');
     const result = resolveCanopyPath(tmpDir);
-    expect(result).toBe(path.join(tmpDir, '.canopytag', 'canopy.json'));
+    expect(result).toBe(path.join(tmpDir, 'canopytag', 'canopy.json'));
     fs.rmSync(tmpDir, { recursive: true });
   });
 
