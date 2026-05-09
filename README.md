@@ -231,6 +231,9 @@ canopytag compare docs/spec.md src/api.ts # authority, quality, review, trust or
 canopytag todos                          # open TODOs by priority
 canopytag todos --priority 2             # P1 and P2
 
+canopytag tags                           # browse tag usage
+canopytag tags --health                  # soft tag hygiene report
+
 canopytag health                         # authority vs quality mismatches
 canopytag analytics                      # recent agent/search heat
 canopytag coverage                       # annotation coverage report
@@ -308,7 +311,7 @@ or to a client settings file that supports `mcpServers`:
 | `canopytag_compare` | Compare exact files by authority, quality, review, and trust order |
 | `canopytag_todos` | Open TODOs across the repo |
 | `canopytag_health` | Authority vs quality mismatch detection |
-| `canopytag_tags` | Browse and consolidate tag vocabulary |
+| `canopytag_tags` | Browse tag usage and run soft tag hygiene checks |
 | `canopytag_manifest` | Inspect the agent activity/review feed |
 | `canopytag_fan_in` | Reverse relationship graph |
 | `canopytag_fan_out` | Forward relationship graph |

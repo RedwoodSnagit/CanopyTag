@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { collectTags, searchTags, findDuplicates, buildTags } from '../tools/tags.js';
+import { collectTags, searchTags, findDuplicates, buildTags, parseTagVocabulary, buildTagHealth } from '../tools/tags.js';
 import type { Canopy } from '../../shared/types.js';
 
 const mockCanopy: Canopy = {
@@ -74,5 +74,40 @@ describe('buildTags', () => {
   it('shows duplicate warnings', () => {
     const result = buildTags(mockCanopy);
     expect(result).toContain('duplicate');
+  });
+});
+
+describe('buildTagHealth', () => {
+  it('reports unknown tags and aliases without blocking usage', () => {
+    const vocabulary = parseTagVocabulary({
+      tags: {
+        auth: { description: 'Authentication and identity', aliases: ['login'] },
+        backend: { description: 'Server-side implementation', aliases: ['frontend'] },
+        security: { description: 'Security-sensitive behavior' },
+      },
+    });
+
+    const result = buildTagHealth(mockCanopy, vocabulary);
+
+    expect(result).toContain('Tag Health');
+    expect(result).toContain('Soft warnings only');
+    expect(result).toContain('physics');
+    expect(result).toContain('frontend -> backend');
+    expect(result).not.toContain('auth ->');
+  });
+
+  it('flags files with many tags using the configured threshold', () => {
+    const canopy: Canopy = {
+      ...mockCanopy,
+      files: {
+        ...mockCanopy.files,
+        'busy.ts': { tags: ['a', 'b', 'c'] } as any,
+      },
+    };
+
+    const result = buildTagHealth(canopy, undefined, { maxFileTags: 3 });
+
+    expect(result).toContain('Files with 3+ tags');
+    expect(result).toContain('busy.ts');
   });
 });

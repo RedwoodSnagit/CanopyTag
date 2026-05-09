@@ -20,6 +20,12 @@ export default defineConfig({
     },
   },
   test: {
-    exclude: [...configDefaults.exclude, 'tests/e2e/**', 'playwright.config.ts'],
+    exclude: [
+      ...configDefaults.exclude,
+      'tests/e2e/**',
+      'playwright.config.ts',
+      '.claude/**',
+      '.worktrees/**',
+    ],
   },
 });

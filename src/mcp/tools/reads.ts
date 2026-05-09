@@ -15,7 +15,7 @@ import { buildCompare } from '../../cli/compare.js';
 import { buildHealth } from '../../cli/health.js';
 import { buildTodos } from '../../cli/todos.js';
 import { buildAgentManifestReport } from './agent-manifest.js';
-import { buildTags } from './tags.js';
+import { buildTags, buildTagHealth, readTagVocabularyForCanopy } from './tags.js';
 import { walkGraph, renderGraphTree } from '../../cli/graph.js';
 import { readAnalytics, writeAnalytics, incrementFile, resolveAnalyticsPath } from '../../backend/lib/analytics.js';
 import path from 'node:path';
@@ -259,16 +259,31 @@ export function registerReadTools(server: McpServer): void {
   // 8. canopytag_tags
   server.tool(
     'canopytag_tags',
-    'Browse the tag vocabulary. Top tags by usage, search by substring, warns about duplicates.',
+    'Browse the tag vocabulary or run soft tag hygiene checks. Top tags by usage, search by substring, warns about duplicates.',
     {
       search: z.string().optional().describe('Substring filter'),
       limit: z.number().optional().describe('Max results (default: 20)'),
       all: z.boolean().optional().describe('Show all tags'),
+      health: z.boolean().optional().describe('Run tag hygiene report instead of the usage list'),
+      max_file_tags: z.number().optional().describe('Health mode: warn when a file has at least this many tags (default: 7)'),
+      max_feature_spread: z.number().optional().describe('Health mode: warn when a tag spans more than this many features (default: 4)'),
     },
     async (params) => {
       try {
         const canopyPath = resolveCanopyPath();
         const canopy = readCanopy(canopyPath);
+        if (params.health) {
+          const vocabulary = readTagVocabularyForCanopy(canopyPath);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: buildTagHealth(canopy, vocabulary, {
+                maxFileTags: params.max_file_tags,
+                maxFeatureSpread: params.max_feature_spread,
+              }),
+            }],
+          };
+        }
         return { content: [{ type: 'text' as const, text: buildTags(canopy, params.search, params.limit, params.all) }] };
       } catch (e: any) {
         return { content: [{ type: 'text' as const, text: e.message }], isError: true };

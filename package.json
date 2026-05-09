@@ -18,6 +18,7 @@
     "query": "tsx src/cli/query.ts",
     "stats": "tsx src/cli/stats.ts",
     "todos": "tsx src/cli/todos.ts",
+    "tags": "tsx src/cli/tags.ts",
     "context": "tsx src/cli/context.ts",
     "compare": "tsx src/cli/compare.ts",
     "coverage": "tsx src/cli/coverage.ts",

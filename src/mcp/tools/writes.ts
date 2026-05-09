@@ -81,7 +81,7 @@ function warnNewTagsWithVocab(vocab: Map<string, number>, incomingTags: string[]
   }
 
   if (warnings.length === 0) return '';
-  return '\n\nTag note: ' + warnings.join('; ') + '. Use canopytag_tags to browse vocabulary or canopytag_rename_tag to consolidate.';
+  return '\n\nTag note: ' + warnings.join('; ') + '. Use canopytag_tags to browse vocabulary, canopytag_tags health=true for hygiene, or canopytag_rename_tag to consolidate.';
 }
 
 export function handleAddComment(canopyPath: string, params: {

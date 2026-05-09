@@ -12,6 +12,7 @@
  *   canopytag query [options]
  *   canopytag context <file> [options]
  *   canopytag compare <file...> [options]
+ *   canopytag tags [options]
  *   canopytag todos [options]
  *   canopytag health [options]
  *   canopytag analytics [options]
@@ -37,6 +38,7 @@ const COMMANDS = {
   query:     join(cliDir, 'query.ts'),
   context:   join(cliDir, 'context.ts'),
   compare:   join(cliDir, 'compare.ts'),
+  tags:      join(cliDir, 'tags.ts'),
   todos:     join(cliDir, 'todos.ts'),
   health:    join(cliDir, 'health.ts'),
   analytics: join(cliDir, 'analytics.ts'),
@@ -55,6 +57,7 @@ Commands:
   query       Progressive-depth exploration with relationships
   context     Compact context block for files or features
   compare     Compare authority, quality, review status, and trust order
+  tags        Browse tags and report tag hygiene
   todos       List open TODOs across the repo
   health      Authority vs quality mismatch detection
   coverage    Annotation coverage report with orphan detection
