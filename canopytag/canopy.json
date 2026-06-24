@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo_root": ".",
-  "last_modified_at": "2026-04-07T22:00:00-06:00",
+  "last_modified_at": "2026-06-24T00:00:00Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -567,7 +567,30 @@
         {"path": "README.md", "closeness": 3},
         {"path": "docs/repo-local-data.md", "closeness": 3},
         {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3},
+        {"path": "docs/design/document-lifecycle-marks.md", "closeness": 4},
         {"path": "docs/architecture-md-and-codeowners.md", "closeness": 3}
+      ]
+    },
+    "docs/design/document-lifecycle-marks.md": {
+      "title": "Document Lifecycle Marks Proposal",
+      "summary": "Design proposal for optional lifecycle_marks metadata on file entries. Covers temporary contracts, temporal dependence on dates/events/releases/versions, condensation artifacts, provisional docs, superseded docs, and review-needed docs, plus query grouping, RAG treatment, authority interaction, expiry/review dates, migration, and UI/CLI/MCP implications.",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 2,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-06-24",
+      "authority_level": "blueprint",
+      "status": "draft",
+      "tags": ["docs", "design", "schema", "lifecycle", "agent-interface"],
+      "feature_id": "docs",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "src/shared/types.ts", "closeness": 5, "relation": "doc-for"},
+        {"path": "docs/roadmap.md", "closeness": 4},
+        {"path": "docs/surprise-and-traversal.md", "closeness": 3},
+        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3}
       ]
     },
     "docs/canopytag-vs-ripgrep.md": {
@@ -945,7 +968,7 @@
       "summary": "React components for the annotation UI. FileDetail.tsx is the main editing surface; ScoreDisplay.tsx renders the scoring model; TableView.tsx provides the alternate flat-list view."
     },
     "docs": {
-      "summary": "Positioning and strategy docs. roadmap.md is the public backlog, canopytag-vs-ripgrep.md is the core search-positioning argument, and architecture-md-and-codeowners.md explains the ecosystem fit."
+      "summary": "Positioning and strategy docs. roadmap.md is the public backlog, canopytag-vs-ripgrep.md is the core search-positioning argument, architecture-md-and-codeowners.md explains the ecosystem fit, and design docs capture bounded feature proposals such as document lifecycle marks."
     }
   },
   "features": {

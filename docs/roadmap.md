@@ -41,6 +41,9 @@ Working now:
 
 - Add a persisted manual `Stale` override/editor if the freshness workflow needs
   a human-confirmed stale state beyond `Review Drift`.
+- Evaluate [document lifecycle marks](./design/document-lifecycle-marks.md) for
+  temporary contracts, condensation artifacts, provisional docs, superseded docs,
+  and review-needed docs.
 - Continue graph hardening on larger real repos: dense labels, edge priority,
   cluster heuristics, and saved graph presets only if repeated workflows emerge.
 - Improve Activity review ergonomics for high-speed human review of agent writes.
