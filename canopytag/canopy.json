@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo_root": ".",
-  "last_modified_at": "2026-08-01T21:33:44.686Z",
+  "last_modified_at": "2026-08-01T21:55:37.572Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -73,7 +73,10 @@
       "tags": ["schema", "lifecycle", "trust"],
       "feature_id": "lifecycle-trust",
       "authority_level": "specification",
-      "status": "active"
+      "status": "active",
+      "related_files": [
+        {"path": "docs/design/document-lifecycle-marks.md", "relation": "implements", "closeness": 5}
+      ]
     },
     "src/shared/catalogue-search.ts": {
       "title": "Bounded Authored Catalogue Search",
@@ -137,6 +140,16 @@
           "tags": ["performance"],
           "created_at": "2026-03-27T12:00:00-06:00",
           "created_by": {"role": "agent", "name": "claude-opus"}
+        },
+        {
+          "id": "RT-011",
+          "text": "Validate known nested Canopy fields, enum values, ranges, feature references, and relation shapes before shared writes at the canonical boundary while preserving tolerant evidence-producing reads and forward-compatible unknown fields; prove equivalent enforcement for route and MCP writes.",
+          "priority": 2,
+          "difficulty": 4,
+          "status": "open",
+          "tags": ["schema", "persistence", "security"],
+          "created_at": "2026-08-01T21:44:14.974Z",
+          "created_by": {"role": "agent", "name": "codex"}
         }
       ],
       "comments": [],
@@ -169,7 +182,10 @@
       "tags": ["governance", "privacy"],
       "feature_id": "annotation-engine",
       "authority_level": "specification",
-      "status": "active"
+      "status": "active",
+      "related_files": [
+        {"path": "docs/repo-local-data.md", "relation": "implements", "closeness": 5}
+      ]
     },
     "src/cli/stats.ts": {
       "title": "canopytag stats — Orient Before You Dive",
@@ -470,6 +486,17 @@
         {"path": "src/shared/types.ts", "closeness": 3, "relation": "fed-by"}
       ]
     },
+    "src/frontend/components/AnalyticsView.tsx": {
+      "title": "Local Agent Activity Dashboard",
+      "summary": "Human view of local agent activity: hot files, search trends, daily counts, and heat-enabled tree navigation. It duplicates engagement calculations from the backend, so scoring changes must stay aligned; activity frequency is not semantic authority.",
+      "tags": ["frontend", "analytics", "privacy"],
+      "feature_id": "agent-analytics",
+      "authority_level": "guideline",
+      "status": "active",
+      "related_files": [
+        {"path": "docs/design/agent-analytics.md", "relation": "implements", "closeness": 5}
+      ]
+    },
     "src/frontend/components/GraphView.tsx": {
       "title": "Authored Semantic Relationship Graph",
       "summary": "Human visualization of authored CanopyTag feature clusters and related_files, with overview and focus modes, filtering, authority or activity coloring, and weighted layout. It does not derive import, call, or symbol topology; generated structure belongs to Cartographer.",
@@ -629,6 +656,248 @@
         {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"}
       ]
     },
+    "src/backend/__tests__/canopy.test.ts": {
+      "title": "Canopy Persistence Boundary Contracts",
+      "summary": "Protects BOM-tolerant reads, top-level shape rejection, snake_case writes, lifecycle round-tripping, preservation of malformed lifecycle evidence, successful atomic-write temp-file cleanup, and monotonic TODO identifiers across the canonical metadata store.",
+      "tags": ["schema", "persistence"],
+      "feature_id": "annotation-engine",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/backend/lib/canopy.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/backend/__tests__/case-transform.test.ts": {
+      "title": "Metadata Case-Conversion Invariants",
+      "summary": "Prevents recursive snake/camel conversion from rewriting file-path map keys while confirming nested objects and arrays transform normally. This protects dotted filenames and slash-delimited paths during metadata reads and writes.",
+      "tags": ["schema", "persistence"],
+      "feature_id": "annotation-engine",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/shared/case-transform.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/backend/__tests__/merge.test.ts": {
+      "title": "Authored-Over-Generated Merge Precedence",
+      "summary": "Locks the read-model rule that authored Canopy values override shared repo-index fields while generated enrichment remains available as fallback. It also protects lifecycle propagation and derived open-TODO and highest-priority signals.",
+      "tags": ["trust", "retrieval"],
+      "feature_id": "web-ui",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/backend/lib/merge.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/backend/__tests__/agent-manifest.test.ts": {
+      "title": "Manifest Review And Undo Contracts",
+      "summary": "Protects the human review loop for agent activity: BOM-safe reads, rejection restoring prior annotations, fix decisions adding attributed improvement comments, and agreement changing review state without replaying the original write.",
+      "tags": ["review-feed", "governance"],
+      "feature_id": "activity-review",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/backend/lib/agent-manifest.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/backend/__tests__/profile.test.ts": {
+      "title": "Local Identity Privacy Contracts",
+      "summary": "Protects human attribution fallback, snake_case local profile persistence, sanitization back to human roles, BOM-tolerant reads, and preference for .git/info/exclude so private identity needs no shared repository change.",
+      "tags": ["privacy", "governance"],
+      "feature_id": "annotation-engine",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/backend/lib/profile.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/shared/lifecycle.test.ts": {
+      "title": "Lifecycle Date And Evidence Semantics",
+      "summary": "Locks review-due and expiration boundaries, explicit-resolution precedence, local-calendar behavior, and refusal to infer event or release completion. Malformed marks must remain visible with evidence instead of being coerced or dropped.",
+      "tags": ["lifecycle", "trust"],
+      "feature_id": "lifecycle-trust",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/shared/lifecycle.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/cli/__tests__/context.test.ts": {
+      "title": "Agent Context Trust Rendering Contracts",
+      "summary": "Protects compact file and feature context: authority-sensitive warnings, relation drift, open-TODO selection, relation-closeness threshold filtering, lifecycle evidence, feature aggregates, and authority-ordered presentation.",
+      "tags": ["cli", "agent-interface", "trust"],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/cli/context.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/cli/__tests__/compare.test.ts": {
+      "title": "File Trust Comparison Invariants",
+      "summary": "Protects authority-first trust ordering while surfacing quality, review drift, warnings, TODO pressure, partial scores, normalized Windows paths, and lifecycle state. Lifecycle problems must not silently reorder authority precedence.",
+      "tags": ["cli", "trust", "quality"],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/cli/compare.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/cli/__tests__/coverage.test.ts": {
+      "title": "Tracked-File Coverage Accounting Contracts",
+      "summary": "Protects Git discovery, Canopy-directory exclusion, .ctagignore filtering, path normalization, kind-scoped counts, orphan detection, and completeness ordering for annotated files. It does not yet cover bounded unannotated-path output.",
+      "tags": ["cli", "retrieval"],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/cli/coverage.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/cli/__tests__/graph.test.ts": {
+      "title": "Semantic Fan-In And Fan-Out Traversal Contracts",
+      "summary": "Protects reverse-index construction, normalized paths, bounded multi-hop traversal, closeness and relation filters, cycle and self-reference termination, prebuilt-index reuse, and directional text rendering.",
+      "tags": ["cli", "graph-traversal"],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/cli/graph.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/mcp/__tests__/reads.test.ts": {
+      "title": "MCP Read-Builder Parity Contracts",
+      "summary": "Exercises reusable read builders against the demo catalogue across stats, lists, queries, context, comparisons, health, TODOs, tags, and coverage. It does not cover MCP transport or tool registration.",
+      "tags": ["mcp", "agent-interface"],
+      "feature_id": "mcp-server",
+      "authority_level": "guideline",
+      "status": "active"
+    },
+    "src/mcp/__tests__/writes.test.ts": {
+      "title": "Agent Write Safety And Provenance Contracts",
+      "summary": "Protects dynamic agent attribution, locked-file rules, score-review invalidation, TODO and comment IDs, tag rename and deduplication, manifest audit entries, staged suggestions, and rejection of incomplete staged TODO metadata.",
+      "tags": ["mcp", "editing", "review-feed"],
+      "feature_id": "mcp-server",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/mcp/tools/writes.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/mcp/__tests__/integration.test.ts": {
+      "title": "Cross-Capability Metadata Workflow Contracts",
+      "summary": "Protects local workflows where writes immediately affect retrieval: findings become surprising, TODOs become queryable, annotations enter context, renamed tags update vocabulary, feature queries remain complete, and authored relations traverse correctly.",
+      "tags": ["mcp", "editing"],
+      "feature_id": "mcp-server",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/mcp/tools/writes.ts", "relation": "test-of", "closeness": 5},
+        {"path": "src/cli/context.ts", "relation": "test-of", "closeness": 4},
+        {"path": "src/cli/graph.ts", "relation": "test-of", "closeness": 4}
+      ]
+    },
+    "src/frontend/components/GraphView.test.ts": {
+      "title": "Graph Focus And Viewport Regression Contracts",
+      "summary": "Protects pure focus, viewport, position, hover-label, duplicate-edge, and weighted-ordering helpers. It does not exercise canvas interaction, the full React view, or code-topology correctness.",
+      "tags": ["frontend", "graph-traversal"],
+      "feature_id": "web-ui",
+      "authority_level": "guideline",
+      "status": "active",
+      "related_files": [
+        {"path": "src/frontend/components/GraphView.tsx", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/frontend/components/TableView.test.ts": {
+      "title": "Manifest Table Interpretation Contracts",
+      "summary": "Protects helper logic that turns staged activity into compact previews, exposes freshness recommendations, and filters rows by recency. It does not exercise full table rendering or review interactions.",
+      "tags": ["frontend", "review-feed"],
+      "feature_id": "web-ui",
+      "authority_level": "guideline",
+      "status": "active",
+      "related_files": [
+        {"path": "src/frontend/components/TableView.tsx", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/frontend/components/FileTree.test.ts": {
+      "title": "File-Tree Attention Heat Contracts",
+      "summary": "Protects activity weighting and normalization helpers used by file-tree heat. It does not exercise tree interaction, path search, selection, or rendered navigation behavior.",
+      "tags": ["frontend", "analytics"],
+      "feature_id": "web-ui",
+      "authority_level": "guideline",
+      "status": "active",
+      "related_files": [
+        {"path": "src/frontend/components/FileTree.tsx", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/frontend/lib/authority.test.ts": {
+      "title": "Authority Display Label Contracts",
+      "summary": "Pins compact and canonical authority labels plus conflict-precedence help text. It does not exercise score editing, persistence, or review attribution.",
+      "tags": ["frontend", "trust"],
+      "feature_id": "web-ui",
+      "authority_level": "guideline",
+      "status": "active",
+      "related_files": [
+        {"path": "src/frontend/lib/authority.ts", "relation": "test-of", "closeness": 4}
+      ]
+    },
+    "src/backend/__tests__/analytics.test.ts": {
+      "title": "Local Analytics Persistence And Scoring Contracts",
+      "summary": "Protects BOM-tolerant sidecar reads, per-file and daily counter semantics, search-hit behavior, and engagement weighting. It tests the analytics library, not route registration or HTTP behavior.",
+      "tags": ["analytics", "persistence", "privacy"],
+      "feature_id": "agent-analytics",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/backend/lib/analytics.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/backend/__tests__/tree-walker.test.ts": {
+      "title": "Filesystem Tree Discovery Contracts",
+      "summary": "Protects filesystem discovery plus exclusion of ignored dependencies and the CanopyTag metadata directory. It tests the tree-walker library, not HTTP routing or file-tree UI interaction.",
+      "tags": ["retrieval", "local-first"],
+      "feature_id": "web-ui",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/backend/lib/tree-walker.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/cli/__tests__/analytics-hook.test.ts": {
+      "title": "Analytics Hook Search-Heat Contracts",
+      "summary": "Executes the hook in temporary repositories and protects Grep, Glob, and Bash ripgrep hit accounting plus BOM-tolerant metadata reads. It covers emitted analytics records, not installer merging, concurrency, or every PostToolUse event.",
+      "tags": ["analytics", "integration", "privacy"],
+      "feature_id": "agent-analytics",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "hooks/canopytag-analytics.mjs", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/cli/__tests__/hook-install.test.ts": {
+      "title": "Analytics Hook Installer Contracts",
+      "summary": "Runs the installer against temporary repositories and protects absolute command generation, in-place upgrade of legacy relative hooks without duplicates, and preservation of existing BOM-prefixed settings. It does not cover hook event recording.",
+      "tags": ["cli", "integration", "privacy"],
+      "feature_id": "agent-analytics",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/cli/hook.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "tests/e2e/app-smoke.spec.ts": {
+      "title": "Welcome And Config Proxy Smoke Contracts",
+      "summary": "Checks welcome-screen entry actions and frontend proxy reachability for GET config. It does not exercise repository switching, directory browsing, or the backend's network-exposure boundary.",
+      "tags": ["frontend", "onboarding", "api"],
+      "feature_id": "web-ui",
+      "authority_level": "guideline",
+      "status": "active",
+      "related_files": [
+        {"path": "src/frontend/components/WelcomeScreen.tsx", "relation": "test-of", "closeness": 4},
+        {"path": "src/backend/routes/config.ts", "relation": "test-of", "closeness": 4}
+      ]
+    },
     "AGENTS.md": {
       "title": "Contributor Operating Guide",
       "summary": "Stable operating contract for contributors: architecture, product boundaries, shared-versus-local data rules, agent workflow, trust semantics, and validation. Read it before changing CanopyTag or its dogfood metadata; fast-changing feature details belong in nearby docs.",
@@ -720,7 +989,8 @@
       "related_files": [
         {"path": "README.md", "closeness": 5},
         {"path": "docs/cli-cheatsheet.md", "closeness": 3},
-        {"path": "docs/roadmap.md", "closeness": 3}
+        {"path": "docs/roadmap.md", "closeness": 3},
+        {"path": "canopytag/canopy.json", "relation": "doc-for", "closeness": 5}
       ]
     },
     "docs/roadmap.md": {
@@ -838,7 +1108,7 @@
     },
     "docs/design/agent-analytics.md": {
       "title": "Agent Analytics Design And Privacy Contract",
-      "summary": "Approved design and privacy contract for local agent-activity heat across the hook, analytics store, CLI, MCP increments, and UI. It is partly stale: the document says analytics are not API-exposed, while a read route now serves local analytics to the loopback UI.",
+      "summary": "Approved design and privacy contract for local-only agent activity heat across the hook, MCP-side increments, storage, CLI, and UI. The ignored sidecar is not MCP-exposed, is read-only through the loopback UI API, and hook installation writes a machine-specific absolute path that must remain uncommitted or be reviewed before sharing.",
       "authority_level": "blueprint",
       "status": "active",
       "tags": ["design", "analytics", "privacy", "local-first"],
@@ -851,6 +1121,37 @@
       "status": "draft",
       "tags": ["design", "retrieval", "graph-traversal", "agent-interface"],
       "feature_id": "docs"
+    },
+    "src/cli/analytics.ts": {
+      "title": "Local Analytics CLI",
+      "summary": "Agent and human command for hot-file activity, navigation trends, and explicit analytics clearing or date pruning. It reads only the local sidecar and recalculates totals after pruning; its output is behavioral heat, not semantic relevance.",
+      "tags": ["cli", "analytics", "privacy"],
+      "feature_id": "agent-analytics",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "docs/design/agent-analytics.md", "relation": "implements", "closeness": 4}
+      ]
+    },
+    "hooks/canopytag-analytics.mjs": {
+      "title": "Claude Code Local Analytics Hook",
+      "summary": "Optional Claude Code PostToolUse adapter that records local file touches and search-result heat without storing query strings. It must fail silently and never block agent work; concurrent writers may undercount because analytics are not an audit log.",
+      "tags": ["analytics", "privacy", "integration"],
+      "feature_id": "agent-analytics",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "docs/design/agent-analytics.md", "relation": "implements", "closeness": 5},
+        {"path": "src/cli/hook.ts", "closeness": 4}
+      ]
+    },
+    "src/cli/hook.ts": {
+      "title": "Claude Analytics Hook Installer",
+      "summary": "Installs or upgrades CanopyTag's PostToolUse analytics hook in .claude/settings.json without clobbering unrelated settings or duplicating entries. Generated commands use this checkout's absolute hook path, so output warns that local configuration needs review before public sharing.",
+      "tags": ["cli", "analytics", "integration", "privacy"],
+      "feature_id": "agent-analytics",
+      "authority_level": "specification",
+      "status": "active"
     },
     "src/cli/mcp.ts": {
       "title": "Project-Local MCP Configuration Scaffolder",
@@ -944,6 +1245,18 @@
       "status": "active",
       "tags": ["cli", "agent-interface"],
       "feature_id": "cli-tools",
+      "todos": [
+        {
+          "id": "RT-010",
+          "text": "Add bounded, deterministic detailed coverage output that lists unannotated paths with stable sorting, explicit result limits, and structured output suitable for catalogue-completion queues.",
+          "priority": 2,
+          "difficulty": 2,
+          "status": "open",
+          "tags": ["retrieval", "agent-interface"],
+          "created_at": "2026-08-01T21:44:14.974Z",
+          "created_by": {"role": "agent", "name": "codex"}
+        }
+      ],
       "related_files": [
         {"path": "src/cli/shared.ts", "closeness": 5, "relation": "fed-by"},
         {"path": "src/mcp/tools/reads.ts", "closeness": 4},
@@ -1177,7 +1490,7 @@
     },
     "src/backend/lib/analytics.ts": {
       "title": "Agent Activity Analytics Engine",
-      "summary": "Tracks local per-file read, edit, write, and catalogue-query counts with daily bucketing in ignored .analytics.json. It supplies windowed heat and totals for CLI and UI views; behavioral frequency is a maintenance signal, not semantic authority.",
+      "summary": "Local sidecar persistence and scoring for per-file reads, edits, writes, CanopyTag queries, and search hits with daily buckets. Atomic writes reduce sidecar corruption; counters remain approximate behavioral telemetry, not semantic authority or an audit log.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
@@ -1189,6 +1502,7 @@
       "tags": ["analytics", "persistence", "privacy", "local-first"],
       "feature_id": "agent-analytics",
       "related_files": [
+        {"path": "docs/design/agent-analytics.md", "relation": "implements", "closeness": 5},
         {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"},
         {"path": "src/mcp/tools/reads.ts", "closeness": 3},
         {"path": "src/cli/shared.ts", "closeness": 3, "relation": "fed-by"}
