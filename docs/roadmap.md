@@ -71,6 +71,13 @@ Working now:
 - Benchmark and tune the implemented catalogue ranking against real navigation
   tasks. Consider embeddings or semantic expansion only if measured misses
   remain after authored terminology and field weighting are improved.
+- Freeze a vocabulary-drift benchmark for queries whose terminology is absent
+  from older annotations. Test ephemeral query nodes and generated candidate
+  edges without mutating authored relationships.
+- If embeddings earn their place, build them from small CanopyTag cards, open
+  work/review items, and opted-in document sections; keep the local index and
+  inferred clusters replaceable, fingerprinted, and non-authoritative. See the
+  [Cartographer integration design](./design/canopy-cartographer-integration.md).
 
 ## Analytics And Benchmarking
 
