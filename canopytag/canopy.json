@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo_root": ".",
-  "last_modified_at": "2026-06-24T00:00:00Z",
+  "last_modified_at": "2026-06-26T00:00:00Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -568,6 +568,7 @@
         {"path": "docs/repo-local-data.md", "closeness": 3},
         {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3},
         {"path": "docs/design/document-lifecycle-marks.md", "closeness": 4},
+        {"path": "docs/design/canopy-cartographer-integration.md", "closeness": 5},
         {"path": "docs/architecture-md-and-codeowners.md", "closeness": 3}
       ]
     },
@@ -591,6 +592,28 @@
         {"path": "docs/roadmap.md", "closeness": 4},
         {"path": "docs/surprise-and-traversal.md", "closeness": 3},
         {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3}
+      ]
+    },
+    "docs/design/canopy-cartographer-integration.md": {
+      "title": "CanopyCartographer Integration Proposal",
+      "summary": "Architecture proposal for keeping CanopyTag as the crafted semantic truth layer while a standalone CanopyCartographer emits generated map sidecars, adapter output, semantic recall, rankings, and promotable suggestions. Clarifies that the goal is agent comprehension and explainable routing rather than search for its own sake.",
+      "validity": 4,
+      "clarity": 4,
+      "completeness": 3,
+      "stability": 2,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-06-26",
+      "authority_level": "blueprint",
+      "status": "draft",
+      "tags": ["docs", "design", "cartography", "agent-interface", "integration"],
+      "feature_id": "docs",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {"path": "docs/roadmap.md", "closeness": 5},
+        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 4},
+        {"path": "docs/surprise-and-traversal.md", "closeness": 4},
+        {"path": "docs/architecture-md-and-codeowners.md", "closeness": 3}
       ]
     },
     "docs/canopytag-vs-ripgrep.md": {

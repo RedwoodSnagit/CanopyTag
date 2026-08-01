@@ -86,11 +86,18 @@ Working now:
 CanopyTag answers "what does this mean?" Structural tools answer "what depends
 on what?" They should stay complementary.
 
+See [CanopyCartographer integration](./design/canopy-cartographer-integration.md)
+for the proposed Canopy Suite split: CanopyTag remains the crafted semantic
+truth layer, while CanopyCartographer becomes the generated map layer that emits
+sidecar artifacts, adapter output, semantic recall, rankings, and suggestions.
+
 Possible paths:
 
 - Keep CanopyTag knowledge-only and accept structural data from optional tools.
 - Add import/test/dependency ingestion as an optional plugin or command.
 - Keep richer cartography outside the core until usage proves it belongs inside.
+- Read generated cartography sidecars from a standalone CanopyCartographer
+  rather than merging generated structure directly into `canopy.json`.
 
 The key principle: CanopyTag should accept useful dependency information without
 becoming a language-specific parser.
