@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { readCanopy, readSettings, readArchive, writeCanopy, writeArchive, runArchiveSweep, ensureCommentIds, resolveCanopyDir, parseJsonFile } from './lib/canopy';
 import { ensureProfileIgnored, readOrCreateProfile, resolveProfilePath } from './lib/profile';
+import { networkExposureWarning, resolveServerHost } from './lib/network';
 import { snakeToCamel } from '../shared/case-transform';
 import type { Canopy, RepoIndexItem, CanopySettings, CanopyProfile } from '../shared/types';
 
@@ -53,6 +54,7 @@ const { values: args } = parseArgs({
   options: {
     repo: { type: 'string', short: 'r' },
     port: { type: 'string', short: 'p' },
+    host: { type: 'string', short: 'H' },
   },
   strict: false,
 });
@@ -205,9 +207,12 @@ await app.register(profileRoutes);
 // ---- Start ----
 
 const PORT = Number(typeof args.port === 'string' ? args.port : '') || 3100;
+const HOST = resolveServerHost({ cliHost: args.host, envHost: process.env.CANOPYTAG_HOST });
 try {
-  await app.listen({ port: PORT, host: '0.0.0.0' });
-  console.log(`[canopytag] Server listening on http://localhost:${PORT}`);
+  const exposureWarning = networkExposureWarning(HOST);
+  if (exposureWarning) console.warn(exposureWarning);
+  await app.listen({ port: PORT, host: HOST });
+  console.log(`[canopytag] Server listening on http://${HOST}:${PORT}`);
 } catch (err) {
   console.error('[canopytag] Failed to start:', err);
   process.exit(1);

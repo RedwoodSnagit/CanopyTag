@@ -53,7 +53,7 @@ Today CanopyTag can express some of this indirectly:
 The gap is not search. `rg` can find the words. The gap is grouping, routing,
 and trust calibration over lifecycle-sensitive docs.
 
-## BikeCRT-Style Use Cases
+## Representative Use Cases
 
 These examples are motivated by sophisticated internal repos with many active
 specs, experiments, and agent handoffs:
@@ -66,14 +66,14 @@ specs, experiments, and agent handoffs:
   once they are working on v3 or GA behavior.
 - A context condensation artifact preserves decisions from a long agent session,
   but it should be retrieval support, not a canonical source.
-- A physiology V1 design is provisional while tests and product scope are still
-  settling.
+- A new domain-model design is provisional while tests and product scope are
+  still settling.
 - An older unit-boundary doc is historically useful but superseded by a newer
   standard.
 - A markdown doc has not changed, but related code did, so a human wants an
   explicit review-needed marker that survives across sessions.
 - A repo owner asks an agent to query all temporary contracts, all expired marks,
-  or all docs that need review before public alpha.
+  or all docs that need review before a release milestone.
 
 ## Proposed Metadata
 
@@ -402,8 +402,8 @@ Likely implementation surface, if this proposal is accepted:
 - Date rot: expired marks lose value if nobody reviews or resolves them.
 - Temporal false precision: release-, event-, and version-bound docs may look
   machine-checkable before CanopyTag has real external state for them.
-- Overfitting: the first version should support BikeCRT-style repos without
-  hardcoding BikeCRT process language.
+- Overfitting: the first version should support large, fast-moving repositories
+  without hardcoding one project's process language.
 
 ## Non-Goals
 

@@ -110,6 +110,11 @@ Open:
 - Frontend: http://localhost:5180
 - Backend: http://localhost:3100
 
+The backend binds to `127.0.0.1` by default because its local repository API
+does not provide authentication. To expose it deliberately, start the backend
+with `npm run dev:backend -- --host 0.0.0.0` or set `CANOPYTAG_HOST`. Use a
+non-loopback host only on a trusted network; browser CORS is not authentication.
+
 When run from the CanopyTag checkout, the app starts on the bundled demo repo.
 Use `Switch Repo` in the header to point the UI at another local folder.
 

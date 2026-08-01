@@ -44,8 +44,8 @@ ingredients, not the product.
 |---|---|---|
 | CanopyTag | Crafted semantic metadata and UI | Should not become a parser or vector DB |
 | CanopyCartographer | Generated graph artifacts, rankings, and suggestions | Should not define product truth |
-| CanopyCRT | BikeCRT-specific adapter, if split out | Should not live in the generic core |
-| Graphify | Exact-symbol graph extraction | Should not replace product/semantic context |
+| Project adapters | Stack- or domain-specific evidence | Should not live in the generic core |
+| Symbol indexers | Exact-symbol graph extraction | Should not replace product/semantic context |
 
 CanopyTag owns canonical feature IDs, feature descriptions, and accepted
 feature membership. Cartographer and stack adapters may propose feature nodes,

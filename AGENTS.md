@@ -67,6 +67,9 @@ hooks/               Claude Code analytics hook
 - Never commit `profile.local.json` or local `.analytics.json` files.
 - Review `.mcp.json` and `.claude/settings.json` before committing; generated
   versions may contain local absolute paths.
+- The unauthenticated web backend binds to `127.0.0.1` by default. A
+  non-loopback `--host` or `CANOPYTAG_HOST` value is an explicit exposure
+  decision and should be used only on a trusted network.
 
 ## Agent Workflow
 

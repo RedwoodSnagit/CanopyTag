@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo_root": ".",
-  "last_modified_at": "2026-08-01T00:00:00Z",
+  "last_modified_at": "2026-08-01T20:04:14Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -903,23 +903,61 @@
     },
     "src/backend/server.ts": {
       "title": "Fastify Web Server — Bootstrap & Route Registration",
-      "summary": "205-line entry point for the web UI backend. Resolves repo root (CLI arg > REPO_ROOT env > auto-detect), uses the canonical canopytag/ directory, loads canopy.json + settings + optional repo_index.json + tag vocabulary. Registers 14 route modules via Fastify plugins. Runs archive sweep on startup (moves completed TODOs older than retention window). Decorates Fastify with shared ServerState accessible to all routes. CORS restricted to localhost:5180 (Vite dev server).",
+      "summary": "Web UI backend bootstrap: selects the repository, loads CanopyTag metadata, registers API routes, and runs the archive sweep. It binds to loopback by default; non-loopback exposure must be explicit and is unauthenticated.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
       "stability": 3,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-08-01",
       "authority_level": "specification",
       "status": "active",
       "tags": ["api", "core"],
       "feature_id": "web-ui",
       "related_files": [
         {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/backend/lib/network.ts", "closeness": 5, "relation": "fed-by"},
         {"path": "src/backend/routes/file.ts", "closeness": 4},
         {"path": "src/backend/routes/tree.ts", "closeness": 4},
         {"path": "src/backend/lib/tree-walker.ts", "closeness": 3, "relation": "fed-by"},
         {"path": "src/frontend/App.tsx", "closeness": 3}
+      ]
+    },
+    "src/backend/lib/network.ts": {
+      "title": "Backend Network Exposure Boundary",
+      "summary": "Resolves the backend bind host with a loopback-only default and emits a prominent warning for explicit non-loopback exposure. This is the safety boundary around CanopyTag's unauthenticated local repository API.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 5,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-08-01",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["api", "core", "security"],
+      "feature_id": "web-ui",
+      "related_files": [
+        {"path": "src/backend/server.ts", "closeness": 5},
+        {"path": "src/backend/__tests__/network.test.ts", "closeness": 5},
+        {"path": "README.md", "closeness": 4}
+      ]
+    },
+    "src/backend/__tests__/network.test.ts": {
+      "title": "Backend Network Boundary Tests",
+      "summary": "Verifies loopback-by-default host resolution, explicit override precedence, loopback recognition, and warnings for exposing the unauthenticated API.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-08-01",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["api", "security", "tests"],
+      "feature_id": "web-ui",
+      "related_files": [
+        {"path": "src/backend/lib/network.ts", "closeness": 5, "relation": "test-of"},
+        {"path": "src/backend/server.ts", "closeness": 4, "relation": "test-of"}
       ]
     },
     "src/backend/lib/analytics.ts": {
