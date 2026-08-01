@@ -21,7 +21,9 @@ This works. It's how developers work too. The tools are fast, universal, and req
 
 ## Where It Breaks Down
 
-The breakdown isn't in finding files — it's in **interpreting what you found**.
+The first breakdown is vocabulary: the agent may understand the concept but not
+know the repository's exact filename, symbol, tag, or historical term. The
+second is **interpreting what it found**.
 
 An agent greps for `auth middleware` and gets 15 hits. Now what?
 
@@ -33,16 +35,23 @@ An agent greps for `auth middleware` and gets 15 hits. Now what?
 
 The agent doesn't know. So it reads all 15, or guesses based on file path conventions, or picks the first match and hopes. In a 50-file repo this is fine. In a 500-file repo with years of history, it's expensive and error-prone.
 
-**The problem isn't search. The problem is judgment about search results.**
+**The problem is not a lack of search tools. It is routing from ordinary intent
+to plausible candidates, then judging those candidates correctly.**
 
 ## What CanopyTag Adds
 
-CanopyTag doesn't replace grep or glob. It supplements them with pre-annotated judgment that agents can query after they've already found files.
+CanopyTag doesn't replace grep or glob. It adds bounded search over authored
+catalogue metadata and pre-annotated judgment around source search. An agent can
+use it before `rg` when terminology is uncertain or after `rg` to enrich known
+paths.
 
 The workflow becomes:
 
-1. Agent **greps** for `auth middleware` → 15 hits
-2. Agent asks CanopyTag: **"what do you know about these files?"**
+1. Agent searches the catalogue for `token validation` to get a small set of
+   annotated candidates, or starts with `rg` when it already knows the source
+   term.
+2. Agent confirms the candidates in source and asks CanopyTag: **"what do you
+   know about these files?"**
 3. CanopyTag returns, for each annotated file:
    - **Authority**: this is a specification (read first) vs. an idea (read if curious)
    - **Status**: active, deprecated, experimental, draft
@@ -57,7 +66,9 @@ The annotations are written once (by humans or agents) and queried many times. T
 
 ## What CanopyTag Does NOT Do
 
-- **Replace text search.** `rg "handleAuth"` is still the right way to find a function. CanopyTag can't do symbol search.
+- **Replace source or symbol search.** `rg "handleAuth"` is still the right way
+  to find a function. `query --search` searches authored metadata, not source
+  contents, ASTs, or language-server symbols.
 - **Auto-index the repo.** CanopyTag requires explicit annotation. It knows about files you've told it about. Unannotated files are invisible to it.
 - **Parse code.** It doesn't understand ASTs, imports, or call graphs. Tools like tree-sitter, LSP servers, and Aider's repo map do that. CanopyTag captures *meaning*, not *structure*.
 - **Scale without effort.** Annotation takes time. The bet is that the time saved navigating outweighs the time spent annotating — but that's only true for repos that get revisited often.
@@ -68,6 +79,7 @@ The annotations are written once (by humans or agents) and queried many times. T
 |---|---|---|
 | Where does this symbol appear? | Yes | No |
 | What files match this pattern? | Yes | No |
+| Which annotated files discuss this concept? | Lexical occurrences only | Yes (`query --search`) |
 | What does this file do? | No (read it) | Yes (summary) |
 | Is this file current or deprecated? | No (guess) | Yes (status) |
 | Can I trust this file? | No (read + judge) | Partially (authority + scores + warnings) |
@@ -81,8 +93,17 @@ The annotations are written once (by humans or agents) and queried many times. T
 ### Orientation (start of session)
 ```
 canopytag stats                    → what exists in this repo?
+canopytag query --search "token validation" → which annotated cards discuss it?
 canopytag ls --sort attention      → what needs work?
 canopytag context --feature auth   → give me the full picture of auth
+```
+
+### Discovery (before source search)
+```
+canopytag query --search "human approval and rollback for agent changes"
+→ candidate catalogue cards with matched fields and terms
+rg -l "agent_manifest|review|rollback" src tests
+→ confirm implementation and tests in source
 ```
 
 ### Mid-task lookup (after grepping)
@@ -127,7 +148,8 @@ This metadata compounds: each new annotation makes existing annotations more use
 
 Not every file needs a CanopyTag entry. The rule:
 
-**Would a 2-line summary help an agent that already has the file path?**
+**Would a concise synopsis help an agent discover this file or understand why
+it matters after finding it?**
 
 If the path tells you enough (`utils/unit_conversion.py`), skip it.
 If the path doesn't tell you enough (`tire_pressure_v3.py` — is this active? deprecated?), annotate it.

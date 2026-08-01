@@ -51,7 +51,8 @@ hooks/               Claude Code analytics hook
 - Not an IDE: CanopyTag does not show or edit source code.
 - Not a task board: TODOs are repo context, not a project-management system.
 - Not a parser: graph views visualize metadata relationships, not import graphs.
-- Not a search replacement: use `rg` first, then ask CanopyTag what matters.
+- Not a source-search replacement: use bounded catalogue search when filenames
+  or terminology are uncertain, then confirm candidates with `rg` and source.
 - Local-first: shared annotations live in `canopytag/canopy.json`; local-only
   identity, analytics, MCP, and hook config stay ignored or explicitly reviewed.
 
@@ -77,6 +78,7 @@ Start broad, then narrow:
 
 ```bash
 canopytag stats --repo /path/to/repo
+canopytag query --search "concept in ordinary language"
 rg -l "keyword" src tests
 canopytag context path/from/search.ts another/path.md
 canopytag compare path/from/search.ts another/path.md
@@ -86,9 +88,10 @@ canopytag query --feature feature-id --detail 4
 Use:
 
 - `stats` to orient
+- `query --search` to discover annotated candidates from authored metadata
 - `context` to enrich known paths
 - `compare` to decide which of several files should win a conflict
-- `query` to explore a feature or tag neighborhood
+- `query` with feature, tag, or relation filters to explore a neighborhood
 - `todos`, `health`, and `analytics` before wrapping up
 
 ## MCP And Hooks
