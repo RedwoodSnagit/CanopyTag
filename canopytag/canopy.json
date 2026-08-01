@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo_root": ".",
-  "last_modified_at": "2026-08-01T21:13:26.645Z",
+  "last_modified_at": "2026-08-01T21:33:44.686Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -58,6 +58,22 @@
         {"path": "src/cli/health.ts", "closeness": 4},
         {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3}
       ]
+    },
+    "src/shared/case-transform.ts": {
+      "title": "Snake/Case Metadata Boundary",
+      "summary": "Recursively converts committed snake_case metadata to runtime camelCase and back while preserving path-like map keys. This prevents filenames containing dots or slashes from being silently rewritten during persistence.",
+      "tags": ["schema", "persistence"],
+      "feature_id": "annotation-engine",
+      "authority_level": "specification",
+      "status": "active"
+    },
+    "src/shared/lifecycle.ts": {
+      "title": "Lifecycle Mark Validator And Interpreter",
+      "summary": "Validates untrusted lifecycle metadata without discarding malformed evidence, derives open, due, expired, and resolved states from an explicit date, and keeps event- or release-bound marks open until external resolution is recorded.",
+      "tags": ["schema", "lifecycle", "trust"],
+      "feature_id": "lifecycle-trust",
+      "authority_level": "specification",
+      "status": "active"
     },
     "src/shared/catalogue-search.ts": {
       "title": "Bounded Authored Catalogue Search",
@@ -130,6 +146,30 @@
         {"path": "src/backend/routes/comment.ts", "closeness": 4},
         {"path": "src/backend/routes/file.ts", "closeness": 4}
       ]
+    },
+    "src/backend/lib/agent-manifest.ts": {
+      "title": "Agent Review Manifest And Undo Engine",
+      "summary": "Persists the non-canonical agent review feed, normalizes legacy statuses, assigns manifest IDs, and applies agree, fix, or reject decisions. Rejection can restore prior metadata through recorded undo snapshots; suggestions remain unapplied.",
+      "tags": ["review-feed", "governance"],
+      "feature_id": "activity-review",
+      "authority_level": "specification",
+      "status": "active"
+    },
+    "src/backend/lib/merge.ts": {
+      "title": "Authored And Generated Metadata Projection",
+      "summary": "Builds the UI read model by merging optional repo-index enrichment with authored Canopy metadata, with authored values winning shared fields. It also normalizes relations and derives open-TODO pressure and authority-health signals.",
+      "tags": ["api", "retrieval", "trust"],
+      "feature_id": "web-ui",
+      "authority_level": "specification",
+      "status": "active"
+    },
+    "src/backend/lib/profile.ts": {
+      "title": "Local Human Attribution Profile",
+      "summary": "Resolves human attribution from explicit environment values, Git configuration, or OS identity, sanitizes it, and stores the profile in ignored profile.local.json. The profile stays local, while its chosen author signature is deliberately copied into shared review and edit attribution.",
+      "tags": ["governance", "privacy"],
+      "feature_id": "annotation-engine",
+      "authority_level": "specification",
+      "status": "active"
     },
     "src/cli/stats.ts": {
       "title": "canopytag stats — Orient Before You Dive",
@@ -270,9 +310,41 @@
         {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"}
       ]
     },
+    "src/backend/routes/config.ts": {
+      "title": "Active Repository Switch And Browse API",
+      "summary": "Switches the server's active repository, creates its Canopy directory, loads metadata, local identity, optional legacy index and tags, runs archive cleanup, then replaces shared server state. Its folder browser exposes host directory structure to the unauthenticated local API.",
+      "tags": ["api", "security", "local-first", "onboarding"],
+      "feature_id": "web-ui",
+      "authority_level": "specification",
+      "status": "active"
+    },
+    "src/backend/routes/index.ts": {
+      "title": "Merged Repository Index API",
+      "summary": "Returns one record for the union of generated repo-index paths and authored Canopy paths. Each record uses authored-over-generated precedence and derived TODO and authority-health signals from the merge projection.",
+      "tags": ["api", "retrieval", "trust"],
+      "feature_id": "web-ui",
+      "authority_level": "specification",
+      "status": "active"
+    },
+    "src/backend/routes/manifest.ts": {
+      "title": "Agent Activity Review API",
+      "summary": "Lists the agent manifest through manifest and activity aliases, then applies agree, fix, or reject decisions using the local human profile for attribution. Reject can invoke recorded undo behavior on already-applied changes.",
+      "tags": ["api", "review-feed", "governance", "editing"],
+      "feature_id": "activity-review",
+      "authority_level": "specification",
+      "status": "active"
+    },
+    "src/backend/routes/rescan.ts": {
+      "title": "Legacy Repo-Index Reload API",
+      "summary": "Reloads only the optional docs/_meta/repo_index.json compatibility index into server state. It does not rescan source files, reload Canopy metadata, refresh tags, or rebuild structural maps despite returning a generic rescan-complete message.",
+      "tags": ["api", "integration", "persistence"],
+      "feature_id": "web-ui",
+      "authority_level": "specification",
+      "status": "active"
+    },
     "src/backend/routes/file.ts": {
       "title": "File Metadata API",
-      "summary": "GET /api/file returns a merged record (repo_index + canopy + git lastModified) for any file path — even unannotated files get an empty detail panel. POST /api/file/meta upserts individual fields without touching todos or comments. Auto-stamps lastReviewed on every human edit. The primary write path for the UI's ScoreDisplay, TagEditor, SummaryEditor, and RelatedFiles components.",
+      "summary": "Primary per-file read and write API. Reads merge authored metadata with optional generated index and Git date; writes update selected annotation fields and stamp the current local human as reviewer, but authority and status values currently lack runtime enum validation.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -281,7 +353,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["api", "persistence"],
+      "tags": ["api", "persistence", "editing", "trust"],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [
@@ -342,7 +414,7 @@
     },
     "src/backend/routes/tree.ts": {
       "title": "File Tree API",
-      "summary": "GET /api/tree — walks the repo root and returns a recursive TreeNode structure for the sidebar. Delegates to tree-walker.ts. 10 lines of route code.",
+      "summary": "Read-only recursive filesystem tree for explorer navigation, delegated to the ignore-aware tree walker. It includes unannotated files and is therefore broader than the merged metadata index used by tables and the authored graph.",
       "validity": 4,
       "clarity": 4,
       "completeness": 3,
@@ -351,7 +423,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["api"],
+      "tags": ["api", "retrieval", "local-first"],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
@@ -361,7 +433,7 @@
     },
     "src/backend/routes/directory.ts": {
       "title": "Directory Summary API",
-      "summary": "GET /api/directory returns file count and open TODO count under a directory path. POST /api/directory/meta stores human-written directory summaries in canopy.directories. Used when clicking folders in the sidebar — gives navigational context without file-level detail.",
+      "summary": "Reads and edits human-authored directory shelf summaries while deriving file and open-TODO counts from annotated descendant paths. Counts therefore describe the current CanopyTag catalogue, not every file discovered by the filesystem tree.",
       "validity": 4,
       "clarity": 4,
       "completeness": 3,
@@ -370,7 +442,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["api"],
+      "tags": ["api", "editing", "retrieval"],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
@@ -380,7 +452,7 @@
     },
     "src/backend/routes/features.ts": {
       "title": "Feature CRUD API",
-      "summary": "GET/POST/DELETE for the features registry (canopy.features). Features group files by product concern — agents use feature_id to scope queries. Requires kebab-case ID + name on create. Simple passthrough to canopy.features with writeCanopy.",
+      "summary": "Reads, upserts, and deletes feature cards. POST keeps basic-card replacement semantics while preserving omitted canonical file, owner, open-question, and promotion fields from richer existing cards; explicit camelCase values persist through the snake_case write boundary.",
       "validity": 4,
       "clarity": 4,
       "completeness": 3,
@@ -389,7 +461,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["api"],
+      "tags": ["api", "editing", "schema", "retrieval"],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
@@ -398,9 +470,65 @@
         {"path": "src/shared/types.ts", "closeness": 3, "relation": "fed-by"}
       ]
     },
+    "src/frontend/components/GraphView.tsx": {
+      "title": "Authored Semantic Relationship Graph",
+      "summary": "Human visualization of authored CanopyTag feature clusters and related_files, with overview and focus modes, filtering, authority or activity coloring, and weighted layout. It does not derive import, call, or symbol topology; generated structure belongs to Cartographer.",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["frontend", "graph-traversal", "retrieval"],
+      "feature_id": "web-ui"
+    },
+    "src/frontend/components/TableView.tsx": {
+      "title": "Files, Scores, TODOs, And Activity Review Tables",
+      "summary": "Large multi-mode review surface for file inventory, quality scores, globally filterable TODOs, and attributed agent activity. It owns attention filters and agree, fix, or reject workflows, making it a human governance surface rather than a simple alternate list.",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["frontend", "quality", "review-feed", "editing"],
+      "feature_id": "web-ui"
+    },
+    "src/frontend/components/FileTree.tsx": {
+      "title": "Explorer File Tree And Activity Heat",
+      "summary": "Explorer navigation over discovered files and directories, enriched with TODO badges and optional seven-day activity heat. Search here filters the visible tree by path or name; it is not semantic or fuzzy catalogue retrieval.",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["frontend", "retrieval", "analytics"],
+      "feature_id": "web-ui"
+    },
+    "src/frontend/components/Settings.tsx": {
+      "title": "Local Identity And Settings Panel",
+      "summary": "Combines browser-local display preferences with repository-local archive and analytics settings plus an ignored local author profile. The profile file remains local, while its chosen author signature is intentionally recorded on shared edits and reviews.",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["frontend", "privacy", "local-first", "governance"],
+      "feature_id": "web-ui"
+    },
+    "src/frontend/components/WelcomeScreen.tsx": {
+      "title": "Repository Picker And Demo Entry",
+      "summary": "Repository connection and bundled-demo entry surface. It can browse local directories and instruct the backend to switch repository roots, so its convenience depends on the unauthenticated backend remaining loopback-only unless explicitly exposed.",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["frontend", "onboarding", "security", "local-first"],
+      "feature_id": "web-ui"
+    },
+    "src/frontend/lib/api.ts": {
+      "title": "Frontend Local API Facade",
+      "summary": "Typed frontend facade over the local Fastify API for repository switching, merged records, annotations, TODOs, comments, features, settings, analytics, profiles, and activity review. It centralizes transport but performs little runtime response validation.",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["frontend", "api", "editing", "review-feed"],
+      "feature_id": "web-ui"
+    },
+    "src/frontend/lib/authority.ts": {
+      "title": "Authority Display Vocabulary",
+      "summary": "Canonical UI copy and display mapping for the five-level authority hierarchy. It keeps compact labels and explanatory text consistent across score and table views; authority means conflict precedence, not a substitute for quality or freshness.",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["frontend", "trust", "quality"],
+      "feature_id": "web-ui"
+    },
     "src/frontend/App.tsx": {
       "title": "Root Layout & View Router",
-      "summary": "Top-level React component. Two modes: WelcomeScreen (not connected) or main layout (header + sidebar file tree + content area). Content area switches between Explorer view (FileDetail/DirectoryDetail) and TableView based on viewMode. Header shows repo name, save notice, settings, and view toggle. AgentBanner renders unacknowledged agent notes at the top of the content area.",
+      "summary": "Top-level connected-state and view router. It gates the repository picker, then coordinates explorer, table, authored graph, analytics, settings, demo guidance, save or error notices, and the agent-note banner.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -409,7 +537,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["frontend"],
+      "tags": ["frontend", "onboarding"],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
@@ -421,7 +549,7 @@
     },
     "src/frontend/components/FileDetail.tsx": {
       "title": "File Annotation Editor",
-      "summary": "The main editing surface for a single file's metadata. Two-column layout: left column has title (click-to-edit), summary (markdown), tags, I/O metadata, related files, TODOs, and comments. Right column (320px) has ScoreDisplay and FileDates. Composes 8 child components. Every field mutation calls POST /api/file/meta then refreshes the workspace store.",
+      "summary": "Primary per-file human editor for title, summary, tags, I/O notes, authored relationships, trust scores, TODOs, and comments. Mutations round-trip through the local API and refresh the merged record; it does not display or edit source code.",
       "validity": 4,
       "clarity": 4,
       "completeness": 4,
@@ -430,7 +558,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["frontend", "editing"],
+      "tags": ["frontend", "editing", "trust", "graph-traversal"],
       "feature_id": "web-ui",
       "todos": [
         {
@@ -453,7 +581,7 @@
     },
     "src/frontend/components/ScoreDisplay.tsx": {
       "title": "Quality Scores & Authority Level UI",
-      "summary": "Renders the four quality dimensions (validity, clarity, completeness, stability) as clickable 1-5 dot rows, plus the authority level as a stepped progression (Idea→Standard). Each dimension shows a tooltip description. Click a dot to set score; click the active dot to clear it. Includes the FileDates sub-component showing lastModified (git) vs lastReviewed (canopy) and a scoresReviewed toggle. Demonstrates the scoring model visually — good reference for understanding what the numbers mean.",
+      "summary": "Human editor for four quality dimensions, authority, reviewed state, and review-versus-Git dates. It uses local profile attribution stamped by the file route; marking scores reviewed is a deliberate trust action, not proof of runtime validity.",
       "validity": 4,
       "clarity": 4,
       "completeness": 4,
@@ -462,7 +590,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["frontend", "quality"],
+      "tags": ["frontend", "quality", "trust", "governance"],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
@@ -473,7 +601,7 @@
     },
     "src/frontend/stores/workspace.ts": {
       "title": "Global UI State (Zustand)",
-      "summary": "Single Zustand store managing: repo connection state, file tree, selected file/directory, annotation index, tags vocabulary, features, agent notes, view mode, and search. initialize() loads all data on connect. selectFile() fetches the merged record. flashSave() shows a 2.5s 'Saved → canopy.json' notice. Every UI component reads from here; every mutation refreshes through here.",
+      "summary": "Single Zustand coordination store for repository connection, tree and index, selection, features and tags, agent notes, analytics, profile, view mode, and save or error state. Initial load treats analytics as optional; file edits refresh the selected record and merged index.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -482,7 +610,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["frontend"],
+      "tags": ["frontend", "api", "local-first"],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [
@@ -724,6 +852,22 @@
       "tags": ["design", "retrieval", "graph-traversal", "agent-interface"],
       "feature_id": "docs"
     },
+    "src/cli/mcp.ts": {
+      "title": "Project-Local MCP Configuration Scaffolder",
+      "summary": "Merges a CanopyTag server entry into an existing .mcp.json while preserving unrelated servers, refuses to replace a differing CanopyTag entry without force, and supports a print-only preview. Generated configuration contains local absolute paths.",
+      "tags": ["cli", "mcp", "integration"],
+      "feature_id": "mcp-server",
+      "authority_level": "specification",
+      "status": "active"
+    },
+    "src/cli/tags.ts": {
+      "title": "Tag Vocabulary CLI",
+      "summary": "Exposes live in-use tag counts, substring filtering, and soft declared-vocabulary health checks through the shared tag hygiene engine. Its search filters tags already present on cards; it is not fuzzy catalogue retrieval.",
+      "tags": ["cli", "retrieval"],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active"
+    },
     "src/cli/shared.ts": {
       "title": "CLI Shared Utilities — The Foundation Layer",
       "summary": "Every CLI tool and MCP read tool imports from here. Provides resolveRepoRoot/resolveCanopyPath (canonical canopytag/canopy.json path), fileKind (extension+path→module/doc/test/config/asset/data), AUTHORITY_RANK for sorting, aggregateScore/warningCount for health checks, and the full filter+sort pipeline (FileFilters, parseBaseFilters, filterFiles, sortFiles). Defines 9 sort keys including 'attention' (composite: warnings + unreviewed + TODOs weighted by authority). Also handles git date integration for --git-after/--git-before filters.",
@@ -860,6 +1004,14 @@
         {"path": "src/mcp/tools/reads.ts", "closeness": 5},
         {"path": "src/mcp/tools/writes-registration.ts", "closeness": 5}
       ]
+    },
+    "src/mcp/tools/agent-manifest.ts": {
+      "title": "Agent Manifest Review Report",
+      "summary": "Renders pending or historical agent-review entries with proposed fields, staged-versus-applied state, freshness suggestions, TODOs, rationale, and outcomes. File and status filters are exact, and output ordering is deterministic by date then ID.",
+      "tags": ["mcp", "review-feed", "governance"],
+      "feature_id": "activity-review",
+      "authority_level": "specification",
+      "status": "active"
     },
     "src/mcp/tools/reads.ts": {
       "title": "MCP Read Tools — Agent Query Interface",
