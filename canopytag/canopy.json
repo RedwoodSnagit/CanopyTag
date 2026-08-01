@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo_root": ".",
-  "last_modified_at": "2026-08-01T20:04:14Z",
+  "last_modified_at": "2026-08-01T21:13:26.645Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -28,7 +28,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "standard",
       "status": "active",
-      "tags": ["schema", "core"],
+      "tags": ["schema", "trust"],
       "feature_id": "annotation-engine",
       "todos": [
         {
@@ -54,9 +54,37 @@
         }
       ],
       "related_files": [
-        {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "implements"},
-        {"path": "src/cli/health.ts", "closeness": 4, "relation": "implements"},
-        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3, "relation": "doc-for"}
+        {"path": "src/backend/lib/canopy.ts", "closeness": 5},
+        {"path": "src/cli/health.ts", "closeness": 4},
+        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3}
+      ]
+    },
+    "src/shared/catalogue-search.ts": {
+      "title": "Bounded Authored Catalogue Search",
+      "summary": "Builds a local weighted index over authored paths, titles, summaries, tags, feature context, open TODOs, active lifecycle reasons, and findings. Returns bounded matches with visible evidence while excluding source text and relationship paths.",
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["retrieval", "local-first", "trust"]
+    },
+    "src/shared/catalogue-search.test.ts": {
+      "summary": "Protects searchable-field inclusion and exclusion, title-over-comment ranking, conservative prefix and typo matching, visible match evidence, lifecycle-date handling, and the hard result ceiling for authored catalogue search.",
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["retrieval", "tests"],
+      "related_files": [
+        {"path": "src/shared/catalogue-search.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/cli/__tests__/query-cli.test.ts": {
+      "summary": "Protects strict query option parsing: unknown flags fail with a clear error, nonzero status, and no misleading all-files output.",
+      "feature_id": "cli-tools",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": ["cli", "retrieval"],
+      "related_files": [
+        {"path": "src/cli/query.ts", "relation": "test-of", "closeness": 4}
       ]
     },
     "src/backend/lib/canopy.ts": {
@@ -70,7 +98,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["core", "persistence"],
+      "tags": ["schema", "persistence"],
       "feature_id": "annotation-engine",
       "todos": [
         {
@@ -147,8 +175,8 @@
       ]
     },
     "src/cli/query.ts": {
-      "title": "canopytag query — Progressive Depth Navigation",
-      "summary": "Core agent navigation tool. Detail 1 shows top files by authority. Detail 2 adds tight one-hop connections and open TODOs. Detail 3+ progressively walks connections-of-connections while lowering the closeness threshold; detail 5 performs an unrestricted connection walk. Supports --relation filter (e.g. 'show me only implementations'). Self-documenting footer tells agents what's hidden and how to widen.",
+      "title": "canopytag query — Catalogue Search And Bounded Traversal",
+      "summary": "Primary catalogue router combining bounded authored-field search with structured feature, tag, kind, trust, date, and relation filters. Direct results expose match evidence; detail levels then expand the authored relationship graph within explicit hop and closeness bounds.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -157,7 +185,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["cli", "agent-interface", "graph-traversal"],
+      "tags": ["cli", "agent-interface", "retrieval", "graph-traversal"],
       "feature_id": "cli-tools",
       "todos": [
         {
@@ -186,7 +214,18 @@
         {"path": "src/shared/types.ts", "closeness": 5, "relation": "fed-by"},
         {"path": "src/cli/ls.ts", "closeness": 4},
         {"path": "src/cli/stats.ts", "closeness": 3},
-        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3, "relation": "doc-for"}
+        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3}
+      ]
+    },
+    "src/cli/__tests__/query.test.ts": {
+      "title": "Progressive Search And Relation Bounds",
+      "summary": "Protects query presentation, authored-field search integration, filter composition, result limits, and progressive relationship expansion whose hop and relation filters constrain graph noise. Search ranking details are tested in the shared catalogue-search suite.",
+      "tags": ["cli", "retrieval", "graph-traversal"],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/cli/query.ts", "relation": "test-of", "closeness": 5}
       ]
     },
     "src/cli/health.ts": {
@@ -370,7 +409,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["frontend", "layout"],
+      "tags": ["frontend"],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
@@ -423,7 +462,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["frontend", "scoring"],
+      "tags": ["frontend", "quality"],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
@@ -443,7 +482,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["frontend", "state"],
+      "tags": ["frontend"],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [
@@ -462,9 +501,17 @@
         {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"}
       ]
     },
+    "AGENTS.md": {
+      "title": "Contributor Operating Guide",
+      "summary": "Stable operating contract for contributors: architecture, product boundaries, shared-versus-local data rules, agent workflow, trust semantics, and validation. Read it before changing CanopyTag or its dogfood metadata; fast-changing feature details belong in nearby docs.",
+      "authority_level": "standard",
+      "status": "active",
+      "tags": ["docs", "agent-interface", "governance", "onboarding"],
+      "feature_id": "docs"
+    },
     "README.md": {
       "title": "Public-Facing Project Overview",
-      "summary": "What CanopyTag is, quick start, layout description, scoring conventions, authority levels, and the agent workflow. The first thing a human visitor reads. Documents `canopytag/canopy.json` as the shared repo-local metadata path and points local-only state to ignored files.",
+      "summary": "Public entry point for installation and the local CLI/MCP workflow. It presents bounded authored catalogue discovery and post-rg enrichment as complementary, keeps source as truth, and documents shared-versus-local data plus the loopback default for the unauthenticated backend.",
       "validity": 4,
       "clarity": 5,
       "completeness": 3,
@@ -501,15 +548,15 @@
       ],
       "comments": [],
       "related_files": [
-        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3, "relation": "doc-for"},
-        {"path": "docs/cli-cheatsheet.md", "closeness": 4, "relation": "doc-for"},
-        {"path": "docs/repo-local-data.md", "closeness": 5, "relation": "doc-for"},
+        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3},
+        {"path": "docs/cli-cheatsheet.md", "closeness": 4},
+        {"path": "docs/repo-local-data.md", "closeness": 5},
         {"path": "docs/roadmap.md", "closeness": 3}
       ]
     },
     "docs/cli-cheatsheet.md": {
       "title": "CLI Cheatsheet",
-      "summary": "Short public command reference for the agent workflow: orient with stats, search with rg, enrich with context, compare exact files for trust order, explore features with query, review TODOs/health/analytics, and install MCP/hooks. Complements the longer README by giving agents a compact operational sequence.",
+      "summary": "Compact agent sequence: use query --search for authored catalogue discovery, confirm source with rg, enrich paths with context, compare trust, traverse authored relations, then review TODO, health, or analytics signals.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
@@ -521,15 +568,15 @@
       "tags": ["docs", "cli", "agent-interface"],
       "feature_id": "docs",
       "related_files": [
-        {"path": "README.md", "closeness": 4, "relation": "doc-for"},
-        {"path": "docs/repo-local-data.md", "closeness": 3, "relation": "doc-for"},
+        {"path": "README.md", "closeness": 4},
+        {"path": "docs/repo-local-data.md", "closeness": 3},
         {"path": "src/cli/compare.ts", "closeness": 3, "relation": "doc-for"},
         {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3}
       ]
     },
     "docs/repo-local-data.md": {
       "title": "Repo-Local Data And Public Repo Hygiene",
-      "summary": "Canonical public guidance for what CanopyTag stores in the target repo, what should stay local-only, how to sanitize public repos, and how BOM-tolerant JSON reads fit with UTF-8-without-BOM writes. Explains that new canopy.json files keep repo_root blank and runtime tools use --repo, REPO_ROOT, cwd, or the web UI selection.",
+      "summary": "Canonical boundary between reviewable shared metadata and local-only identity, analytics, MCP, and hook configuration. It also defines portable repo-root resolution and the UTF-8 write versus BOM-tolerant read contract for CanopyTag JSON.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
@@ -543,8 +590,8 @@
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "README.md", "closeness": 5, "relation": "doc-for"},
-        {"path": "docs/cli-cheatsheet.md", "closeness": 3, "relation": "doc-for"},
+        {"path": "README.md", "closeness": 5},
+        {"path": "docs/cli-cheatsheet.md", "closeness": 3},
         {"path": "docs/roadmap.md", "closeness": 3}
       ]
     },
@@ -559,7 +606,7 @@
       "last_reviewed": "2026-04-25",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["docs", "roadmap", "decisions"],
+      "tags": ["docs", "strategy", "design"],
       "feature_id": "docs",
       "todos": [],
       "comments": [],
@@ -574,7 +621,7 @@
     },
     "docs/design/document-lifecycle-marks.md": {
       "title": "Document Lifecycle Marks Proposal",
-      "summary": "Design and staged implementation for optional lifecycle_marks metadata on file entries. The read-only slice now preserves marks, derives due/expired state, and warns through context, compare, and health; filters, reviewed writes/promotion, and UI editing remain proposed.",
+      "summary": "Design and staged implementation for lifecycle trust modifiers on file records. Preservation, strict validation, date-derived warnings, and context, compare, and health rendering work now; filters, reviewed writes, promotion, and UI editing remain proposed.",
       "validity": 4,
       "clarity": 4,
       "completeness": 4,
@@ -584,7 +631,7 @@
       "authority_level": "blueprint",
       "status": "draft",
       "tags": ["docs", "design", "schema", "lifecycle", "agent-interface"],
-      "feature_id": "docs",
+      "feature_id": "lifecycle-trust",
       "todos": [],
       "comments": [],
       "related_files": [
@@ -600,7 +647,7 @@
     },
     "docs/design/canopy-cartographer-integration.md": {
       "title": "CanopyCartographer Integration Proposal",
-      "summary": "Architecture proposal for keeping CanopyTag as the crafted semantic truth layer while a standalone CanopyCartographer emits generated map sidecars, adapter output, semantic recall, rankings, and promotable suggestions. Clarifies that the goal is agent comprehension and explainable routing rather than search for its own sake.",
+      "summary": "Proposes a provenance-rich sidecar boundary: CanopyTag owns authored meaning and current lexical catalogue search; Cartographer may add generated structure and optional local semantic recall only with evidence, freshness signals, staged promotion, and benchmarked benefit.",
       "validity": 4,
       "clarity": 4,
       "completeness": 3,
@@ -609,7 +656,7 @@
       "last_reviewed": "2026-06-26",
       "authority_level": "blueprint",
       "status": "draft",
-      "tags": ["docs", "design", "cartography", "agent-interface", "integration"],
+      "tags": ["design", "cartography", "integration", "retrieval"],
       "feature_id": "docs",
       "todos": [],
       "comments": [],
@@ -622,7 +669,7 @@
     },
     "docs/canopytag-vs-ripgrep.md": {
       "title": "Positioning: When Metadata Beats Text Search",
-      "summary": "Side-by-side comparison of agent workflows using ripgrep vs CanopyTag. Shows where each tool wins: ripgrep for symbols, imports, and specific text; CanopyTag for routing tasks, understanding context, finding next work, and progressive disclosure. Includes the key insight that they complement rather than compete. Also documents where CanopyTag's annotation cost must be justified by frequency of navigation.",
+      "summary": "Explains complementary retrieval: bounded authored catalogue discovery helps when names are uncertain, while rg confirms symbols, text, and source truth. CanopyTag adds trust, TODO, and semantic context only where maintained annotations repay their cost.",
       "validity": 4,
       "clarity": 4,
       "completeness": 4,
@@ -631,7 +678,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["docs", "positioning", "strategy"],
+      "tags": ["docs", "strategy", "retrieval"],
       "feature_id": "docs",
       "todos": [],
       "comments": [],
@@ -643,7 +690,7 @@
     },
     "docs/architecture-md-and-codeowners.md": {
       "title": "Where CanopyTag Fits in the Metadata Ecosystem",
-      "summary": "Reference doc comparing CanopyTag against ARCHITECTURE.md, CODEOWNERS, ADRs, AGENTS.md, and Notion/Confluence. Key distinction: those tools are prose for humans or rules for CI — CanopyTag is structured JSON for tooling and agents. Helps answer 'do I need CanopyTag if I already have X?' (yes, they coexist).",
+      "summary": "Positions CanopyTag beside ARCHITECTURE.md, AGENTS.md, ADRs, CODEOWNERS, and external wikis rather than as their replacement. The ecosystem comparison remains useful, but at least one illustrative command no longer matches the implemented CLI.",
       "validity": 4,
       "clarity": 4,
       "completeness": 3,
@@ -652,7 +699,7 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["docs", "positioning", "strategy"],
+      "tags": ["docs", "strategy"],
       "feature_id": "docs",
       "todos": [],
       "comments": [],
@@ -660,6 +707,22 @@
         {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 4},
         {"path": "docs/roadmap.md", "closeness": 3}
       ]
+    },
+    "docs/design/agent-analytics.md": {
+      "title": "Agent Analytics Design And Privacy Contract",
+      "summary": "Approved design and privacy contract for local agent-activity heat across the hook, analytics store, CLI, MCP increments, and UI. It is partly stale: the document says analytics are not API-exposed, while a read route now serves local analytics to the loopback UI.",
+      "authority_level": "blueprint",
+      "status": "active",
+      "tags": ["design", "analytics", "privacy", "local-first"],
+      "feature_id": "agent-analytics"
+    },
+    "docs/surprise-and-traversal.md": {
+      "title": "Surprise-Based Navigation And Feature Traversal",
+      "summary": "Design note for routing across feature boundaries and recording expectation violations that filenames cannot convey. It prioritizes lightweight gotchas and drift signals, explicitly rejects a probabilistic surprise engine, and leaves several traversal questions open.",
+      "authority_level": "blueprint",
+      "status": "draft",
+      "tags": ["design", "retrieval", "graph-traversal", "agent-interface"],
+      "feature_id": "docs"
     },
     "src/cli/shared.ts": {
       "title": "CLI Shared Utilities — The Foundation Layer",
@@ -672,7 +735,7 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["cli", "core"],
+      "tags": ["cli", "retrieval"],
       "feature_id": "cli-tools",
       "related_files": [
         {"path": "src/shared/types.ts", "closeness": 5, "relation": "fed-by"},
@@ -721,7 +784,7 @@
         {"path": "src/cli/context.ts", "closeness": 4},
         {"path": "src/cli/health.ts", "closeness": 4},
         {"path": "src/mcp/tools/reads.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "docs/cli-cheatsheet.md", "closeness": 3, "relation": "doc-for"}
+        {"path": "docs/cli-cheatsheet.md", "closeness": 3}
       ]
     },
     "src/cli/coverage.ts": {
@@ -791,7 +854,7 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["mcp", "core"],
+      "tags": ["mcp", "agent-interface"],
       "feature_id": "mcp-server",
       "related_files": [
         {"path": "src/mcp/tools/reads.ts", "closeness": 5},
@@ -893,7 +956,7 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["mcp", "core"],
+      "tags": ["mcp", "schema"],
       "feature_id": "mcp-server",
       "related_files": [
         {"path": "src/mcp/tools/writes.ts", "closeness": 5},
@@ -912,7 +975,7 @@
       "last_reviewed": "2026-08-01",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["api", "core"],
+      "tags": ["api", "security"],
       "feature_id": "web-ui",
       "related_files": [
         {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "fed-by"},
@@ -934,7 +997,7 @@
       "last_reviewed": "2026-08-01",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["api", "core", "security"],
+      "tags": ["api", "security"],
       "feature_id": "web-ui",
       "related_files": [
         {"path": "src/backend/server.ts", "closeness": 5},
@@ -962,7 +1025,7 @@
     },
     "src/backend/lib/analytics.ts": {
       "title": "Agent Activity Analytics Engine",
-      "summary": "Tracks per-file read/edit/write/canopyQuery counts with daily bucketing. Stores in .analytics.json alongside canopy.json. incrementFile() updates both total and daily bucket, tracks uniqueFilesAccessed per day. incrementDaily() counts grep/glob operations. engagementScore() computes a windowed score (reads + 2x edits + 2x writes + queries) for heatmap visualization. windowedTotals() provides the r/e/w/q breakdown for CLI output. Atomic writes via temp+rename pattern.",
+      "summary": "Tracks local per-file read, edit, write, and catalogue-query counts with daily bucketing in ignored .analytics.json. It supplies windowed heat and totals for CLI and UI views; behavioral frequency is a maintenance signal, not semantic authority.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
@@ -971,8 +1034,8 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["core", "persistence"],
-      "feature_id": "annotation-engine",
+      "tags": ["analytics", "persistence", "privacy", "local-first"],
+      "feature_id": "agent-analytics",
       "related_files": [
         {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"},
         {"path": "src/mcp/tools/reads.ts", "closeness": 3},
@@ -990,7 +1053,7 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["core"],
+      "tags": ["trust", "retrieval"],
       "feature_id": "annotation-engine",
       "related_files": [
         {"path": "src/cli/shared.ts", "closeness": 4}
@@ -1007,7 +1070,7 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["core"],
+      "tags": ["frontend", "api"],
       "feature_id": "web-ui",
       "related_files": [
         {"path": "src/backend/routes/tree.ts", "closeness": 5},
@@ -1018,54 +1081,94 @@
   },
   "directories": {
     "src/cli": {
-      "summary": "Agent-facing CLI tools: stats (orient), ls (browse), query (dive), context (prompt injection), health (validate), coverage (annotation gaps), todos (global TODO list). shared.ts is the foundation — filter/sort/fileKind utilities used by every tool. graph.ts powers fan-in/fan-out traversal. Each tool reads canopy.json directly — no server required."
+      "summary": "Serverless agent commands for orientation, filtering, context, comparison, TODOs, health, coverage, graph walks, analytics, and integration setup. Most read commands share filtering and sorting primitives, and several builders are reused by MCP."
     },
     "src/mcp": {
-      "summary": "MCP server for Claude Code integration. server.ts is a 17-line entry point. tools/reads.ts registers 10 read tools wrapping CLI build functions. tools/writes.ts has mutation handlers (annotate, comment, TODO, tag rename). tools/tags.ts manages live tag vocabulary with fuzzy duplicate detection."
+      "summary": "Stdio MCP adapter for compatible agents. Read tools reuse CLI builders; write tools record attribution and undo data, support staged suggestions, and expose tag and activity-review context without requiring the web server."
     },
     "src/backend/lib": {
-      "summary": "Core libraries: canopy.ts (read/write/archive), analytics.ts (agent activity tracking), git-info.ts (git date lookups), tree-walker.ts (file system tree for sidebar), case-transform.ts (snake↔camel), merge.ts (canopy merging)."
+      "summary": "Backend helpers for canopy persistence, agent manifests, local profiles, analytics, Git dates, merged records, filesystem trees, and network exposure. They support routes and CLI or MCP operations without owning UI policy."
     },
     "src/backend/routes": {
-      "summary": "Fastify REST API routes. file.ts and todo.ts handle most mutations. All routes share serverState (canopy, repoIndex, settings) via app.serverState."
+      "summary": "Fastify API surface for repository selection, tree and merged index reads, annotation mutations, settings, analytics, profiles, archives, and activity review. Routes share mutable per-repository state initialized by the server bootstrap."
     },
     "src/frontend/components": {
-      "summary": "React components for the annotation UI. FileDetail.tsx is the main editing surface; ScoreDisplay.tsx renders the scoring model; TableView.tsx provides the alternate flat-list view."
+      "summary": "Human catalogue interface spanning explorer editing, sortable file and review tables, authored relationship graphs, local analytics, repo selection, settings, and agent-activity review. Large view components coordinate through the shared workspace store."
     },
     "docs": {
-      "summary": "Positioning and strategy docs. roadmap.md is the public backlog, canopytag-vs-ripgrep.md is the core search-positioning argument, architecture-md-and-codeowners.md explains the ecosystem fit, and design docs capture bounded feature proposals such as document lifecycle marks."
+      "summary": "Public usage, positioning, operating boundaries, roadmap, and bounded design rationale. Stable guidance and exploratory blueprints coexist here, so authority, status, freshness, and lifecycle warnings must remain visible during retrieval."
+    },
+    "src/shared": {
+      "summary": "Cross-surface contracts and deterministic transformations for schema, case conversion, lifecycle interpretation, and bounded authored catalogue search. These modules define behavior reused by CLI, MCP, backend, and UI without owning source topology."
     }
   },
   "features": {
     "annotation-engine": {
       "name": "Annotation Engine",
-      "description": "Schema, persistence, and health checks — the core data model that everything reads from and writes to.",
-      "tags": ["core", "schema"],
-      "status": "active"
+      "description": "Authored metadata model and persistence boundary for summaries, trust, lifecycle, relationships, TODOs, comments, features, archives, and merged reads. Generated cartography should remain in provenance-rich sidecars rather than silently becoming canonical metadata.",
+      "tags": ["schema", "persistence", "trust"],
+      "status": "active",
+      "canonical_file": "src/shared/types.ts"
     },
     "cli-tools": {
       "name": "Agent-Facing CLI",
-      "description": "stats → ls → query → health: the progressive disclosure pipeline agents use to navigate a tagged repo without reading raw JSON.",
-      "tags": ["cli", "agent-interface"],
-      "status": "active"
+      "description": "Local command surface for orientation, bounded authored catalogue search, comparison, health, TODOs, coverage, analytics, MCP setup, and hooks. Commands verify repo-local metadata without requiring the web server, and MCP reuses several builders.",
+      "tags": ["cli", "agent-interface", "retrieval"],
+      "status": "active",
+      "canonical_file": "bin/canopytag.mjs"
     },
     "web-ui": {
       "name": "Web UI",
-      "description": "React + Fastify dashboard for humans to browse, score, and annotate files. Explorer view (tree + detail panel) and Table view (flat sortable lists).",
-      "tags": ["frontend", "api"],
-      "status": "active"
+      "description": "React and Fastify interface for browsing and editing annotations, tables, authored graphs, local analytics, activity review, profiles, and repository selection. Its unauthenticated local-repository backend must remain loopback-only unless exposure is explicit.",
+      "tags": ["frontend", "api", "editing", "security"],
+      "status": "active",
+      "canonical_file": "src/frontend/App.tsx"
     },
     "mcp-server": {
       "name": "MCP Server",
-      "description": "Local stdio-based MCP server that exposes CanopyTag tools to Claude Code agents. 10 read tools + 4 write tools, with tag vocabulary management and analytics tracking. Thin wrapper over CLI build functions — no logic duplication.",
-      "tags": ["mcp", "agent-interface"],
-      "status": "active"
+      "description": "Local stdio adapter exposing catalogue reads, semantic relationship traversal, attributed mutations, staged suggestions, and activity-review inspection to compatible agents. It reuses CLI builders where practical instead of becoming a second intelligence store.",
+      "tags": ["mcp", "agent-interface", "review-feed", "retrieval"],
+      "status": "active",
+      "canonical_file": "src/mcp/server.ts"
     },
     "docs": {
-      "name": "Documentation & Positioning",
-      "description": "README, roadmap, and strategy docs that explain what CanopyTag is, why it exists, and where it fits relative to ripgrep, Notion, ARCHITECTURE.md, etc.",
-      "tags": ["docs", "strategy"],
-      "status": "active"
+      "name": "Documentation And Positioning",
+      "description": "Public usage, contributor contracts, product positioning, lifecycle designs, and roadmap. README serves users, AGENTS governs contributors, and blueprint or draft design notes must not silently outrank current implementation.",
+      "tags": ["docs", "strategy", "governance", "onboarding"],
+      "status": "active",
+      "canonical_file": "README.md"
+    },
+    "lifecycle-trust": {
+      "name": "Lifecycle And Trust Signals",
+      "description": "Optional trust modifiers for temporary, provisional, superseded, condensation, and review-needed context. Read paths preserve and warn on authored marks without replacing authority, freshness, quality scores, or explicit human resolution.",
+      "tags": ["lifecycle", "trust", "schema", "agent-interface"],
+      "status": "active",
+      "canonical_file": "docs/design/document-lifecycle-marks.md",
+      "open_questions": [
+        "What reviewed write and promotion workflow should lifecycle marks use?",
+        "When should lifecycle filters and UI editing become default surfaces?"
+      ]
+    },
+    "agent-analytics": {
+      "name": "Local Agent Analytics",
+      "description": "Optional local activity heat from client hooks and CanopyTag queries. It helps humans inspect navigation patterns without uploading source or storing query strings; behavioral frequency is not treated as semantic authority.",
+      "tags": ["analytics", "privacy", "local-first", "agent-interface"],
+      "status": "active",
+      "canonical_file": "src/backend/lib/analytics.ts",
+      "open_questions": [
+        "Which analytics signals materially improve maintenance or retrieval decisions?",
+        "How should additional agent clients integrate without weakening privacy boundaries?"
+      ]
+    },
+    "activity-review": {
+      "name": "Agent Activity Review",
+      "description": "Attributed review feed for direct agent writes and non-canonical suggestions. Humans can agree, fix, or reject entries with undo context, separating immediately useful agent work from later confidence and governance decisions.",
+      "tags": ["review-feed", "agent-interface", "governance", "editing"],
+      "status": "active",
+      "canonical_file": "src/backend/lib/agent-manifest.ts",
+      "open_questions": [
+        "How should high-volume review remain fast without auto-promoting uncertain semantic changes?"
+      ]
     }
   }
 }

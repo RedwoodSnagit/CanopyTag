@@ -1,0 +1,31 @@
+{
+  "tags": {
+    "agent-interface": { "description": "Agent-facing query, context, mutation, or operating surfaces.", "aliases": ["agent-facing", "agent-tools"] },
+    "analytics": { "description": "Local activity heat and navigation behavior summaries.", "aliases": ["activity-heat", "usage-analytics"] },
+    "api": { "description": "HTTP routes and the frontend transport boundary.", "aliases": ["backend-api", "rest-api"] },
+    "cartography": { "description": "Generated repository maps, structural ranking, and non-canonical sidecars.", "aliases": ["repo-map", "repository-map"] },
+    "cli": { "description": "Command-line entrypoints and reusable command builders.", "aliases": ["command-line"] },
+    "design": { "description": "Proposed or explanatory feature rationale and architectural decisions.", "aliases": ["design-doc", "design-note", "decisions"] },
+    "docs": { "description": "Public documentation and contributor guidance.", "aliases": ["documentation"] },
+    "editing": { "description": "Human or agent mutation of shared catalogue metadata.", "aliases": ["editor"] },
+    "frontend": { "description": "React UI behavior and browser-local presentation state.", "aliases": ["ui", "frontend-layout", "frontend-state"] },
+    "governance": { "description": "Attribution, review, contribution, and operating rules.", "aliases": ["operating-rules", "provenance"] },
+    "graph-traversal": { "description": "Traversal of authored semantic relationships rather than language topology.", "aliases": ["graph-walk", "relationship-traversal"] },
+    "integration": { "description": "Boundaries between CanopyTag and clients, adapters, or generated artifacts.", "aliases": ["adapter"] },
+    "lifecycle": { "description": "Temporary, provisional, superseded, condensation, or review-needed metadata.", "aliases": ["document-lifecycle", "trust-lifecycle"] },
+    "local-first": { "description": "Repository-local behavior that does not require a hosted service.", "aliases": ["local-data"] },
+    "mcp": { "description": "Model Context Protocol server and tool integration.", "aliases": ["model-context-protocol"] },
+    "onboarding": { "description": "Installation, orientation, and first-use guidance.", "aliases": ["getting-started"] },
+    "persistence": { "description": "Durable metadata, archives, and disk-write safety.", "aliases": ["storage", "disk-io"] },
+    "privacy": { "description": "Data minimization and local-only or public-safe boundaries.", "aliases": ["data-privacy"] },
+    "public-release": { "description": "Packaging and repository hygiene for public distribution.", "aliases": ["publishing", "release-hygiene"] },
+    "quality": { "description": "Validity, clarity, completeness, stability, and quality-health interpretation.", "aliases": ["quality-health", "scoring", "quality-scores"] },
+    "retrieval": { "description": "Catalogue discovery, ranking, routing, and compact context selection.", "aliases": ["catalogue-search", "routing", "surprise"] },
+    "review-feed": { "description": "Attributed agent activity and suggestions awaiting or recording review.", "aliases": ["activity-review", "agent-review", "agent-manifest", "undo"] },
+    "schema": { "description": "CanopyTag data model and serialized metadata contract.", "aliases": ["data-model", "metadata-schema"] },
+    "security": { "description": "Network exposure, filesystem access, and write-safety boundaries.", "aliases": ["network-safety", "exposure-safety"] },
+    "strategy": { "description": "Product direction, economics, positioning, and roadmap.", "aliases": ["product-strategy", "positioning", "roadmap"] },
+    "tests": { "description": "Executable behavioral-contract coverage when a test-specific facet is genuinely useful.", "aliases": ["test", "testing"] },
+    "trust": { "description": "Authority, freshness, lifecycle, review, and provenance interpretation.", "aliases": ["authority", "trust-signals"] }
+  }
+}
