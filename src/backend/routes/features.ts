@@ -1,6 +1,23 @@
 import type { FastifyInstance } from 'fastify';
 import { writeCanopy } from '../lib/canopy';
-import type { Feature, FileStatus } from '../../shared/types';
+import type {
+  Author,
+  Feature,
+  FeaturePromotionStatus,
+  FileStatus,
+} from '../../shared/types';
+
+interface FeatureUpsertBody {
+  id: string;
+  name: string;
+  description?: string;
+  tags?: string[];
+  status?: FileStatus;
+  canonicalFile?: string;
+  owners?: Author[];
+  openQuestions?: string[];
+  promotionStatus?: FeaturePromotionStatus;
+}
 
 export async function featuresRoutes(app: FastifyInstance) {
   // GET /api/features
@@ -10,26 +27,36 @@ export async function featuresRoutes(app: FastifyInstance) {
   });
 
   // POST /api/features
-  app.post<{
-    Body: {
-      id: string;
-      name: string;
-      description?: string;
-      tags?: string[];
-      status?: FileStatus;
-    };
-  }>('/api/features', async (request, reply) => {
-    const { id, name, description, tags, status } = request.body;
+  app.post<{ Body: FeatureUpsertBody }>('/api/features', async (request, reply) => {
+    const {
+      id,
+      name,
+      description,
+      tags,
+      status,
+      canonicalFile,
+      owners,
+      openQuestions,
+      promotionStatus,
+    } = request.body;
     if (!id || !name) {
       return reply.status(400).send({ error: 'Missing required fields: id, name' });
     }
 
     const { canopy, canopyPath } = app.serverState;
+    const existing = canopy.features[id];
 
     const feature: Feature = { name };
     if (description !== undefined) feature.description = description;
     if (tags !== undefined) feature.tags = tags;
     if (status !== undefined) feature.status = status;
+
+    // POST retains its existing replacement semantics for the basic feature card,
+    // while richer routing/governance fields survive older, narrower clients.
+    feature.canonicalFile = canonicalFile ?? existing?.canonicalFile;
+    feature.owners = owners ?? existing?.owners;
+    feature.openQuestions = openQuestions ?? existing?.openQuestions;
+    feature.promotionStatus = promotionStatus ?? existing?.promotionStatus;
 
     canopy.features[id] = feature;
     writeCanopy(canopyPath, canopy);
