@@ -13,6 +13,49 @@ export type Confidence = 1 | 2 | 3 | 4 | 5;
 export type Difficulty = 1 | 2 | 3 | 4 | 5;
 export type ArchiveRetention = 'off' | '1d' | '7d' | '30d';
 
+// ---- Lifecycle marks ----
+// Optional, additive trust metadata for files whose interpretation depends on
+// review state, a temporary window, a successor, or another explicit boundary.
+
+export type LifecycleMarkType =
+  | 'temporary_contract'
+  | 'condensation_artifact'
+  | 'provisional'
+  | 'superseded'
+  | 'review_needed';
+
+export type LifecycleMarkState = 'open' | 'resolved';
+
+export type RetrievalTreatment =
+  | 'normal'
+  | 'include_with_warning'
+  | 'deprioritize'
+  | 'exclude_by_default';
+
+export type TemporalDependence =
+  | 'none'
+  | 'date_bound'
+  | 'event_bound'
+  | 'release_bound'
+  | 'version_bound';
+
+export interface LifecycleMark {
+  id: string;
+  type: LifecycleMarkType;
+  state?: LifecycleMarkState;
+  reason: string;
+  createdAt: string;
+  createdBy: Author;
+  reviewAfter?: string;
+  expiresAt?: string;
+  temporalDependence?: TemporalDependence;
+  temporalNote?: string;
+  resolvedAt?: string;
+  supersededBy?: string[];
+  sourceFiles?: string[];
+  retrievalTreatment?: RetrievalTreatment;
+}
+
 // ---- Relationship types for file connections ----
 // Used in relatedFiles to express HOW files are connected, not just THAT they are.
 // Enables filtered traversal: "show me implementations" vs "show me docs"
@@ -122,6 +165,7 @@ export interface FileCanopy {
   todos?: Todo[];
   comments?: Comment[];
   relatedFiles?: RelatedFileEntry[];
+  lifecycleMarks?: LifecycleMark[];
   locked?: boolean;  // When true, MCP write tools refuse metadata changes. Comments always allowed.
 }
 
@@ -323,6 +367,7 @@ export interface MergedFileRecord {
   todos: Todo[];
   comments: Comment[];
   relatedFiles: FileRelation[];
+  lifecycleMarks?: LifecycleMark[];
   openTodoCount: number;
   authorityHealth?: AuthorityHealth;
   highestPriority?: Priority;

@@ -42,6 +42,66 @@ describe('readCanopy', () => {
     expect(canopy.repoRoot).toBe('/test');
   });
 
+  it('reads lifecycle marks from snake_case and preserves them on write', () => {
+    fs.writeFileSync(TEST_CANOPY, JSON.stringify({
+      version: 1,
+      repo_root: '/test',
+      last_modified_at: '2026-07-01T00:00:00Z',
+      files: {
+        'docs/alpha.md': {
+          lifecycle_marks: [{
+            id: 'LM-001',
+            type: 'temporary_contract',
+            reason: 'Private alpha contract.',
+            created_at: '2026-07-01T00:00:00Z',
+            created_by: { role: 'human', name: 'reviewer' },
+            review_after: '2026-07-08',
+            expires_at: '2026-07-15',
+            temporal_dependence: 'date_bound',
+            retrieval_treatment: 'include_with_warning',
+          }],
+        },
+      },
+      features: {},
+    }));
+
+    const canopy = readCanopy(TEST_CANOPY);
+    const lifecycleMark = canopy.files['docs/alpha.md'].lifecycleMarks?.[0];
+    expect(lifecycleMark).toMatchObject({
+      id: 'LM-001',
+      createdAt: '2026-07-01T00:00:00Z',
+      reviewAfter: '2026-07-08',
+      temporalDependence: 'date_bound',
+      retrievalTreatment: 'include_with_warning',
+    });
+
+    writeCanopy(TEST_CANOPY, canopy);
+    const raw = JSON.parse(fs.readFileSync(TEST_CANOPY, 'utf-8'));
+    expect(raw.files['docs/alpha.md'].lifecycle_marks[0]).toMatchObject({
+      created_at: '2026-07-01T00:00:00Z',
+      review_after: '2026-07-08',
+      temporal_dependence: 'date_bound',
+      retrieval_treatment: 'include_with_warning',
+    });
+    expect(raw.files['docs/alpha.md'].lifecycleMarks).toBeUndefined();
+  });
+
+  it('preserves malformed lifecycle metadata for tolerant readers to report', () => {
+    const malformed = { unexpected: ['raw', 42, null] };
+    fs.writeFileSync(TEST_CANOPY, JSON.stringify({
+      version: 1,
+      files: { 'docs/broken.md': { lifecycle_marks: malformed } },
+      features: {},
+    }));
+
+    const canopy = readCanopy(TEST_CANOPY);
+    expect((canopy.files['docs/broken.md'] as any).lifecycleMarks).toEqual(malformed);
+
+    writeCanopy(TEST_CANOPY, canopy);
+    const raw = JSON.parse(fs.readFileSync(TEST_CANOPY, 'utf-8'));
+    expect(raw.files['docs/broken.md'].lifecycle_marks).toEqual(malformed);
+  });
+
   it('reads canopy files with a UTF-8 BOM', () => {
     fs.writeFileSync(TEST_CANOPY, '\uFEFF' + JSON.stringify({
       version: 1,

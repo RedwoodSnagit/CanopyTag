@@ -16,6 +16,11 @@ import type {
   Author, Canopy, Feature, FileCanopy, AuthorityLevel, RelationType, FileRelation,
 } from '../shared/types.js';
 import {
+  assessLifecycleMarks,
+  currentLocalIsoDay,
+  describeLifecycleAssessment,
+} from '../shared/lifecycle.js';
+import {
   resolveCanopyPath, resolveRepoRoot, truncate, authorityScore,
   CORE_OPTIONS,
   filterFiles, isSurprising, fetchGitDates, collectFreshnessPaths, getFreshnessStatus, freshnessLabel,
@@ -102,6 +107,7 @@ function renderFileContext(
   fc: FileCanopy,
   canopy: Canopy,
   depth: number,
+  asOfDate: string,
   gitDates?: Map<string, string>,
 ): string[] {
   const lines: string[] = [];
@@ -117,6 +123,14 @@ function renderFileContext(
     lines.push(`  ${fc.summary}`);
   }
   lines.push(`  Review: ${review}`);
+
+  // Lifecycle marks are authority modifiers, not replacements for authority.
+  // Resolved marks stay preserved in metadata but are hidden from default reads.
+  const lifecycleWarnings = assessLifecycleMarks(fc.lifecycleMarks, asOfDate)
+    .filter(assessment => assessment.state !== 'resolved');
+  for (const assessment of lifecycleWarnings) {
+    lines.push(`  !! Lifecycle: ${describeLifecycleAssessment(assessment)}`);
+  }
 
   // Dimension warnings
   const warnings = getDimensionWarnings(fc);
@@ -185,10 +199,12 @@ export interface ContextOptions {
   surprising?: boolean;  // filter to files tagged 'surprising' or with finding comments
   repoRoot?: string;
   gitDates?: Map<string, string>;
+  asOfDate?: string;
 }
 
 export function buildContext(canopy: Canopy, opts: ContextOptions): string {
   const depth = opts.depth ?? 4;  // default: tight connections
+  const asOfDate = opts.asOfDate ?? currentLocalIsoDay();
   const lines: string[] = [];
 
   const resolveGitDates = (entries: [string, FileCanopy][]): Map<string, string> | undefined => {
@@ -210,7 +226,7 @@ export function buildContext(canopy: Canopy, opts: ContextOptions): string {
     for (const filePath of opts.files) {
       const fc = canopy.files[filePath];
       if (fc) {
-        lines.push(...renderFileContext(filePath, fc, canopy, depth, gitDates));
+        lines.push(...renderFileContext(filePath, fc, canopy, depth, asOfDate, gitDates));
         lines.push('');
         found++;
       } else {
@@ -232,7 +248,7 @@ export function buildContext(canopy: Canopy, opts: ContextOptions): string {
       return `No annotation found for: ${opts.file}`;
     }
     const gitDates = resolveGitDates([[opts.file, fc]]);
-    lines.push(...renderFileContext(opts.file, fc, canopy, depth, gitDates));
+    lines.push(...renderFileContext(opts.file, fc, canopy, depth, asOfDate, gitDates));
     return lines.join('\n');
   }
 
@@ -319,7 +335,7 @@ export function buildContext(canopy: Canopy, opts: ContextOptions): string {
 
     // Render each file
     for (const [filePath, fc] of featureFiles) {
-      lines.push(...renderFileContext(filePath, fc, canopy, depth, gitDates));
+      lines.push(...renderFileContext(filePath, fc, canopy, depth, asOfDate, gitDates));
       lines.push('');
     }
 
@@ -367,7 +383,8 @@ Usage:
   canopytag context --feature <name>          # feature context (all files)
   canopytag context <file> --depth 3          # include wider relations
 
-Surfaces: summary, dimension warnings, open TODOs, relations, tags.
+Surfaces: summary, active or invalid lifecycle warnings, dimension warnings,
+open TODOs, relations, and tags. Resolved lifecycle marks stay hidden.
 Dimension warnings flag scores below expected minimums for the file's
 authority level (e.g. completeness=2 on a specification).
 Unannotated files are reported as "not annotated" rather than silently skipped.

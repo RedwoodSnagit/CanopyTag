@@ -1,7 +1,7 @@
 # CanopyTag CLI Cheatsheet
 
 Use CanopyTag after normal repo search. `rg` finds candidate files; CanopyTag
-adds authority, freshness, quality, TODOs, and relationship context.
+adds authority, freshness, lifecycle, quality, TODOs, and relationship context.
 
 ## Start Here
 
@@ -19,7 +19,9 @@ canopytag context src/auth/middleware.ts src/auth/tokens.ts
 ```
 
 Use `context` when you already have paths and want compact agent-ready context:
-summary, authority, review status, warnings, TODOs, relations, and tags.
+summary, authority, review status, lifecycle warnings, quality warnings, TODOs,
+relations, and tags. Malformed lifecycle metadata is preserved and reported as
+`INVALID` instead of being silently ignored.
 
 ## Compare Trust Between Files
 
@@ -33,6 +35,8 @@ one should win a conflict. It returns:
 - Authority rank: conflict precedence from `1-Idea` to `5-Standard`
 - Quality: validity + clarity + completeness + stability, out of 20
 - Review freshness: `Fresh`, `Review Drift`, or `Unknown`
+- Lifecycle state: `OPEN`, `REVIEW DUE`, `EXPIRED`, or `INVALID`; resolved marks
+  are preserved but hidden from default reads
 - Warning count and TODO pressure
 - Trust order across the requested files
 
@@ -60,6 +64,9 @@ canopytag todos --priority 2
 canopytag health
 canopytag analytics --days 7
 ```
+
+`health` includes due and expired lifecycle marks, open `review_needed` marks,
+and malformed lifecycle metadata alongside authority/quality findings.
 
 ## Install Agent Hooks
 

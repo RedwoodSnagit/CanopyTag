@@ -1,8 +1,12 @@
 # Document Lifecycle Marks
 
 **Date:** 2026-06-24
-**Status:** proposed
-**Scope:** feature design only. No runtime behavior is implemented by this doc.
+**Status:** partially implemented
+**Scope:** feature design plus the first read-only lifecycle slice
+
+Types, persistence round-tripping, derived due/expired state, and warnings in
+`context`, `compare`, and `health` are implemented. Lifecycle filters, direct
+writes, promotion, and UI editing remain proposed.
 
 ## Summary
 
@@ -325,8 +329,20 @@ Lifecycle marks need date-aware behavior without background jobs:
   metadata.
 - CanopyTag should never auto-delete or auto-resolve marks.
 
-Date filters should accept the same ISO date style as existing tagged/git date
-filters.
+`review_after` and `expires_at` are strict calendar dates in `YYYY-MM-DD`
+format. Datetimes and loosely parseable date strings are invalid. Interactive
+CLI and MCP reads compare them with the local calendar date of the machine
+running CanopyTag, because these marks describe human review days rather than
+UTC instants. This avoids a UTC rollover changing a mark's state during the
+previous local evening. Pure builders accept an explicit as-of date so tests
+and downstream callers remain deterministic.
+
+Malformed `lifecycle_marks` containers, entries, fields, or calendar dates are
+preserved in `canopy.json` and surfaced as `INVALID` findings. Read commands do
+not coerce, delete, or repair authored metadata.
+
+This strict lifecycle-date policy is deliberately narrower than the existing
+tagged/git filter inputs, which remain unchanged for backward compatibility.
 
 Not every temporal dependency is date-aware. Event-, release-, and version-bound
 marks remain open until they are resolved or updated by a human or agent with

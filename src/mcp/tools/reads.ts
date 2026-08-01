@@ -152,7 +152,7 @@ export function registerReadTools(server: McpServer): void {
   // 4. canopytag_context
   server.tool(
     'canopytag_context',
-    'Compact context block for a file or feature. Inject into prompts.',
+    'Compact context block for a file or feature, including active or invalid lifecycle warnings. Resolved lifecycle marks stay hidden. Inject into prompts.',
     {
       file: z.string().optional().describe('Single file path'),
       files: z.array(z.string()).optional().describe('Multiple file paths'),
@@ -189,7 +189,7 @@ export function registerReadTools(server: McpServer): void {
   // 5. canopytag_compare
   server.tool(
     'canopytag_compare',
-    'Compare exact files by authority, quality composite, freshness, warnings, TODO pressure, and trust order. Use when deciding which source to trust between documents.',
+    'Compare exact files by authority, quality composite, freshness, active or invalid lifecycle warnings, TODO pressure, and trust order. Use when deciding which source to trust between documents.',
     {
       files: z.array(z.string()).min(1).describe('File paths to compare'),
     },
@@ -238,7 +238,7 @@ export function registerReadTools(server: McpServer): void {
   // 7. canopytag_health
   server.tool(
     'canopytag_health',
-    'Find authority/quality mismatches -- high-authority files with low scores.',
+    'Find authority/quality mismatches plus due, expired, review-needed, or invalid lifecycle metadata.',
     {
       ...filterParams,
       all: z.boolean().optional().describe('Show all files including healthy ones'),

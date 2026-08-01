@@ -32,7 +32,7 @@ should I read next?
 - A CLI for orientation, search-result enrichment, TODOs, health checks, and analytics
 - An MCP server so agents can read and write repo context directly
 - File relationships and feature clustering so agents can follow meaning, not just folders
-- Authority, quality, freshness, and attention signals so agents know what to trust
+- Authority, quality, freshness, lifecycle, and attention signals so agents know what to trust
 - Hot spots from recent reads, writes, and searches
 - A review feed for agent-authored metadata changes
 - A Claude Code analytics hook for recent file/search heat
@@ -234,7 +234,7 @@ canopytag todos --priority 2             # P1 and P2
 canopytag tags                           # browse tag usage
 canopytag tags --health                  # soft tag hygiene report
 
-canopytag health                         # authority vs quality mismatches
+canopytag health                         # authority/quality and lifecycle attention
 canopytag analytics                      # recent agent/search heat
 canopytag coverage                       # annotation coverage report
 canopytag mcp --repo /path/to/repo       # write project-local MCP config
@@ -310,7 +310,7 @@ or to a client settings file that supports `mcpServers`:
 | `canopytag_context` | Compact context for files or features |
 | `canopytag_compare` | Compare exact files by authority, quality, review, and trust order |
 | `canopytag_todos` | Open TODOs across the repo |
-| `canopytag_health` | Authority vs quality mismatch detection |
+| `canopytag_health` | Authority/quality mismatches and lifecycle attention |
 | `canopytag_tags` | Browse tag usage and run soft tag hygiene checks |
 | `canopytag_manifest` | Inspect the agent activity/review feed |
 | `canopytag_fan_in` | Reverse relationship graph |
@@ -375,6 +375,7 @@ Each file entry in `canopy.json` can include:
 | `todos` | Work items with priority, tags, difficulty, and author |
 | `comments` | Human and agent observations with type and confidence |
 | `related_files` | Typed file relationships with closeness from 1 to 5 |
+| `lifecycle_marks` | Temporary, provisional, superseded, condensation, and review-needed trust modifiers |
 | `io_metadata` | Inputs and outputs for scripts and entrypoints |
 
 The top-level `features` map is intentionally lightweight. Use it to name a
@@ -417,6 +418,12 @@ Freshness is separate from status:
 `Stale` is currently a documented/manual concept. There is not yet a separate
 persisted stale override editor, so UI, CLI, and MCP currently emit `Fresh`,
 `Review Drift`, and `Unknown`.
+
+Lifecycle marks are separate from freshness, status, and authority. The first
+read-only slice preserves optional marks in `canopy.json`, derives open, due,
+expired, or resolved state at read time, and surfaces active warnings in
+`context`, `compare`, and `health`. Direct mark writes, filters, promotion, and
+UI editing are not implemented yet.
 
 ## Honest Scope
 

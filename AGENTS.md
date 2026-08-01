@@ -125,6 +125,12 @@ Freshness is separate from lifecycle status. The current operational labels are
 `Fresh`, `Review Drift`, and `Unknown`. Manual `Stale` remains a future/pending
 concept.
 
+Optional lifecycle marks are read-only trust modifiers for temporary,
+provisional, superseded, condensation, and review-needed context. `context`,
+`compare`, and `health` surface active warnings. Until explicit write and
+promotion workflows exist, agents should stage proposed lifecycle changes in
+`agent_manifest.json` rather than editing them through a write tool.
+
 ## When You Change The Repo
 
 - Keep README, `docs/cli-cheatsheet.md`, and `docs/roadmap.md` aligned with new

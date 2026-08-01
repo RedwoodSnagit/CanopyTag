@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo_root": ".",
-  "last_modified_at": "2026-06-26T00:00:00Z",
+  "last_modified_at": "2026-08-01T00:00:00Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -574,13 +574,13 @@
     },
     "docs/design/document-lifecycle-marks.md": {
       "title": "Document Lifecycle Marks Proposal",
-      "summary": "Design proposal for optional lifecycle_marks metadata on file entries. Covers temporary contracts, temporal dependence on dates/events/releases/versions, condensation artifacts, provisional docs, superseded docs, and review-needed docs, plus query grouping, RAG treatment, authority interaction, expiry/review dates, migration, and UI/CLI/MCP implications.",
+      "summary": "Design and staged implementation for optional lifecycle_marks metadata on file entries. The read-only slice now preserves marks, derives due/expired state, and warns through context, compare, and health; filters, reviewed writes/promotion, and UI editing remain proposed.",
       "validity": 4,
       "clarity": 4,
       "completeness": 4,
       "stability": 2,
       "scores_reviewed": false,
-      "last_reviewed": "2026-06-24",
+      "last_reviewed": "2026-08-01",
       "authority_level": "blueprint",
       "status": "draft",
       "tags": ["docs", "design", "schema", "lifecycle", "agent-interface"],
@@ -589,6 +589,10 @@
       "comments": [],
       "related_files": [
         {"path": "src/shared/types.ts", "closeness": 5, "relation": "doc-for"},
+        {"path": "src/shared/lifecycle.ts", "closeness": 5, "relation": "doc-for"},
+        {"path": "src/cli/context.ts", "closeness": 4, "relation": "doc-for"},
+        {"path": "src/cli/compare.ts", "closeness": 4, "relation": "doc-for"},
+        {"path": "src/cli/health.ts", "closeness": 4, "relation": "doc-for"},
         {"path": "docs/roadmap.md", "closeness": 4},
         {"path": "docs/surprise-and-traversal.md", "closeness": 3},
         {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3}

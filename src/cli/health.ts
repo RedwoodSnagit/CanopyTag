@@ -15,6 +15,12 @@ import { parseArgs } from 'node:util';
 import { readCanopy } from '../backend/lib/canopy.js';
 import { checkAuthorityHealth } from '../shared/types.js';
 import type { Canopy, AuthorityHealth } from '../shared/types.js';
+import type { LifecycleAssessment } from '../shared/lifecycle.js';
+import {
+  assessLifecycleMarks,
+  currentLocalIsoDay,
+  describeLifecycleAssessment,
+} from '../shared/lifecycle.js';
 import {
   resolveCanopyPath,
   CORE_OPTIONS, FILTER_OPTIONS,
@@ -31,20 +37,38 @@ function statusIcon(status: AuthorityHealth['status']): string {
   }
 }
 
-export function buildHealth(canopy: Canopy, filters: FileFilters, showAll: boolean, repoRoot?: string): string {
+export function buildHealth(
+  canopy: Canopy,
+  filters: FileFilters,
+  showAll: boolean,
+  _repoRoot?: string,
+  asOfDate: string = currentLocalIsoDay(),
+): string {
   const lines: string[] = [];
   const entries = filterFiles(Object.entries(canopy.files), filters);
 
   const results: { file: string; health: AuthorityHealth }[] = [];
+  const lifecycleFindings: { file: string; assessment: LifecycleAssessment }[] = [];
 
   for (const [filePath, fc] of entries) {
     const health = checkAuthorityHealth(fc);
-    if (!health) continue;  // no authority level set
-    if (!showAll && health.status === 'healthy') continue;
-    results.push({ file: filePath, health });
+    if (health && (showAll || health.status !== 'healthy')) {
+      results.push({ file: filePath, health });
+    }
+
+    for (const assessment of assessLifecycleMarks(fc.lifecycleMarks, asOfDate)) {
+      if (assessment.state === 'resolved') continue;
+      const needsAttention = assessment.state === 'invalid'
+        || assessment.state === 'expired'
+        || assessment.state === 'due'
+        || assessment.mark?.type === 'review_needed';
+      if (showAll || needsAttention) {
+        lifecycleFindings.push({ file: filePath, assessment });
+      }
+    }
   }
 
-  if (results.length === 0) {
+  if (results.length === 0 && lifecycleFindings.length === 0) {
     return 'All annotated files with authority levels are healthy.';
   }
 
@@ -52,18 +76,20 @@ export function buildHealth(canopy: Canopy, filters: FileFilters, showAll: boole
   const statusOrder: Record<string, number> = { underscored: 0, 'promotion-candidate': 1, unscored: 2, healthy: 3 };
   results.sort((a, b) => (statusOrder[a.health.status] ?? 9) - (statusOrder[b.health.status] ?? 9));
 
-  const fileCol = Math.max(4, ...results.map(r => r.file.length));
+  if (results.length > 0) {
+    const fileCol = Math.max(4, ...results.map(r => r.file.length));
 
-  lines.push(`${''.padEnd(2)}  ${'FILE'.padEnd(fileCol)}  AUTH           SCORE  EXPECTED`);
-  lines.push('-'.repeat(2 + 2 + fileCol + 2 + 13 + 2 + 5 + 2 + 8));
+    lines.push(`${''.padEnd(2)}  ${'FILE'.padEnd(fileCol)}  AUTH           SCORE  EXPECTED`);
+    lines.push('-'.repeat(2 + 2 + fileCol + 2 + 13 + 2 + 5 + 2 + 8));
 
-  for (const { file, health } of results) {
-    const icon = statusIcon(health.status);
-    const scoreStr = health.status === 'unscored' ? '  -' : String(health.aggregate).padStart(3);
-    const rangeStr = `${health.expectedRange[0]}-${health.expectedRange[1]}`;
-    lines.push(
-      `${icon}  ${file.padEnd(fileCol)}  ${health.authorityLevel.padEnd(13)}  ${scoreStr}  ${rangeStr}`
-    );
+    for (const { file, health } of results) {
+      const icon = statusIcon(health.status);
+      const scoreStr = health.status === 'unscored' ? '  -' : String(health.aggregate).padStart(3);
+      const rangeStr = `${health.expectedRange[0]}-${health.expectedRange[1]}`;
+      lines.push(
+        `${icon}  ${file.padEnd(fileCol)}  ${health.authorityLevel.padEnd(13)}  ${scoreStr}  ${rangeStr}`
+      );
+    }
   }
 
   // Summary
@@ -74,6 +100,23 @@ export function buildHealth(canopy: Canopy, filters: FileFilters, showAll: boole
   if (counts['promotion-candidate'] > 0) parts.push(`${counts['promotion-candidate']} promotion candidates`);
   if (counts.unscored > 0) parts.push(`${counts.unscored} unscored`);
   if (parts.length > 0) lines.push(`\n${parts.join(', ')}`);
+
+  if (lifecycleFindings.length > 0) {
+    const stateOrder = { invalid: 0, expired: 1, due: 2, open: 3, resolved: 4 };
+    lifecycleFindings.sort((a, b) => {
+      const byState = stateOrder[a.assessment.state] - stateOrder[b.assessment.state];
+      return byState !== 0 ? byState : a.file.localeCompare(b.file);
+    });
+
+    if (lines.length > 0) lines.push('');
+    lines.push('Lifecycle findings:');
+    for (const { file, assessment } of lifecycleFindings) {
+      const icon = assessment.state === 'invalid' || assessment.state === 'expired'
+        ? '!!'
+        : assessment.state === 'due' ? '??' : '--';
+      lines.push(`${icon}  ${file}: ${describeLifecycleAssessment(assessment)}`);
+    }
+  }
 
   return lines.join('\n');
 }
@@ -90,7 +133,8 @@ function run() {
   if (values.help) {
     console.log(`canopytag health — authority vs quality health check
 
-Shows files where declared authority doesn't match quality scores.
+Shows files where declared authority doesn't match quality scores, plus due or
+expired lifecycle marks and open review-needed marks.
   !! = underscored (spec-level file with low quality — needs fortifying)
   ^^ = promotion candidate (high quality for its authority level)
   ?? = unscored (has authority but no quality scores yet)

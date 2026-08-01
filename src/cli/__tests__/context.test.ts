@@ -210,6 +210,59 @@ describe('buildContext — file mode', () => {
     const out = buildContext(TEST_CANOPY, { file: 'nonexistent.ts' });
     expect(out).toContain('No annotation found');
   });
+
+  it('renders active lifecycle warnings and hides resolved marks', () => {
+    const canopy: Canopy = {
+      ...TEST_CANOPY,
+      files: {
+        ...TEST_CANOPY.files,
+        'docs/alpha.md': {
+          summary: 'Temporary alpha contract.',
+          authorityLevel: 'specification',
+          lifecycleMarks: [
+            {
+              id: 'LM-001',
+              type: 'temporary_contract',
+              reason: 'Review the alpha behavior after onboarding.',
+              createdAt: '2026-07-01T00:00:00Z',
+              createdBy: 'human',
+              expiresAt: '2026-07-15',
+            },
+            {
+              id: 'LM-002',
+              type: 'review_needed',
+              state: 'resolved',
+              reason: 'Historical review request.',
+              createdAt: '2026-06-01T00:00:00Z',
+              createdBy: 'human',
+              resolvedAt: '2026-06-15T00:00:00Z',
+            },
+          ],
+        },
+      },
+    };
+
+    const out = buildContext(canopy, { file: 'docs/alpha.md', asOfDate: '2026-07-16' });
+    expect(out).toContain('Lifecycle: EXPIRED temporary contract [LM-001]');
+    expect(out).toContain('Review the alpha behavior after onboarding.');
+    expect(out).not.toContain('LM-002');
+  });
+
+  it('renders malformed lifecycle metadata as INVALID instead of throwing', () => {
+    const canopy: Canopy = {
+      ...TEST_CANOPY,
+      files: {
+        ...TEST_CANOPY.files,
+        'docs/broken.md': {
+          lifecycleMarks: { unexpected: true } as any,
+        },
+      },
+    };
+
+    const out = buildContext(canopy, { file: 'docs/broken.md', asOfDate: '2026-07-16' });
+    expect(out).toContain('Lifecycle: INVALID lifecycle mark');
+    expect(out).toContain('lifecycle_marks must be an array; received object');
+  });
 });
 
 describe('buildContext — feature mode', () => {

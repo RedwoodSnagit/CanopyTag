@@ -15,6 +15,8 @@ Working now:
   `analytics`, `coverage`, `mcp`, and `hook`
 - MCP read/write tools for agent integration
 - Agent activity/review feed in `agent_manifest.json`
+- Read-only lifecycle marks with due/expired derivation and warnings in
+  `context`, `compare`, and `health`
 - Local human profile in ignored `profile.local.json`
 - Claude Code analytics hook for read/edit/search heat
 - `forest_repo_demo` bundled demo repo
@@ -41,9 +43,9 @@ Working now:
 
 - Add a persisted manual `Stale` override/editor if the freshness workflow needs
   a human-confirmed stale state beyond `Review Drift`.
-- Evaluate [document lifecycle marks](./design/document-lifecycle-marks.md) for
-  temporary contracts, condensation artifacts, provisional docs, superseded docs,
-  and review-needed docs.
+- Complete the staged [document lifecycle marks](./design/document-lifecycle-marks.md)
+  workflow with filters, reviewed writes/promotion, and UI support. The first
+  read-only warning slice is implemented.
 - Continue graph hardening on larger real repos: dense labels, edge priority,
   cluster heuristics, and saved graph presets only if repeated workflows emerge.
 - Improve Activity review ergonomics for high-speed human review of agent writes.

@@ -11,6 +11,12 @@ import path from 'node:path';
 import { readCanopy } from '../backend/lib/canopy.js';
 import { trackCanopyQueries } from '../backend/lib/analytics.js';
 import type { Canopy, FileCanopy } from '../shared/types.js';
+import type { LifecycleAssessment } from '../shared/lifecycle.js';
+import {
+  assessLifecycleMarks,
+  currentLocalIsoDay,
+  describeLifecycleAssessment,
+} from '../shared/lifecycle.js';
 import {
   CORE_OPTIONS,
   aggregateScore,
@@ -53,6 +59,7 @@ interface CompareRow {
   todos: number;
   highestPriority: number;
   review: string;
+  lifecycle: LifecycleAssessment[];
 }
 
 function dimensionScore(fc: FileCanopy, dimension: Dimension): number | undefined {
@@ -89,7 +96,12 @@ function dimensionsLabel(fc: FileCanopy): string {
   return parts.map(([label, value]) => `${label}:${value ?? '-'}`).join(' ');
 }
 
-function makeRow(filePath: string, fc: FileCanopy, gitDates?: Map<string, string>): CompareRow {
+function makeRow(
+  filePath: string,
+  fc: FileCanopy,
+  asOfDate: string,
+  gitDates?: Map<string, string>,
+): CompareRow {
   return {
     filePath,
     fc,
@@ -100,7 +112,23 @@ function makeRow(filePath: string, fc: FileCanopy, gitDates?: Map<string, string
     todos: openTodoCount(fc),
     highestPriority: highestTodoPriority(fc),
     review: freshnessLabel(getFreshnessStatus(filePath, fc, gitDates)),
+    lifecycle: assessLifecycleMarks(fc.lifecycleMarks, asOfDate)
+      .filter(assessment => assessment.state !== 'resolved'),
   };
+}
+
+function lifecycleLabel(row: CompareRow): string {
+  if (row.lifecycle.length === 0) return '-';
+
+  const counts = { invalid: 0, expired: 0, due: 0, open: 0 };
+  for (const assessment of row.lifecycle) {
+    if (assessment.state !== 'resolved') counts[assessment.state]++;
+  }
+
+  return (['invalid', 'expired', 'due', 'open'] as const)
+    .filter(state => counts[state] > 0)
+    .map(state => `${state}:${counts[state]}`)
+    .join(',');
 }
 
 function compareTrust(a: CompareRow, b: CompareRow): number {
@@ -130,7 +158,12 @@ function normalizeRequestedPath(filePath: string, repoRoot?: string): string {
   return relativePath.replace(/\\/g, '/').replace(/^\.\//, '');
 }
 
-export function buildCompare(canopy: Canopy, filePaths: string[], repoRoot?: string): CompareResult {
+export function buildCompare(
+  canopy: Canopy,
+  filePaths: string[],
+  repoRoot?: string,
+  asOfDate: string = currentLocalIsoDay(),
+): CompareResult {
   const requested = [...new Set(filePaths.map(filePath => normalizeRequestedPath(filePath, repoRoot)))];
   if (requested.length === 0) {
     return { text: 'Usage: canopytag compare <file> [<file2> ...]', matchedPaths: [] };
@@ -143,7 +176,7 @@ export function buildCompare(canopy: Canopy, filePaths: string[], repoRoot?: str
   const gitDates = repoRoot && annotatedEntries.length > 0
     ? fetchGitDates(repoRoot, collectFreshnessPaths(annotatedEntries))
     : undefined;
-  const rows = annotatedEntries.map(([filePath, fc]) => makeRow(filePath, fc, gitDates));
+  const rows = annotatedEntries.map(([filePath, fc]) => makeRow(filePath, fc, asOfDate, gitDates));
 
   if (rows.length === 0) {
     return {
@@ -162,6 +195,7 @@ export function buildCompare(canopy: Canopy, filePaths: string[], repoRoot?: str
     authority: authorityLabel(row.fc),
     quality: qualityLabel(row),
     review: row.review,
+    lifecycle: lifecycleLabel(row),
     status: row.fc.status ?? 'active',
     warnings: row.warnings > 0 ? String(row.warnings) : '-',
     todos: todoLabel(row),
@@ -173,6 +207,7 @@ export function buildCompare(canopy: Canopy, filePaths: string[], repoRoot?: str
     authority: Math.max(9, ...renderedRows.map(row => row.authority.length)),
     quality: Math.max(7, ...renderedRows.map(row => row.quality.length)),
     review: Math.max(6, ...renderedRows.map(row => row.review.length)),
+    lifecycle: Math.max(9, ...renderedRows.map(row => row.lifecycle.length)),
     status: Math.max(6, ...renderedRows.map(row => row.status.length)),
     warnings: Math.max(4, ...renderedRows.map(row => row.warnings.length)),
     todos: Math.max(5, ...renderedRows.map(row => row.todos.length)),
@@ -188,6 +223,7 @@ export function buildCompare(canopy: Canopy, filePaths: string[], repoRoot?: str
     pad('AUTHORITY', widths.authority),
     pad('QUALITY', widths.quality),
     pad('REVIEW', widths.review),
+    pad('LIFECYCLE', widths.lifecycle),
     pad('STATUS', widths.status),
     pad('WARN', widths.warnings),
     pad('TODOS', widths.todos),
@@ -202,6 +238,7 @@ export function buildCompare(canopy: Canopy, filePaths: string[], repoRoot?: str
       pad(row.authority, widths.authority),
       pad(row.quality, widths.quality),
       pad(row.review, widths.review),
+      pad(row.lifecycle, widths.lifecycle),
       pad(row.status, widths.status),
       pad(row.warnings, widths.warnings),
       pad(row.todos, widths.todos),
@@ -217,10 +254,22 @@ export function buildCompare(canopy: Canopy, filePaths: string[], repoRoot?: str
       row.warnings > 0 ? `${row.warnings} warning${row.warnings !== 1 ? 's' : ''}` : undefined,
       row.fc.scoresReviewed === false && row.scoredCount > 0 ? 'unreviewed scores' : undefined,
       row.review === 'Review Drift' ? 'review drift' : undefined,
+      row.lifecycle.length > 0 ? `lifecycle ${lifecycleLabel(row)}` : undefined,
     ].filter((value): value is string => Boolean(value));
     const suffix = flags.length > 0 ? ` (${flags.join(', ')})` : '';
     lines.push(`${index + 1}. ${row.filePath} - ${authorityLabel(row.fc)}, quality ${qualityLabel(row)}${suffix}`);
   });
+
+  const lifecycleWarnings = rows.flatMap(row =>
+    row.lifecycle.map(assessment => ({ filePath: row.filePath, assessment }))
+  );
+  if (lifecycleWarnings.length > 0) {
+    lines.push('');
+    lines.push('Lifecycle warnings:');
+    for (const { filePath, assessment } of lifecycleWarnings) {
+      lines.push(`- ${filePath}: ${describeLifecycleAssessment(assessment)}`);
+    }
+  }
 
   const summaries = rows
     .filter(row => row.fc.summary)
@@ -257,6 +306,7 @@ Shows:
   - authority rank used for conflict precedence
   - quality composite out of 20
   - freshness/review status
+  - active or invalid lifecycle warnings (resolved marks stay hidden)
   - warning and TODO pressure
   - trust order across the requested files
 

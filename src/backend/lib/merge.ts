@@ -55,6 +55,7 @@ export function mergeFileRecord(
     todos,
     comments: canopy?.comments ?? [],
     relatedFiles: (canopy?.relatedFiles ?? []).map(normalizeRelation),
+    lifecycleMarks: canopy?.lifecycleMarks ?? [],
     // Computed
     openTodoCount: openTodos.length,
     highestPriority: priorities.length > 0 ? Math.min(...priorities) as Priority : undefined,

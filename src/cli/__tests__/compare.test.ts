@@ -95,4 +95,55 @@ describe('buildCompare', () => {
     expect(text).toContain('No requested files are annotated.');
     expect(text).toContain('- nope.ts');
   });
+
+  it('shows lifecycle state without changing authority precedence', () => {
+    const canopy: Canopy = {
+      ...TEST_CANOPY,
+      files: {
+        ...TEST_CANOPY.files,
+        'docs/standard.md': {
+          ...TEST_CANOPY.files['docs/standard.md'],
+          lifecycleMarks: [{
+            id: 'LM-001',
+            type: 'temporary_contract',
+            reason: 'Temporary release contract.',
+            createdAt: '2026-07-01T00:00:00Z',
+            createdBy: 'human',
+            expiresAt: '2026-07-15',
+          }],
+        },
+      },
+    };
+
+    const { text } = buildCompare(
+      canopy,
+      ['docs/standard.md', 'docs/spec.md'],
+      undefined,
+      '2026-07-16',
+    );
+
+    expect(text).toContain('LIFECYCLE');
+    expect(text).toContain('expired:1');
+    expect(text).toContain('Lifecycle warnings:');
+    expect(text).toContain('EXPIRED temporary contract [LM-001]');
+    expect(text).toMatch(/1\. docs\/standard\.md/);
+  });
+
+  it('surfaces null lifecycle metadata as INVALID without changing trust order', () => {
+    const canopy: Canopy = {
+      ...TEST_CANOPY,
+      files: {
+        ...TEST_CANOPY.files,
+        'docs/standard.md': {
+          ...TEST_CANOPY.files['docs/standard.md'],
+          lifecycleMarks: null as any,
+        },
+      },
+    };
+
+    const { text } = buildCompare(canopy, ['docs/standard.md', 'docs/spec.md']);
+    expect(text).toContain('invalid:1');
+    expect(text).toContain('INVALID lifecycle mark');
+    expect(text).toMatch(/1\. docs\/standard\.md/);
+  });
 });

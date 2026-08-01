@@ -23,6 +23,21 @@ describe('mergeFileRecord', () => {
     expect(result.openTodoCount).toBe(1);
   });
 
+  it('carries lifecycle marks into merged read records', () => {
+    const lifecycleMark = {
+      id: 'LM-001',
+      type: 'review_needed' as const,
+      reason: 'Review after the implementation settles.',
+      createdAt: '2026-07-01T00:00:00Z',
+      createdBy: 'human' as const,
+    };
+    const result = mergeFileRecord('docs/design.md', undefined, {
+      lifecycleMarks: [lifecycleMark],
+    });
+
+    expect(result.lifecycleMarks).toEqual([lifecycleMark]);
+  });
+
   it('canopy wins on shared fields, repo_index provides quality scores', () => {
     const result = mergeFileRecord('both.py', {
       path: 'both.py', title: 'Both', kind: 'module', subsystem: 'core',
