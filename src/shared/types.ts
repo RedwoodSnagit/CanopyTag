@@ -393,6 +393,10 @@ export function checkFreshness(item: FreshnessSubject): FreshnessStatus | null {
     .filter((value): value is string => typeof value === 'string' && value.length > 0)
     .map(value => value.slice(0, 10));
 
+  // A review date alone cannot prove freshness. Git evidence may be absent for
+  // untracked files, unavailable repositories, or incomplete relation lookup.
+  if (driftDates.length === 0) return 'unknown';
+
   return driftDates.some(date => reviewedAt < date) ? 'review-drift' : 'fresh';
 }
 

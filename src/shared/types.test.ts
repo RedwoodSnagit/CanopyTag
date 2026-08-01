@@ -10,6 +10,10 @@ describe('checkFreshness', () => {
     expect(checkFreshness({ lastModified: '2026-04-20' })).toBe('unknown');
   });
 
+  it('returns unknown when a review exists without modification evidence', () => {
+    expect(checkFreshness({ lastReviewed: '2026-04-20' })).toBe('unknown');
+  });
+
   it('returns fresh when review is at least as recent as the file change', () => {
     expect(checkFreshness({
       lastModified: '2026-04-20',

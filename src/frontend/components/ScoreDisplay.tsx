@@ -235,7 +235,7 @@ export function FileDates({ file }: Props) {
             ? 'This file or closely related files changed after the last review.'
             : freshness === 'fresh'
               ? 'No review drift detected since the last review.'
-              : 'This file has no recorded review date yet.'}
+              : 'Freshness cannot be verified because a review date or Git modification evidence is unavailable.'}
         >
           {freshnessLabel(freshness)}
         </span>

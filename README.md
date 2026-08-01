@@ -418,7 +418,7 @@ Freshness is separate from status:
 |-------|---------|
 | `Fresh` | Reviewed and no drift signal detected |
 | `Review Drift` | This file or a close related file changed after review |
-| `Unknown` | No recorded review date |
+| `Unknown` | No recorded review date, or no Git modification evidence to verify it |
 
 `Stale` is currently a documented/manual concept. There is not yet a separate
 persisted stale override editor, so UI, CLI, and MCP currently emit `Fresh`,
