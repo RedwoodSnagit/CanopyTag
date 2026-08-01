@@ -61,6 +61,10 @@ function findFeature(canopy: Canopy, featureId: string | undefined): Feature | u
     .find(([id]) => id.toLowerCase() === target)?.[1];
 }
 
+function normalizeCataloguePath(filePath: string): string {
+  return filePath.replace(/\\/g, '/').replace(/^\.\/+/, '');
+}
+
 function activeLifecycleReasons(fc: FileCanopy, asOfDate: string): string {
   return assessLifecycleMarks(fc.lifecycleMarks, asOfDate)
     .filter(({ state }) => state === 'open' || state === 'due' || state === 'expired')
@@ -88,6 +92,8 @@ function buildSearchDocument(
   asOfDate: string,
 ): CatalogueSearchDocument {
   const feature = findFeature(canopy, fc.featureId);
+  const includeFeatureDescription = !feature?.canonicalFile
+    || normalizeCataloguePath(feature.canonicalFile) === normalizeCataloguePath(filePath);
   const openTodos = (fc.todos ?? [])
     .filter(todo => todo.status === 'open' || todo.status === 'in_progress');
 
@@ -98,7 +104,7 @@ function buildSearchDocument(
     summary: fc.summary ?? '',
     tags: [...(fc.tags ?? []), ...(feature?.tags ?? [])].join(' '),
     feature_name: feature?.name ?? '',
-    feature_description: feature?.description ?? '',
+    feature_description: includeFeatureDescription ? feature?.description ?? '' : '',
     todo_text: openTodos.map(todo => todo.text).join(' '),
     todo_tags: openTodos.flatMap(todo => todo.tags ?? []).join(' '),
     lifecycle_reason: activeLifecycleReasons(fc, asOfDate),

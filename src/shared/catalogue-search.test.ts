@@ -104,6 +104,38 @@ describe('searchCatalogue', () => {
     expect(hit.matchedTerms).toContain('physiology');
   });
 
+  it('indexes a feature description only on its normalized canonical file', () => {
+    const canopy = canopyWith({
+      'docs/physiology.md': { featureId: 'physiology' },
+      'src/power/model.ts': { featureId: 'physiology' },
+    });
+    canopy.features.physiology.canonicalFile = '.\\docs\\physiology.md';
+
+    expect(searchCatalogue(canopy, 'lactate', OPTIONS).map(hit => hit.path))
+      .toEqual(['docs/physiology.md']);
+  });
+
+  it('keeps feature names searchable from every member when a canonical file is declared', () => {
+    const canopy = canopyWith({
+      'docs/physiology.md': { featureId: 'physiology' },
+      'src/power/model.ts': { featureId: 'physiology' },
+    });
+    canopy.features.physiology.canonicalFile = 'docs/physiology.md';
+
+    expect(searchCatalogue(canopy, 'Physiology', OPTIONS).map(hit => hit.path).sort())
+      .toEqual(['docs/physiology.md', 'src/power/model.ts']);
+  });
+
+  it('keeps legacy feature-description indexing when no canonical file is declared', () => {
+    const canopy = canopyWith({
+      'docs/physiology.md': { featureId: 'physiology' },
+      'src/power/model.ts': { featureId: 'physiology' },
+    });
+
+    expect(searchCatalogue(canopy, 'lactate', OPTIONS).map(hit => hit.path).sort())
+      .toEqual(['docs/physiology.md', 'src/power/model.ts']);
+  });
+
   it('ranks a title match above a lower-boost comment match', () => {
     const canopy = canopyWith({
       'title.md': { title: 'Torque' },
