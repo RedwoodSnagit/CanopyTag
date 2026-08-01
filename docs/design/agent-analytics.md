@@ -2,10 +2,11 @@
 
 **Date:** 2026-04-04
 **Status:** approved
+**Last reviewed:** 2026-08-01
 
 ## Summary
 
-Passive behavioral telemetry for CanopyTag repos. A Claude Code `PostToolUse` hook and MCP-side increments record which files agents read, edit, write, and query — silently, with no agent awareness, no token cost, and no impact on existing workflows. Data is stored locally in `<canopyDir>/.analytics.json` (gitignored, dot-hidden, not MCP-exposed) and surfaced as a heatmap in a new Analytics view mode in the UI.
+Passive behavioral telemetry for CanopyTag repos. A Claude Code `PostToolUse` hook and MCP-side increments record which files agents read, edit, write, and query — silently, with no agent awareness, no token cost, and no impact on existing workflows. Data is stored locally in `<canopyDir>/.analytics.json` (gitignored, dot-hidden, and not MCP-exposed) and is served read-only through the loopback web API for the Analytics UI.
 
 Target repos should treat `.analytics.json` as local-only even if their own
 ignore rules do not yet include it.
@@ -40,7 +41,7 @@ The analytics file always lives at `<canopyDir>/.analytics.json`.
 
 ## Schema — `<canopyDir>/.analytics.json`
 
-Local-only. Not committed. Not exposed via MCP tools or API routes. The dot-prefix hides it from casual agent reads; the MCP boundary prevents intentional reads. Add an ignore rule in target repos if needed.
+Local-only and not committed. It is not exposed through MCP tools, but the loopback web backend serves it through `GET /api/analytics` for the local UI. The dot-prefix hides it from casual agent reads; add an ignore rule in target repos if needed. Because the web backend is unauthenticated, non-loopback exposure must remain an explicit trusted-network decision.
 
 ```json
 {
@@ -223,13 +224,13 @@ The hook is a `.mjs` file and cannot import TypeScript source directly. The incr
   "hooks": {
     "PostToolUse": [{
       "matcher": "Read|Edit|Write|Grep|Glob|Bash",
-      "hooks": [{ "type": "command", "command": "node hooks/canopytag-analytics.mjs" }]
+      "hooks": [{ "type": "command", "command": "node \"/absolute/path/to/CanopyTag/hooks/canopytag-analytics.mjs\"" }]
     }]
   }
 }
 ```
 
-The path is relative to the repo root. Claude Code runs hooks from the repo root, so this resolves correctly without hardcoding machine-specific paths.
+The installer writes the absolute path to the hook in the current CanopyTag checkout because the target repository does not contain the public tool's hook source. This makes `.claude/settings.json` machine-specific; keep it uncommitted or review and sanitize it before sharing a repository.
 
 ---
 
