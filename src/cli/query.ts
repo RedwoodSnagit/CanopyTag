@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * canopytag query — progressive detail query with relation filtering
+ * canopytag query — authored catalogue search and progressive relation traversal
  *
  * Usage:
+ *   canopytag query --search "metabolic validation"              # authored catalogue search
  *   canopytag query --feature tire_pressure                      # default: detail 1 (low)
  *   canopytag query --feature tire_pressure --detail 2           # + connections + TODOs
  *   canopytag query --feature tire_pressure --detail 5           # everything
@@ -15,6 +16,12 @@
 import { parseArgs } from 'node:util';
 import { readCanopy } from '../backend/lib/canopy.js';
 import { trackCanopyQueries } from '../backend/lib/analytics.js';
+import {
+  CATALOGUE_SEARCH_MAX_RESULTS,
+  searchCatalogue,
+  type CatalogueSearchHit,
+} from '../shared/catalogue-search.js';
+import { currentLocalIsoDay } from '../shared/lifecycle.js';
 import { normalizeRelation, checkAuthorityHealth } from '../shared/types.js';
 import type {
   Canopy, FileCanopy, FileRelation, RelationType,
@@ -100,6 +107,7 @@ interface QueryResult {
   filePath: string;
   fc: FileCanopy;
   matchReason: 'direct' | 'connection';
+  searchHit?: CatalogueSearchHit;
   connectionFrom?: string;
   connectionRelation?: RelationType;
   connectionCloseness?: number;
@@ -114,6 +122,7 @@ export interface BuildQueryResult {
 export interface QueryOptions {
   detail?: number;
   relation?: RelationType;
+  search?: string;
   sortKey?: SortKey;
   limit?: number;
   showAll?: boolean;
@@ -125,6 +134,7 @@ export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOpti
   const detail = opts.detail ?? 1;
   const detailName = DETAIL_NAMES[detail] ?? `${detail}`;
   const relationFilter = opts.relation;
+  const search = opts.search?.trim();
   const sortKey = opts.sortKey ?? 'authority';
   const repoRoot = opts.repoRoot;
 
@@ -142,12 +152,36 @@ export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOpti
     return { text: 'No files match the given filters.', matchedPaths: [] };
   }
 
-  directMatches = sortFiles(directMatches, sortKey, gitDates);
+  let searchHits: CatalogueSearchHit[] = [];
+  if (search) {
+    const filteredCanopy: Canopy = {
+      ...canopy,
+      files: Object.fromEntries(directMatches),
+    };
+    searchHits = searchCatalogue(filteredCanopy, search, {
+      asOfDate: currentLocalIsoDay(),
+      limit: CATALOGUE_SEARCH_MAX_RESULTS,
+    });
+    const entriesByPath = new Map(directMatches);
+    directMatches = searchHits
+      .map(hit => [hit.path, entriesByPath.get(hit.path)] as const)
+      .filter((entry): entry is [string, FileCanopy] => Boolean(entry[1]));
+
+    if (directMatches.length === 0) {
+      return {
+        text: `No catalogue entries match search "${search}" and the given filters.`,
+        matchedPaths: [],
+      };
+    }
+  } else {
+    directMatches = sortFiles(directMatches, sortKey, gitDates);
+  }
 
   // Apply limit — scales with detail
   const defaultLimits: Record<number, number> = { 1: 2, 2: 5, 3: 10, 4: 20, 5: 999 };
-  const limit = opts.limit || (defaultLimits[detail] ?? 10);
+  const limit = opts.limit || (search ? 10 : (defaultLimits[detail] ?? 10));
   const limited = directMatches.slice(0, limit);
+  const searchHitsByPath = new Map(searchHits.map(hit => [hit.path, hit]));
 
   // Step 2: Collect connections at this detail level
   // minCloseness maps: detail 2→4, 3→3, 4→2, 5→1
@@ -157,7 +191,12 @@ export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOpti
 
   for (const [filePath, fc] of limited) {
     seen.add(filePath);
-    results.push({ filePath, fc, matchReason: 'direct' });
+    results.push({
+      filePath,
+      fc,
+      matchReason: 'direct',
+      searchHit: searchHitsByPath.get(filePath),
+    });
   }
 
   // Walk connections (detail 2 and above). Detail 2 stays compact and one-hop;
@@ -211,9 +250,12 @@ export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOpti
   const featureName = filters.feature;
   const tagName = filters.tag;
   const featureObj = featureName ? canopy.features[featureName] ?? canopy.features[featureName.toLowerCase()] : undefined;
-  const heading = featureName
+  const scopeHeading = featureName
     ? `${featureName}${featureObj?.name ? ` — ${featureObj.name}` : ''}`
-    : tagName ? `tag: ${tagName}` : 'all files';
+    : tagName ? `tag: ${tagName}` : undefined;
+  const heading = search
+    ? `search: "${search}"${scopeHeading ? ` · ${scopeHeading}` : ''}`
+    : scopeHeading ?? 'all files';
 
   const detailLabel = `detail ${detail}/${detailName}`;
   lines.push(`── ${heading} (${detailLabel}) ${'─'.repeat(Math.max(1, 60 - heading.length - detailLabel.length - 6))}`);
@@ -231,14 +273,21 @@ export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOpti
     return fetchGitDates(repoRoot ?? process.cwd(), paths);
   })();
 
-  for (const { filePath, fc } of directResults) {
+  for (const { filePath, fc, searchHit } of directResults) {
     const label = authLabel(fc);
     const flag = statusFlag(fc);
     const hflag = healthFlag(fc);
     const review = freshnessLabel(getFreshnessStatus(filePath, fc, freshnessDates));
     lines.push(`${label}  ${filePath}${flag}${hflag}`);
+    if (fc.title) {
+      lines.push(`      Title: ${truncate(fc.title, 67)}`);
+    }
     if (fc.summary) {
       lines.push(`      ${truncate(fc.summary, 74)}`);
+    }
+    if (searchHit) {
+      lines.push(`      Match fields: ${searchHit.matchedFields.join(', ')}`);
+      lines.push(`      Match terms: ${searchHit.matchedTerms.join(', ')}`);
     }
     lines.push(`      Review: ${review}`);
 
@@ -338,7 +387,7 @@ export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOpti
   if (hiddenByLimit > 0) parts.push(`${hiddenByLimit} more with --limit ${directMatches.length}`);
   if (hiddenDeprecated > 0) parts.push(`${hiddenDeprecated} deprecated (visible at detail ≥ 4)`);
   if (detail < 5) parts.push(`wider: --detail ${detail + 1}`);
-  if (sortKey !== 'recent' && results.some(r => r.fc.lastReviewed)) {
+  if (!search && sortKey !== 'recent' && results.some(r => r.fc.lastReviewed)) {
     parts.push('try --sort recent');
   }
 
@@ -348,17 +397,26 @@ export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOpti
 }
 
 function run() {
-  const { values } = parseArgs({
-    options: {
-      ...CORE_OPTIONS, ...FILTER_OPTIONS, ...LIST_OPTIONS,
-      detail:   { type: 'string', short: 'd' },
-      relation: { type: 'string' },
-    },
-    strict: false,
-  });
+  let values: ReturnType<typeof parseArgs>['values'];
+  try {
+    ({ values } = parseArgs({
+      options: {
+        ...CORE_OPTIONS, ...FILTER_OPTIONS, ...LIST_OPTIONS,
+        detail:   { type: 'string', short: 'd' },
+        relation: { type: 'string' },
+        search:   { type: 'string' },
+      },
+      strict: true,
+    }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Invalid query options: ${message}`);
+    process.exitCode = 1;
+    return;
+  }
 
   if (values.help) {
-    console.log(`canopytag query — progressive detail query
+    console.log(`canopytag query — catalogue search and progressive detail query
 
 Detail (1-5, or named alias):
   1 | low          Top files only, no connections (default)
@@ -369,6 +427,7 @@ Detail (1-5, or named alias):
 
 Options:
   -r, --repo <path>         Repo root (default: cwd)
+      --search <text>       Search authored catalogue fields (default limit: 10)
   -f, --feature <name>      Filter by feature ID
   -t, --tag <name>          Filter by tag
   -d, --detail <1-5|name>   Detail level (default: 1)
@@ -384,7 +443,8 @@ Options:
       --git-after <date>         Source file git-modified after ISO date
       --git-before <date>        Source file git-modified before ISO date
   -a, --all                 Include deprecated/archived files
-  -n, --limit <count>       Max direct files (default: varies by detail)
+  -n, --limit <count>       Max direct files (varies by detail)
+                            Search defaults to 10 and has a hard cap of 100
   -h, --help                Show this help`);
     return;
   }
@@ -398,6 +458,12 @@ Options:
   const relationFilter = values.relation as RelationType | undefined;
   if (relationFilter && !VALID_RELATIONS.has(relationFilter)) {
     console.error(`Invalid relation: ${values.relation}. Use: ${[...VALID_RELATIONS].join(', ')}`);
+    process.exit(1);
+  }
+
+  const search = values.search as string | undefined;
+  if (search !== undefined && search.trim().length === 0) {
+    console.error('Invalid search: --search requires non-empty text.');
     process.exit(1);
   }
 
@@ -419,13 +485,14 @@ Options:
   const result = buildQuery(canopy, filters, {
     detail,
     relation: relationFilter,
+    search,
     sortKey,
     limit,
     showAll: values.all as boolean | undefined,
     repoRoot,
   });
 
-  if ((filters.feature || filters.tag) && result.matchedPaths.length > 0) {
+  if ((search || filters.feature || filters.tag) && result.matchedPaths.length > 0) {
     trackCanopyQueries(repoRoot, result.matchedPaths);
   }
 

@@ -8,12 +8,14 @@ const GRAPH_CANOPY: Canopy = {
   lastModifiedAt: '2026-04-24T00:00:00Z',
   files: {
     'src/a.ts': {
+      title: 'Engine Entry',
       summary: 'Entry point for the feature.',
       authorityLevel: 'specification',
       status: 'active',
       featureId: 'engine',
       relatedFiles: [
         { path: 'src/b.ts', closeness: 4, relation: 'implements' },
+        { path: 'secret/neutrino-bridge.ts', closeness: 4, relation: 'doc-for' },
       ],
     },
     'src/b.ts': {
@@ -65,5 +67,50 @@ describe('buildQuery connection traversal', () => {
     expect(result.text).toContain('src/b.ts');
     expect(result.text).not.toContain('src/c.ts');
     expect(result.matchedPaths).toEqual(['src/a.ts', 'src/b.ts']);
+  });
+
+  it('shows title and match evidence for catalogue search results', () => {
+    const result = buildQuery(GRAPH_CANOPY, { feature: 'engine' }, {
+      search: 'entry',
+      detail: 1,
+    });
+
+    expect(result.text).toContain('Title: Engine Entry');
+    expect(result.text).toContain('Match fields: title, summary');
+    expect(result.text).toContain('Match terms: entry');
+    expect(result.matchedPaths).toEqual(['src/a.ts']);
+  });
+
+  it('composes catalogue search with metadata filters before ranking', () => {
+    const canopy: Canopy = {
+      ...GRAPH_CANOPY,
+      files: {
+        ...GRAPH_CANOPY.files,
+        'docs/other.md': {
+          title: 'Engine Entry',
+          featureId: 'other',
+          status: 'active',
+        },
+      },
+    };
+
+    const result = buildQuery(canopy, { feature: 'engine' }, { search: 'entry' });
+
+    expect(result.matchedPaths).toEqual(['src/a.ts']);
+    expect(result.text).not.toContain('docs/other.md');
+  });
+
+  it('keeps relation traversal after search but does not treat relation paths as search prose', () => {
+    const traversed = buildQuery(GRAPH_CANOPY, { feature: 'engine' }, {
+      search: 'entry',
+      detail: 3,
+    });
+    const relationOnly = buildQuery(GRAPH_CANOPY, { feature: 'engine' }, {
+      search: 'neutrino',
+      detail: 3,
+    });
+
+    expect(traversed.matchedPaths).toEqual(['src/a.ts', 'src/b.ts', 'src/c.ts']);
+    expect(relationOnly.matchedPaths).toEqual([]);
   });
 });

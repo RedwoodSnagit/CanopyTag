@@ -13,6 +13,9 @@ Working now:
 - Visible per-repo `canopytag/` metadata folder
 - CLI: `init`, `stats`, `ls`, `query`, `context`, `compare`, `todos`, `health`,
   `analytics`, `coverage`, `mcp`, and `hook`
+- Local bounded catalogue search across authored CanopyTag metadata, with field
+  boosts, prefix matching, conservative typo tolerance, composable filters, and
+  visible match evidence in CLI/MCP query results
 - MCP read/write tools for agent integration
 - Agent activity/review feed in `agent_manifest.json`
 - Read-only lifecycle marks with due/expired derivation and warnings in
@@ -65,8 +68,9 @@ Working now:
   or aspiration-vs-reality confusion persists.
 - Use `canopytag compare` as the basic trust arbiter before inventing a heavier
   scoring system.
-- Explore weighted search/ranking only after `query`, `context`, and `compare`
-  reveal a concrete navigation gap.
+- Benchmark and tune the implemented catalogue ranking against real navigation
+  tasks. Consider embeddings or semantic expansion only if measured misses
+  remain after authored terminology and field weighting are improved.
 
 ## Analytics And Benchmarking
 
@@ -109,8 +113,8 @@ becoming a language-specific parser.
 - Agent-readable output is a first-class feature.
 - Compact summaries should supplement source reading, not replace it.
 - Authority is declared hierarchy; scores validate quality.
-- A well-connected relationship graph can reduce the need for fancy search
-  ranking.
+- A well-connected relationship graph complements catalogue search; neither
+  should impersonate source-level structural truth.
 - External metadata should not modify source files.
 - Annotation work should compound: each good entry makes future sessions faster.
 - CanopyTag should complement existing docs such as `ARCHITECTURE.md`,

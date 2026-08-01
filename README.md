@@ -56,17 +56,22 @@ next:
 - Which related files should be read together?
 - Which TODOs or review notes change the risk of the edit?
 
-CanopyTag is the layer after search:
+CanopyTag supports two complementary entry points: authored catalogue search
+when you do not yet know the right file or vocabulary, and post-source-search
+enrichment when `rg` has already found concrete candidates:
 
 ```bash
+canopytag query --search "token validation"
 canopytag context src/auth/middleware.ts src/auth/tokens.ts
 canopytag query --feature auth --detail 4
 ```
 
-Instead of reading every plausible hit, an agent gets a compact map: summaries,
-authority, status, warnings, relationships, TODOs, and suggested next files. The
-result is less context waste, fewer wrong turns, and a codebase that gets easier
-to navigate each time humans or agents improve the annotations.
+Catalogue search is local, bounded, and limited to authored metadata: path,
+title, summary, tags, feature name/description, open TODO text/tags, active
+lifecycle reasons, and finding/warning comments. Results expose matched fields
+and terms. Relationship paths are deliberately excluded from search text; use
+query detail levels or graph commands to traverse them. The source files remain
+the truth.
 
 ## Current Release
 
@@ -193,7 +198,8 @@ npm run stats -- --repo /path/to/your/repo
 
 ## Agent Workflow
 
-CanopyTag works best as a post-search judgment layer.
+CanopyTag works best as a compact discovery and judgment layer around normal
+source search.
 
 ```bash
 rg -l "validateToken" src tests
@@ -203,12 +209,13 @@ canopytag context src/auth/middleware.ts src/auth/tokens.ts
 The intended loop is:
 
 1. Use `stats` to orient before diving in.
-2. Use `rg -l` or similar tools to find real source hits.
-3. Use `context` to enrich those hits with summaries, authority, warnings, and relationships.
-4. Use `compare` when deciding which of several files should win a conflict.
-5. Use `query --feature ... --detail 4` when the hits cluster around a feature.
-6. Let agents update `canopy.json` through MCP as they learn.
-7. Review recent agent activity in the UI when practical.
+2. Use `query --search ...` for catalogue discovery when filenames or terminology are uncertain.
+3. Use `rg -l` or similar tools to confirm real source hits.
+4. Use `context` to enrich those hits with summaries, authority, warnings, and relationships.
+5. Use `compare` when deciding which of several files should win a conflict.
+6. Use `query --feature ... --detail 4` when the hits cluster around a feature.
+7. Let agents update `canopy.json` through MCP as they learn.
+8. Review recent agent activity in the UI when practical.
 
 ## CLI Reference
 
@@ -226,6 +233,8 @@ canopytag ls --sort attention            # files needing attention
 
 canopytag query --feature core           # progressive feature exploration
 canopytag query --feature core --detail 4
+canopytag query --search "cache invalidation"  # authored catalogue discovery
+canopytag query --search "cache" --tag backend # search + filters compose
 
 canopytag context src/lib/api.ts         # compact file context
 canopytag context hit1.ts hit2.md        # enrich grep hits
@@ -311,7 +320,7 @@ or to a client settings file that supports `mcpServers`:
 |------|---------|
 | `canopytag_stats` | Repo counts, authority distribution, open TODOs |
 | `canopytag_ls` | List annotated files by score, authority, or attention |
-| `canopytag_query` | Progressive repo exploration with relationships |
+| `canopytag_query` | Bounded authored catalogue search and progressive relationship exploration |
 | `canopytag_context` | Compact context for files or features |
 | `canopytag_compare` | Compare exact files by authority, quality, review, and trust order |
 | `canopytag_todos` | Open TODOs across the repo |
@@ -436,7 +445,7 @@ CanopyTag is most useful when its annotations are maintained by humans, agents,
 or both. The metadata is deliberately explicit: it gets more valuable as the repo
 is revisited, corrected, and connected over time.
 
-- Use search, your editor, and code reading for source truth.
+- Use catalogue search for discovery; use source search, your editor, and code reading for source truth.
 - Use CanopyTag to order that work: importance, trust, freshness, TODOs,
   relationships, hot spots, and feature clusters.
 - CanopyTag does not show or edit source code; it is the map beside the code.

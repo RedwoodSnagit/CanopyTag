@@ -112,9 +112,11 @@ export function registerReadTools(server: McpServer): void {
   // 3. canopytag_query
   server.tool(
     'canopytag_query',
-    'Progressive-depth exploration by feature, tag, or filter. Returns summaries, scores, TODOs, and relationships.',
+    'Bounded authored catalogue search plus progressive exploration by feature, tag, or filter. Returns titles, summaries, visible search evidence, TODOs, and relationships.',
     {
       ...filterParams,
+      search: z.string().min(1).optional()
+        .describe('Search authored path, title, summary, tags, feature metadata, open TODOs, active lifecycle reasons, and finding/warning comments'),
       detail: z.union([z.number().min(1).max(5), z.enum(['low', 'medium', 'medium-high', 'high', 'full'])]).optional()
         .describe('Detail level 1-5 or low/medium/medium-high/high/full (default: medium)'),
       relation: z.string().optional().describe('Filter connections by relation type'),
@@ -133,13 +135,14 @@ export function registerReadTools(server: McpServer): void {
         const { text, matchedPaths } = buildQuery(canopy, filters, {
           detail,
           relation: params.relation as any,
+          search: params.search,
           sortKey: (params.sort ?? 'authority') as SortKey,
           limit: params.limit ?? 10,
           showAll: params.all,
           repoRoot,
         });
         // Track only targeted queries (not full-repo unfiltered)
-        if ((params.feature || params.tag) && matchedPaths.length > 0) {
+        if ((params.search || params.feature || params.tag) && matchedPaths.length > 0) {
           trackFiles(matchedPaths);
         }
         return { content: [{ type: 'text' as const, text }] };

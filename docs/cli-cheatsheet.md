@@ -1,7 +1,9 @@
 # CanopyTag CLI Cheatsheet
 
-Use CanopyTag after normal repo search. `rg` finds candidate files; CanopyTag
-adds authority, freshness, lifecycle, quality, TODOs, and relationship context.
+Use CanopyTag for compact authored catalogue discovery and after normal repo
+search. `rg` finds source truth; CanopyTag helps find and prioritize candidate
+files, then adds authority, freshness, lifecycle, quality, TODOs, and
+relationship context.
 
 ## Start Here
 
@@ -14,9 +16,19 @@ canopytag coverage --repo /path/to/repo
 ## Search Then Enrich
 
 ```bash
+canopytag query --search "token validation"
+canopytag query --search "token" --tag security --kind code
 rg -l "validateToken" src tests
 canopytag context src/auth/middleware.ts src/auth/tokens.ts
 ```
+
+`query --search` searches only authored catalogue fields: path, title, summary,
+tags, feature name/description, open TODO text/tags, active lifecycle reasons,
+and finding/warning comments. It uses field-weighted prefix matching and typo
+tolerance for longer terms, defaults to 10 direct results, and never returns
+more than 100. Results show both matched fields and matched terms. Filters
+compose with search. `related_files` are traversal edges and are not indexed as
+search text.
 
 Use `context` when you already have paths and want compact agent-ready context:
 summary, authority, review status, lifecycle warnings, quality warnings, TODOs,
@@ -54,8 +66,9 @@ canopytag query --feature auth --relation implements
 canopytag context --feature auth
 ```
 
-Use `query` when you need the broader neighborhood around a feature, tag, or
-relation. Use `context --feature` when you want a compact prompt block.
+Use `query` when you need authored catalogue discovery or the broader
+neighborhood around a feature, tag, or relation. Use `context --feature` when
+you want a compact prompt block.
 
 ## Review Work
 

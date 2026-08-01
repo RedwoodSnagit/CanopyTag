@@ -54,7 +54,7 @@ Commands:
   init        Initialize a repo for annotation (canopytag/canopy.json)
   stats       Overview: file counts, authority distribution, open TODOs
   ls          List annotated files sorted by authority/scores/attention
-  query       Progressive-depth exploration with relationships
+  query       Authored catalogue search and relationship exploration
   context     Compact context block for files or features
   compare     Compare authority, quality, review status, and trust order
   tags        Browse tags and report tag hygiene
