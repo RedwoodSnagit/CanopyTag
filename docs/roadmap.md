@@ -60,6 +60,31 @@ Working now:
 
 ## Agent Navigation Ideas
 
+Current measured priority order:
+
+1. Treat the existing 23-query benchmark as consumed. Build a development set,
+   then have an independent evaluator freeze and retain a separate holdout
+   outside the public repo and outside the ranking implementer's tuning context.
+   Record its hash, evaluator, category/count manifest, and evaluated commit;
+   publish or rotate the holdout after its one-shot use.
+2. Make reviewed tag aliases and canonical vocabulary participate in query
+   normalization, while preserving the raw query and explaining expansions.
+3. Improve multi-concept scoring and add explicit abstention or denial-evidence
+   behavior instead of always filling the result limit.
+4. Test bounded relationship-assisted reranking only after lexical changes have
+   an ablation result; keep hops, closeness, relation types, and provenance
+   visible.
+5. Participate in a shared, provider-neutral interop envelope owned by the
+   future router/Cartographer boundary. CanopyTag should emit authored semantic
+   evidence; it should not quietly become the orchestrator for generated,
+   exact-symbol, or optional semantic providers.
+
+The calibrated 94-card catalogue reached 45.2% nDCG@10, 48.3% MRR@10, and
+47.7% recall@10 on the consumed benchmark. It represented 51 of 54 judged
+paths, so ranking and result composition now matter more than indiscriminate
+card growth. An 8-9/10 claim requires a blind task benchmark showing lower
+discovery cost and fewer wrong-file reads without a correctness regression.
+
 - Derive recommended reading order from relation types before adding a new field.
   A likely sequence is canon/spec docs, blueprints, implementation, tests, then
   changelogs or update notes.
@@ -71,9 +96,10 @@ Working now:
 - Benchmark and tune the implemented catalogue ranking against real navigation
   tasks. Consider embeddings or semantic expansion only if measured misses
   remain after authored terminology and field weighting are improved.
-- Freeze a vocabulary-drift benchmark for queries whose terminology is absent
-  from older annotations. Test ephemeral query nodes and generated candidate
-  edges without mutating authored relationships.
+- Build successor development queries for terminology absent from older
+  annotations, and let an independent evaluator retain a hidden holdout. Test
+  ephemeral query nodes and generated candidate edges without mutating authored
+  relationships.
 - If embeddings earn their place, build them from small CanopyTag cards, open
   work/review items, and opted-in document sections; keep the local index and
   inferred clusters replaceable, fingerprinted, and non-authoritative. See the
@@ -85,7 +111,9 @@ Working now:
 - Improve analytics only where it changes human or agent decisions.
 - Build a repeatable benchmark that compares agent navigation with and without
   CanopyTag metadata: files read, wrong turns, time-to-answer, and correctness.
-- Use the demo repo or another purpose-built repo as the first benchmark target.
+- Use the demo repo for deterministic smoke and regression tests, not for an
+  8-9/10 quality claim. Evaluate public/general-tool tasks separately from
+  private project tasks so neither corpus leaks into the other's tuning loop.
 
 ## Multi-Repo And Ecosystem
 
@@ -122,6 +150,9 @@ becoming a language-specific parser.
 - Authority is declared hierarchy; scores validate quality.
 - A well-connected relationship graph complements catalogue search; neither
   should impersonate source-level structural truth.
+- CanopyTag owns canonical feature IDs, descriptions, canonical files, and
+  reviewed membership. Generated structural providers may propose aliases or
+  membership, but cannot silently redefine the authored taxonomy.
 - External metadata should not modify source files.
 - Annotation work should compound: each good entry makes future sessions faster.
 - CanopyTag should complement existing docs such as `ARCHITECTURE.md`,
