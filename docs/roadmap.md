@@ -12,12 +12,14 @@ Working now:
 - Web UI with Explorer, Table, Graph, Analytics, and Activity views
 - Visible per-repo `canopytag/` metadata folder
 - CLI: `init`, `stats`, `ls`, `query`, `context`, `compare`, `todos`, `health`,
-  `analytics`, `coverage`, `mcp`, and `hook`
+  `doctor`, `analytics`, `coverage`, `mcp`, and `hook`
 - Local bounded catalogue search across authored CanopyTag metadata, with field
   boosts, prefix matching, conservative typo tolerance, composable filters, and
   visible match evidence in CLI/MCP query results
 - MCP read/write tools for agent integration
 - Agent activity/review feed in `agent_manifest.json`
+- Read-only `doctor` checks for objective maintenance hazards, with bounded
+  text/JSON output and optional strict exit behavior
 - Read-only lifecycle marks with due/expired derivation and warnings in
   `context`, `compare`, and `health`
 - Local human profile in ignored `profile.local.json`

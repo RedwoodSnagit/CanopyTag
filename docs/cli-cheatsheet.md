@@ -11,6 +11,7 @@ relationship context.
 canopytag stats --repo /path/to/repo
 canopytag ls --sort attention --repo /path/to/repo
 canopytag coverage --repo /path/to/repo
+canopytag doctor --repo /path/to/repo
 ```
 
 ## Search Then Enrich
@@ -75,11 +76,20 @@ you want a compact prompt block.
 ```bash
 canopytag todos --priority 2
 canopytag health
+canopytag doctor
 canopytag analytics --days 7
 ```
 
 `health` includes due and expired lifecycle marks, open `review_needed` marks,
 and malformed lifecycle metadata alongside authority/quality findings.
+
+`doctor` checks facts that can be automated safely: malformed nested metadata,
+broken or unsafe paths, orphaned cards, duplicate TODO/comment IDs, Git-backed
+review drift, feature entry points, portable `repo_root` usage, and pending
+agent review. It does not rewrite summaries, scores, authority, tags, or
+relationships. Use
+`canopytag doctor --strict` when warnings should fail a local check or CI job;
+use `--format json` for machine-readable output.
 
 ## Install Agent Hooks
 

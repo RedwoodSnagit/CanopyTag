@@ -15,6 +15,7 @@
     "init": "tsx src/cli/init.ts",
     "ls": "tsx src/cli/ls.ts",
     "health": "tsx src/cli/health.ts",
+    "doctor": "tsx src/cli/doctor.ts",
     "query": "tsx src/cli/query.ts",
     "stats": "tsx src/cli/stats.ts",
     "todos": "tsx src/cli/todos.ts",

@@ -29,7 +29,7 @@ should I read next?
 ## What It Gives You
 
 - A web UI with Explorer, Table, Graph, Analytics, and Activity views
-- A CLI for orientation, search-result enrichment, TODOs, health checks, and analytics
+- A CLI for orientation, search-result enrichment, TODOs, health and maintenance checks, and analytics
 - An MCP server so agents can read and write repo context directly
 - File relationships and feature clustering so agents can follow meaning, not just folders
 - Authority, quality, freshness, lifecycle, and attention signals so agents know what to trust
@@ -216,6 +216,7 @@ The intended loop is:
 6. Use `query --feature ... --detail 4` when the hits cluster around a feature.
 7. Let agents update `canopy.json` through MCP as they learn.
 8. Review recent agent activity in the UI when practical.
+9. Run `doctor` periodically or before committing shared metadata.
 
 ## CLI Reference
 
@@ -249,6 +250,7 @@ canopytag tags                           # browse tag usage
 canopytag tags --health                  # soft tag hygiene report
 
 canopytag health                         # authority/quality and lifecycle attention
+canopytag doctor                         # deterministic metadata maintenance checks
 canopytag analytics                      # recent agent/search heat
 canopytag coverage                       # annotation coverage report
 canopytag mcp --repo /path/to/repo       # write project-local MCP config
@@ -325,10 +327,12 @@ or to a client settings file that supports `mcpServers`:
 | `canopytag_compare` | Compare exact files by authority, quality, review, and trust order |
 | `canopytag_todos` | Open TODOs across the repo |
 | `canopytag_health` | Authority/quality mismatches and lifecycle attention |
+| `canopytag_doctor` | Broken paths, ID collisions, review drift, orphans, portability, and pending review |
 | `canopytag_tags` | Browse tag usage and run soft tag hygiene checks |
 | `canopytag_manifest` | Inspect the agent activity/review feed |
 | `canopytag_fan_in` | Reverse relationship graph |
 | `canopytag_fan_out` | Forward relationship graph |
+| `canopytag_coverage` | Annotation coverage and orphaned-card report |
 | `canopytag_annotate` | Update file metadata |
 | `canopytag_add_comment` | Add observations, even on locked files |
 | `canopytag_add_todo` | Log work items |

@@ -92,7 +92,8 @@ Use:
 - `context` to enrich known paths
 - `compare` to decide which of several files should win a conflict
 - `query` with feature, tag, or relation filters to explore a neighborhood
-- `todos`, `health`, and `analytics` before wrapping up
+- `todos`, `health`, `doctor`, and `analytics` before wrapping up when the task
+  touched shared CanopyTag metadata
 
 ## MCP And Hooks
 

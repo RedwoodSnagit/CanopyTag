@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "repo_root": ".",
-  "last_modified_at": "2026-08-01T21:55:37.572Z",
+  "repo_root": "",
+  "last_modified_at": "2026-08-02T03:08:02.708Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -746,13 +746,24 @@
     },
     "src/cli/__tests__/coverage.test.ts": {
       "title": "Tracked-File Coverage Accounting Contracts",
-      "summary": "Protects Git discovery, Canopy-directory exclusion, .ctagignore filtering, path normalization, kind-scoped counts, orphan detection, and completeness ordering for annotated files. It does not yet cover bounded unannotated-path output.",
+      "summary": "Protects raw tracked-file discovery for maintenance checks plus Canopy-directory exclusion, .ctagignore filtering, path normalization, kind-scoped coverage counts, orphan detection, and completeness ordering for annotated files. It does not yet cover bounded unannotated-path output.",
       "tags": ["cli", "retrieval"],
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
         {"path": "src/cli/coverage.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/cli/__tests__/doctor.test.ts": {
+      "title": "Deterministic Maintenance Check Contracts",
+      "summary": "Protects clean reports, unsafe and missing path detection, directory-versus-untracked-versus-deleted annotation handling, malformed nested metadata reporting, duplicate TODO/comment IDs, Git-backed review drift, pending agent-review visibility, portable repo-root treatment, bounded findings, and stable text rendering.",
+      "tags": ["cli", "maintenance", "tests", "trust"],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/cli/doctor.ts", "relation": "test-of", "closeness": 5}
       ]
     },
     "src/cli/__tests__/graph.test.ts": {
@@ -768,7 +779,7 @@
     },
     "src/mcp/__tests__/reads.test.ts": {
       "title": "MCP Read-Builder Parity Contracts",
-      "summary": "Exercises reusable read builders against the demo catalogue across stats, lists, queries, context, comparisons, health, TODOs, tags, and coverage. It does not cover MCP transport or tool registration.",
+      "summary": "Exercises reusable read builders against the demo catalogue across stats, lists, queries, context, comparisons, health, TODOs, tags, coverage, and doctor rendering. It does not cover MCP transport or tool registration.",
       "tags": ["mcp", "agent-interface"],
       "feature_id": "mcp-server",
       "authority_level": "guideline",
@@ -1234,7 +1245,7 @@
     },
     "src/cli/coverage.ts": {
       "title": "canopytag coverage — Annotation Coverage & Orphan Detection",
-      "summary": "Reports what percentage of repo files are annotated, groups unannotated files by kind, and detects orphaned canopy entries (annotated files that no longer exist on disk). Two core functions: discoverRepoFiles (git ls-files + .ctagignore filtering, excludes canopy dir) and buildCoverage (pure set-diff computation). Optional --detail shows per-file field completeness sorted by least complete first. Only kind filter applies to coverage — tag/feature filters can't work on unannotated files since they have no canopy entry. Also registered as canopytag_coverage MCP tool.",
+      "summary": "Reports what percentage of repo files are annotated, groups unannotated files by kind, and detects orphaned canopy entries. Exposes both an unfiltered tracked-file inventory for maintenance checks and coverage discovery with .ctagignore and Canopy-directory filtering. buildCoverage performs the pure set-diff computation; optional --detail shows field completeness. Also registered as canopytag_coverage MCP tool.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
@@ -1261,6 +1272,26 @@
         {"path": "src/cli/shared.ts", "closeness": 5, "relation": "fed-by"},
         {"path": "src/mcp/tools/reads.ts", "closeness": 4},
         {"path": "src/cli/stats.ts", "closeness": 3}
+      ]
+    },
+    "src/cli/doctor.ts": {
+      "title": "canopytag doctor — Deterministic Maintenance Checks",
+      "summary": "Consolidates objective CanopyTag maintenance evidence: malformed nested metadata, unsafe or missing paths, directory/untracked/orphaned annotation cards, duplicate TODO/comment IDs, Git-backed review drift, feature canonical-file health, portable repo-root usage, and pending agent review. The pure inspection layer is shared by bounded text/JSON CLI output and the read-only MCP tool; it never invents or rewrites semantic metadata.",
+      "validity": 5,
+      "clarity": 4,
+      "completeness": 4,
+      "stability": 3,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-08-01",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": ["cli", "maintenance", "trust", "agent-interface", "local-first"],
+      "feature_id": "cli-tools",
+      "related_files": [
+        {"path": "src/cli/coverage.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/cli/shared.ts", "closeness": 5, "relation": "fed-by"},
+        {"path": "src/backend/lib/agent-manifest.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/mcp/tools/reads.ts", "closeness": 4}
       ]
     },
     "src/cli/graph.ts": {
@@ -1328,7 +1359,7 @@
     },
     "src/mcp/tools/reads.ts": {
       "title": "MCP Read Tools — Agent Query Interface",
-      "summary": "Registers 10 read-only MCP tools: stats, ls, query, context, todos, health, tags, fan_in, fan_out, coverage. Each tool resolves paths, reads canopy, calls the corresponding build*() function from CLI modules, and returns text content. Uses Zod schemas for parameter validation. Shared filterParams object provides consistent filter options across tools. Also wires analytics tracking — canopytag_query and canopytag_context record which files agents access via incrementFile().",
+      "summary": "Registers 13 read-only MCP tools spanning orientation, authored search, exact-file trust comparison, TODOs, health, tag hygiene, activity review, relationship traversal, coverage, and deterministic doctor checks. It reuses CLI builders and wires analytics tracking for query/context access.",
       "validity": 5,
       "clarity": 4,
       "completeness": 5,
@@ -1355,6 +1386,7 @@
         {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"},
         {"path": "src/cli/compare.ts", "closeness": 4, "relation": "fed-by"},
         {"path": "src/cli/coverage.ts", "closeness": 4, "relation": "fed-by"},
+        {"path": "src/cli/doctor.ts", "closeness": 4, "relation": "fed-by"},
         {"path": "src/cli/graph.ts", "closeness": 4, "relation": "fed-by"},
         {"path": "src/backend/lib/analytics.ts", "closeness": 3}
       ]
@@ -1547,7 +1579,7 @@
   },
   "directories": {
     "src/cli": {
-      "summary": "Serverless agent commands for orientation, filtering, context, comparison, TODOs, health, coverage, graph walks, analytics, and integration setup. Most read commands share filtering and sorting primitives, and several builders are reused by MCP."
+      "summary": "Serverless agent commands for orientation, filtering, context, comparison, TODOs, health, deterministic maintenance checks, coverage, graph walks, analytics, and integration setup. Most read commands share filtering and sorting primitives, and several builders are reused by MCP."
     },
     "src/mcp": {
       "summary": "Stdio MCP adapter for compatible agents. Read tools reuse CLI builders; write tools record attribution and undo data, support staged suggestions, and expose tag and activity-review context without requiring the web server."
@@ -1578,7 +1610,7 @@
     },
     "cli-tools": {
       "name": "Agent-Facing CLI",
-      "description": "Local command surface for orientation, bounded authored catalogue search, comparison, health, TODOs, coverage, analytics, MCP setup, and hooks. Commands verify repo-local metadata without requiring the web server, and MCP reuses several builders.",
+      "description": "Local command surface for orientation, bounded authored catalogue search, comparison, health, deterministic maintenance checks, TODOs, coverage, analytics, MCP setup, and hooks. Commands verify repo-local metadata without requiring the web server, and MCP reuses several builders.",
       "tags": ["cli", "agent-interface", "retrieval"],
       "status": "active",
       "canonical_file": "bin/canopytag.mjs"

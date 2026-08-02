@@ -42,12 +42,8 @@ export interface BuildCoverageResult {
 
 // ---- File Discovery ----
 
-/**
- * Discover all files in a git repo that are candidates for annotation.
- * Uses `git ls-files` (respects .gitignore) + .ctagignore filtering.
- * Excludes files under the canopy directory itself.
- */
-export function discoverRepoFiles(repoRoot: string, canopyDir: string): Set<string> {
+/** Discover every tracked file in a Git repo, normalized to forward slashes. */
+export function discoverTrackedFiles(repoRoot: string): Set<string> {
   let output: string;
   try {
     output = execFileSync('git', ['ls-files'], {
@@ -60,10 +56,15 @@ export function discoverRepoFiles(repoRoot: string, canopyDir: string): Set<stri
     throw new Error('canopytag coverage requires a git repository');
   }
 
-  const files = output.trim().split('\n').filter(Boolean);
+  return new Set(output.trim().split('\n').filter(Boolean).map(f => f.replace(/\\/g, '/')));
+}
 
-  // Normalize to forward slashes
-  const normalized = files.map(f => f.replace(/\\/g, '/'));
+/**
+ * Discover tracked files that are candidates for annotation.
+ * Applies .ctagignore and excludes files under the canopy directory itself.
+ */
+export function discoverRepoFiles(repoRoot: string, canopyDir: string): Set<string> {
+  const normalized = [...discoverTrackedFiles(repoRoot)];
 
   // Exclude canopy directory files
   const canopyRel = path.relative(repoRoot, canopyDir).replace(/\\/g, '/');

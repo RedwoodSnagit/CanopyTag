@@ -20,6 +20,7 @@ import { walkGraph, renderGraphTree } from '../../cli/graph.js';
 import { readAnalytics, writeAnalytics, incrementFile, resolveAnalyticsPath } from '../../backend/lib/analytics.js';
 import path from 'node:path';
 import { discoverRepoFiles, buildCoverage } from '../../cli/coverage.js';
+import { buildDoctorFromRepo, renderDoctorText } from '../../cli/doctor.js';
 
 const DETAIL_ALIASES: Record<string, number> = {
   low: 1, medium: 2, 'medium-high': 3, high: 4, full: 5,
@@ -404,6 +405,25 @@ export function registerReadTools(server: McpServer): void {
         const repoFiles = discoverRepoFiles(repoRoot, canopyDir);
         const { text } = buildCoverage(canopy, repoFiles, params.kind, params.detail);
         return { content: [{ type: 'text' as const, text }] };
+      } catch (e: any) {
+        return { content: [{ type: 'text' as const, text: e.message }], isError: true };
+      }
+    }
+  );
+
+  // 13. canopytag_doctor
+  server.tool(
+    'canopytag_doctor',
+    'Run deterministic maintenance checks without rewriting semantic annotations.',
+    {
+      limit: z.number().int().min(1).max(500).optional().describe('Maximum findings returned (default: 50)'),
+    },
+    async (params) => {
+      try {
+        const repoRoot = resolveRepoRoot();
+        const canopyPath = resolveCanopyPath();
+        const report = buildDoctorFromRepo(repoRoot, canopyPath, params.limit);
+        return { content: [{ type: 'text' as const, text: renderDoctorText(report) }] };
       } catch (e: any) {
         return { content: [{ type: 'text' as const, text: e.message }], isError: true };
       }

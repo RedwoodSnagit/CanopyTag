@@ -10,6 +10,7 @@ import { buildHealth } from '../../cli/health.js';
 import { buildTodos } from '../../cli/todos.js';
 import { buildTags } from '../tools/tags.js';
 import { discoverRepoFiles, buildCoverage } from '../../cli/coverage.js';
+import { inspectCanopyDoctor, renderDoctorText } from '../../cli/doctor.js';
 import { resolveRepoRoot } from '../../cli/shared.js';
 import path from 'node:path';
 import type { Canopy } from '../../shared/types.js';
@@ -84,5 +85,14 @@ describe('MCP read tool integration', () => {
     expect(text).toContain('annotated');
     expect(result.total).toBeGreaterThan(0);
     expect(result.annotated + result.unannotated).toBe(result.total);
+  });
+
+  it('renders doctor output for MCP consumption', () => {
+    const report = inspectCanopyDoctor(canopy, {
+      repoFiles: new Set(Object.keys(canopy.files)),
+    });
+    const text = renderDoctorText(report);
+    expect(text).toContain('CanopyTag doctor:');
+    expect(text).toContain('Checked');
   });
 });

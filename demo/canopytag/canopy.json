@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "repo_root": ".",
-  "last_modified_at": "2026-04-25T06:15:58.920Z",
+  "repo_root": "",
+  "last_modified_at": "2026-08-02T03:08:02.708Z",
   "agent_notes": [
     {
       "text": "Start with docs/architecture.md, then inspect src/main.py and src/utils.py. The Activity table contains examples of agree, fix, and pending review states.",

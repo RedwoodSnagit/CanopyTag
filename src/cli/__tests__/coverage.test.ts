@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { discoverRepoFiles, buildCoverage } from '../coverage.js';
+import { discoverRepoFiles, discoverTrackedFiles, buildCoverage } from '../coverage.js';
 import type { Canopy } from '../../shared/types.js';
 
 function makeCanopy(files: Record<string, any>): Canopy {
@@ -34,6 +34,17 @@ function initGitRepo(dir: string, files: string[]): void {
 }
 
 describe('discoverRepoFiles', () => {
+  it('can return the unfiltered tracked inventory for maintenance checks', () => {
+    initGitRepo(testDir, ['src/app.ts', 'generated/output.js', 'canopytag/canopy.json']);
+    fs.writeFileSync(path.join(testDir, '.ctagignore'), 'generated/\n');
+    execFileSync('git', ['add', '.ctagignore'], { cwd: testDir, stdio: 'ignore' });
+
+    const result = discoverTrackedFiles(testDir);
+    expect(result).toContain('src/app.ts');
+    expect(result).toContain('generated/output.js');
+    expect(result).toContain('canopytag/canopy.json');
+  });
+
   it('returns tracked files from a git repo', () => {
     initGitRepo(testDir, ['src/app.ts', 'src/utils.ts', 'README.md']);
     const canopyDir = path.join(testDir, 'canopytag');
