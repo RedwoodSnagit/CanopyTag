@@ -116,6 +116,26 @@ describe('profile local identity', () => {
     }).trim()).toBe('canopytag/.active_work.json.1234.abcd.tmp');
   });
 
+  it('upgrades an exact active-work ignore so lock and temporary siblings stay local', () => {
+    execFileSync('git', ['init'], { cwd: TEST_DIR, stdio: 'ignore' });
+    fs.writeFileSync(path.join(TEST_DIR, '.gitignore'), 'canopytag/.active_work.json\n');
+    const localPath = path.join(TEST_DIR, 'canopytag', '.active_work.json');
+
+    ensureLocalFileIgnored(TEST_DIR, localPath, '# CanopyTag local active work', '*');
+
+    const gitInfo = path.join(TEST_DIR, '.git', 'info');
+    const exclude = fs.readFileSync(path.join(gitInfo, 'exclude'), 'utf-8');
+    expect(exclude).toContain('canopytag/.active_work.json*');
+    expect(execFileSync('git', ['check-ignore', 'canopytag/.active_work.json.lock'], {
+      cwd: TEST_DIR,
+      encoding: 'utf-8',
+    }).trim()).toBe('canopytag/.active_work.json.lock');
+    expect(execFileSync('git', ['check-ignore', 'canopytag/.active_work.json.1234.abcd.tmp'], {
+      cwd: TEST_DIR,
+      encoding: 'utf-8',
+    }).trim()).toBe('canopytag/.active_work.json.1234.abcd.tmp');
+  });
+
   it('refuses local-only state that is already tracked', () => {
     execFileSync('git', ['init'], { cwd: TEST_DIR, stdio: 'ignore' });
     const localPath = path.join(TEST_DIR, 'canopytag', '.active_work.json');

@@ -160,6 +160,22 @@ function gitCommandSucceeds(repoRoot: string, ...gitArguments: string[]): boolea
   }
 }
 
+function gitIgnoresLocalState(repoRoot: string, relative: string, patternSuffix: string): boolean {
+  const candidates = [relative];
+  if (patternSuffix === '*') {
+    candidates.push(`${relative}.lock`, `${relative}.1234.abcd.tmp`);
+  } else if (patternSuffix) {
+    candidates.push(`${relative}${patternSuffix}`);
+  }
+  return candidates.every(candidate => gitCommandSucceeds(
+    repoRoot,
+    'check-ignore',
+    '-q',
+    '--',
+    candidate,
+  ));
+}
+
 export function ensureLocalFileIgnored(
   repoRoot: string,
   filePath: string,
@@ -185,7 +201,7 @@ export function ensureLocalFileIgnored(
     if (gitCommandSucceeds(repoRoot, 'ls-files', '--error-unmatch', '--', relative)) {
       throw new Error(`${relative} is tracked by Git and cannot be used as local-only CanopyTag state.`);
     }
-    if (gitCommandSucceeds(repoRoot, 'check-ignore', '-q', '--', relative)) return;
+    if (gitIgnoresLocalState(repoRoot, relative, patternSuffix)) return;
   } else if (hasIgnorePattern(repoGitignore, ignorePattern)) {
     return;
   }
@@ -194,7 +210,7 @@ export function ensureLocalFileIgnored(
 
   appendIgnorePattern(ignorePath, ignorePattern, commentText);
 
-  if (gitExclude && !gitCommandSucceeds(repoRoot, 'check-ignore', '-q', '--', relative)) {
+  if (gitExclude && !gitIgnoresLocalState(repoRoot, relative, patternSuffix)) {
     throw new Error(`Could not verify that local CanopyTag state is ignored: ${relative}`);
   }
 }
