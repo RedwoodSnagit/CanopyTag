@@ -1,6 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import { getDimensionWarnings, buildContext } from '../context';
+import { getDimensionWarnings, buildContext, parseContextArgs } from '../context';
 import type { Canopy, FileCanopy } from '../../shared/types';
+
+describe('parseContextArgs', () => {
+  it('rejects unknown options instead of treating their values as file paths', () => {
+    expect(() => parseContextArgs(['--budget', '900']))
+      .toThrow(/Unknown option '--budget'/);
+  });
+
+  it('keeps explicit file positionals and supported options', () => {
+    const parsed = parseContextArgs(['src/core.ts', '--depth', '3']);
+    expect(parsed.positionals).toEqual(['src/core.ts']);
+    expect(parsed.values.depth).toBe('3');
+  });
+});
 
 // ---- getDimensionWarnings ----
 

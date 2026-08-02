@@ -362,8 +362,9 @@ export function buildContext(canopy: Canopy, opts: ContextOptions): string {
   return 'Usage: canopytag context <file> or canopytag context --feature <name>';
 }
 
-function run() {
-  const { values, positionals } = parseArgs({
+export function parseContextArgs(args: string[]) {
+  return parseArgs({
+    args,
     options: {
       ...CORE_OPTIONS,
       feature:    { type: 'string', short: 'f' },
@@ -371,8 +372,20 @@ function run() {
       surprising: { type: 'boolean' },
     },
     allowPositionals: true,
-    strict: false,
+    strict: true,
   });
+}
+
+function run() {
+  let parsed: ReturnType<typeof parseContextArgs>;
+  try {
+    parsed = parseContextArgs(process.argv.slice(2));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Error: ${message}\nRun \`canopytag context --help\` for supported options.`);
+    process.exit(1);
+  }
+  const { values, positionals } = parsed;
 
   if (values.help) {
     console.log(`canopytag context — compact context block for prompt injection
