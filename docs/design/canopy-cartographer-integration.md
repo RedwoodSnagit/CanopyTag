@@ -2,15 +2,18 @@
 
 **Date:** 2026-06-26
 
-**Updated:** 2026-08-01
+**Updated:** 2026-08-02
 
-**Status:** proposed architecture
+**Status:** standalone Cartographer published; sidecar integration proposed
 
-**Scope:** CanopyTag relationship to the emerging standalone CanopyCartographer
+**Scope:** CanopyTag relationship to the standalone CanopyCartographer
 
-This document describes a target integration. CanopyTag does not currently
-discover or render Cartographer sidecars, and its current review feed does not
-automatically promote staged suggestions into `canopy.json`.
+The standalone project is published at
+[`RedwoodSnagit/CanopyCartographer`](https://github.com/RedwoodSnagit/CanopyCartographer).
+This document describes a target integration that is not yet implemented.
+CanopyTag does not currently discover or render Cartographer sidecars, and its
+current review feed does not automatically promote staged suggestions into
+`canopy.json`.
 
 ## Summary
 

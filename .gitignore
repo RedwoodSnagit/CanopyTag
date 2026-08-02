@@ -20,9 +20,9 @@ hero-*.png
 intro-*.png
 logo-*.png
 natural-logo-check.png
-canopytag/.analytics.json
+canopytag/.analytics.json*
 canopytag/.active_work.json*
-demo/canopytag/.analytics.json
+demo/canopytag/.analytics.json*
 demo/canopytag/.active_work.json*
 canopytag/profile.local.json
 demo/canopytag/profile.local.json

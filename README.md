@@ -412,6 +412,10 @@ This merges a `PostToolUse` hook into `.claude/settings.json`. The hook records
 Claude `Read`, `Edit`, `Write`, `Grep`, `Glob`, and Bash `rg`/`ripgrep` events
 to `canopytag/.analytics.json`.
 
+CanopyTag automatically adds a local ignore rule for `.analytics.json` and its
+temporary siblings before writing. Query analytics are best-effort and never
+make a retrieval command fail.
+
 Search query strings are not stored. When tool output includes result paths,
 CanopyTag records those files as search hits so they contribute to heat without
 counting as opened files.

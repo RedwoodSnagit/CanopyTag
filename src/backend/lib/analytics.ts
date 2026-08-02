@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { resolveCanopyPath } from '../../cli/shared.js';
 import { parseJsonFile } from './canopy.js';
+import { ensureLocalFileIgnored } from './profile.js';
 import type {
   CanopyAnalytics, FileAnalytics, FileAnalyticsTotal,
   FileAnalyticsDayBucket, DailyAnalytics,
@@ -61,6 +62,16 @@ export function readAnalytics(analyticsPath: string): CanopyAnalytics {
 }
 
 export function writeAnalytics(analyticsPath: string, analytics: CanopyAnalytics): void {
+  const canopyDir = path.dirname(analyticsPath);
+  if (path.basename(canopyDir).toLowerCase() === 'canopytag') {
+    const repoRoot = path.dirname(canopyDir);
+    ensureLocalFileIgnored(
+      repoRoot,
+      analyticsPath,
+      '# CanopyTag local analytics',
+      '*',
+    );
+  }
   const tmp = analyticsPath + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(analytics, null, 2) + '\n', 'utf-8');
   fs.renameSync(tmp, analyticsPath);
@@ -125,16 +136,19 @@ export function incrementDaily(
 export function trackCanopyQueries(repoRoot: string | undefined, filePaths: string[]): void {
   const uniquePaths = [...new Set(filePaths.filter(Boolean))];
   if (uniquePaths.length === 0) return;
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const analyticsPath = resolveAnalyticsPath(repoRoot);
+    const analytics = readAnalytics(analyticsPath);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const analyticsPath = resolveAnalyticsPath(repoRoot);
-  const analytics = readAnalytics(analyticsPath);
+    for (const filePath of uniquePaths) {
+      incrementFile(analytics, filePath, 'canopyQueryCount', today);
+    }
 
-  for (const filePath of uniquePaths) {
-    incrementFile(analytics, filePath, 'canopyQueryCount', today);
+    writeAnalytics(analyticsPath, analytics);
+  } catch {
+    // Analytics is optional operating state and must never break retrieval.
   }
-
-  writeAnalytics(analyticsPath, analytics);
 }
 
 // ---- Scoring ----

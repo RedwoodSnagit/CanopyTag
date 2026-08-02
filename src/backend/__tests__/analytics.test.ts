@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   emptyAnalytics,
   readAnalytics,
+  writeAnalytics,
   incrementFile,
   incrementDaily,
   engagementScore,
@@ -9,6 +10,7 @@ import {
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 describe('readAnalytics', () => {
   it('reads analytics files with a UTF-8 BOM', () => {
@@ -24,6 +26,29 @@ describe('readAnalytics', () => {
       expect(readAnalytics(analyticsPath).version).toBe(1);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps analytics and temporary siblings ignored in a target repository', () => {
+    const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-analytics-repo-'));
+    const analyticsPath = path.join(repoRoot, 'canopytag', '.analytics.json');
+    try {
+      execFileSync('git', ['init'], { cwd: repoRoot, stdio: 'ignore' });
+      fs.mkdirSync(path.dirname(analyticsPath), { recursive: true });
+
+      writeAnalytics(analyticsPath, emptyAnalytics());
+
+      expect(fs.existsSync(analyticsPath)).toBe(true);
+      expect(execFileSync('git', ['check-ignore', 'canopytag/.analytics.json'], {
+        cwd: repoRoot,
+        encoding: 'utf-8',
+      }).trim()).toBe('canopytag/.analytics.json');
+      expect(execFileSync('git', ['check-ignore', 'canopytag/.analytics.json.tmp'], {
+        cwd: repoRoot,
+        encoding: 'utf-8',
+      }).trim()).toBe('canopytag/.analytics.json.tmp');
+    } finally {
+      fs.rmSync(repoRoot, { recursive: true, force: true });
     }
   });
 });

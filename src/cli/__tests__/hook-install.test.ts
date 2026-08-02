@@ -44,6 +44,8 @@ describe('canopytag hook install', () => {
     expect(hookPath).toBeDefined();
     expect(path.isAbsolute(hookPath!)).toBe(true);
     expect(fs.existsSync(hookPath!)).toBe(true);
+    expect(fs.readFileSync(path.join(TEST_DIR, '.gitignore'), 'utf-8'))
+      .toContain('canopytag/.analytics.json*');
   });
 
   it('upgrades an older relative hook command in place', () => {

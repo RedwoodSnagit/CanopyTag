@@ -9,6 +9,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseJsonFile } from '../backend/lib/canopy.js';
+import { ensureLocalFileIgnored } from '../backend/lib/profile.js';
+import { resolveAnalyticsPath } from '../backend/lib/analytics.js';
 
 const HOOK_MATCHER = 'Read|Edit|Write|Grep|Glob|Bash';
 
@@ -31,7 +33,14 @@ function isCanopyTagHookEntry(entry: any): boolean {
 }
 
 function run() {
-  const settingsPath = path.join(process.cwd(), '.claude', 'settings.json');
+  const repoRoot = process.cwd();
+  const settingsPath = path.join(repoRoot, '.claude', 'settings.json');
+  ensureLocalFileIgnored(
+    repoRoot,
+    resolveAnalyticsPath(repoRoot),
+    '# CanopyTag local analytics',
+    '*',
+  );
 
   let settings: Record<string, any> = {};
   if (fs.existsSync(settingsPath)) {

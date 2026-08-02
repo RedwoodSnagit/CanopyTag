@@ -42,9 +42,12 @@ These files are local operating state and should not be committed:
   contain an absolute local path to `hooks/canopytag-analytics.mjs`.
 
 `canopytag init` keeps `profile.local.json` ignored. The first active-work claim
-keeps `.active_work.json` ignored. Analytics, MCP config, and Claude settings are
-written where the host tools expect them; add ignore rules
-if your repo would otherwise track them, or review them before sharing.
+keeps `.active_work.json` and its crash/temp siblings ignored. Analytics writes
+and `canopytag hook install` keep `.analytics.json*` ignored. Query tracking is
+best-effort: an ignore or write failure does not break retrieval. MCP config and
+Claude settings are written where the host tools expect them; add project-local
+ignore rules if your repo would otherwise track those files, or review them
+before sharing.
 
 ## Encoding
 

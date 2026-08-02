@@ -23,7 +23,8 @@ Working now:
 - Read-only lifecycle marks with due/expired derivation and warnings in
   `context`, `compare`, and `health`
 - Local human profile in ignored `profile.local.json`
-- Claude Code analytics hook for read/edit/search heat
+- Claude Code analytics hook for read/edit/search heat, with automatic wildcard
+  ignore protection and fail-open query tracking
 - Local, expiring advisory work claims with file/directory overlap checks, TODO
   links, CLI/MCP check-in, renewal, and release
 - `forest_repo_demo` bundled demo repo
