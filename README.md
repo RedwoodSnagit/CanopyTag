@@ -105,6 +105,10 @@ npm link
 machine. If you do not want a global link, run commands from this checkout with
 `node bin/canopytag.mjs <command>`.
 
+On Windows, npm also creates a `canopytag.ps1` shim. If PowerShell execution
+policy blocks that shim, use `canopytag.cmd <command>` or the direct Node form
+above; both reach the same local CLI without changing execution policy.
+
 Start the web UI:
 
 ```bash
