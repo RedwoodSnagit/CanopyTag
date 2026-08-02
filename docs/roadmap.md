@@ -12,7 +12,7 @@ Working now:
 - Web UI with Explorer, Table, Graph, Analytics, and Activity views
 - Visible per-repo `canopytag/` metadata folder
 - CLI: `init`, `stats`, `ls`, `query`, `context`, `compare`, `todos`, `health`,
-  `doctor`, `analytics`, `coverage`, `mcp`, and `hook`
+  `doctor`, `work`, `analytics`, `coverage`, `mcp`, and `hook`
 - Local bounded catalogue search across authored CanopyTag metadata, with field
   boosts, prefix matching, conservative typo tolerance, composable filters, and
   visible match evidence in CLI/MCP query results
@@ -24,6 +24,8 @@ Working now:
   `context`, `compare`, and `health`
 - Local human profile in ignored `profile.local.json`
 - Claude Code analytics hook for read/edit/search heat
+- Local, expiring advisory work claims with file/directory overlap checks, TODO
+  links, CLI/MCP check-in, renewal, and release
 - `forest_repo_demo` bundled demo repo
 - CanopyTag dogfooding metadata in this repo's `canopytag/canopy.json`
 
@@ -34,10 +36,10 @@ Working now:
 - Add a small screenshot or GIF to the README once the preferred visual is
   settled.
 - Keep package dry-runs clean: no local screenshots, profiles, analytics,
-  workspaces, or test outputs.
+  active-work state, workspaces, or test outputs.
 - Keep public-repo hygiene clear: shared `canopytag/` metadata should be
   reviewable, while `.mcp.json`, `.claude/settings.json`, profiles, analytics,
-  and local paths stay uncommitted or explicitly reviewed.
+  active-work state, and local paths stay uncommitted or explicitly reviewed.
 - Validate setup on a clean machine: clone, `npm install`, `npm link`,
   `npm run dev`, `canopytag init`, `canopytag mcp`, and `canopytag compare`.
 - Keep `AGENTS.md`, README, and CLI cheatsheet aligned with current commands.
@@ -46,6 +48,12 @@ Working now:
 
 ## Near-Term Product Work
 
+- Dogfood active-work claims in real concurrent sessions. Keep them separate
+  from heat and persistent TODO state; add Beads/task-system adapters only if a
+  repeated durable coordination workflow justifies them.
+- If concurrent work across separate Git worktrees becomes routine, evaluate an
+  explicit shared-store or coordinator adapter; the default checkout-local
+  sidecar intentionally does not pretend to coordinate across worktrees.
 - Add a persisted manual `Stale` override/editor if the freshness workflow needs
   a human-confirmed stale state beyond `Review Drift`.
 - Complete the staged [document lifecycle marks](./design/document-lifecycle-marks.md)
@@ -110,6 +118,9 @@ discovery cost and fewer wrong-file reads without a correctness regression.
 ## Analytics And Benchmarking
 
 - Keep query/context/compare telemetry lightweight and private.
+- Evaluate active-work usefulness by avoided overlap, abandoned-claim rate, and
+  claim/release friction. Do not inflate attention heat merely because a path
+  was claimed.
 - Improve analytics only where it changes human or agent decisions.
 - Build a repeatable benchmark that compares agent navigation with and without
   CanopyTag metadata: files read, wrong turns, time-to-answer, and correctness.
@@ -156,6 +167,8 @@ becoming a language-specific parser.
   reviewed membership. Generated structural providers may propose aliases or
   membership, but cannot silently redefine the authored taxonomy.
 - External metadata should not modify source files.
+- Active-work claims expose ephemeral editing intent; they do not schedule
+  agents, enforce file locks, or own a durable dependency graph.
 - Annotation work should compound: each good entry makes future sessions faster.
 - CanopyTag should complement existing docs such as `ARCHITECTURE.md`,
   CODEOWNERS, and ADRs rather than replacing them.

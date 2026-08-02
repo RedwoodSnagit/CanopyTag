@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   detectHumanAuthor,
+  ensureLocalFileIgnored,
   ensureProfileIgnored,
   readOrCreateProfile,
   readProfile,
@@ -11,6 +12,7 @@ import {
 } from '../lib/profile';
 
 const TEST_DIR = path.join(import.meta.dirname, '__test_profile_workspace__');
+const LINKED_TEST_DIR = path.join(import.meta.dirname, '__test_profile_linked_workspace__');
 
 beforeEach(() => {
   fs.mkdirSync(TEST_DIR, { recursive: true });
@@ -19,6 +21,7 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env.CANOPYTAG_AUTHOR_NAME;
   fs.rmSync(TEST_DIR, { recursive: true, force: true });
+  fs.rmSync(LINKED_TEST_DIR, { recursive: true, force: true });
 });
 
 describe('profile local identity', () => {
@@ -80,5 +83,46 @@ describe('profile local identity', () => {
     const gitInfo = path.join(TEST_DIR, '.git', 'info');
     const exclude = fs.readFileSync(path.join(gitInfo, 'exclude'), 'utf-8');
     expect(exclude.match(/canopytag\/profile\.local\.json/g)).toHaveLength(1);
+  });
+
+  it('uses Git info exclude from a linked worktree without editing tracked .gitignore', () => {
+    execFileSync('git', ['init'], { cwd: TEST_DIR, stdio: 'ignore' });
+    fs.writeFileSync(path.join(TEST_DIR, 'seed.txt'), 'seed\n');
+    execFileSync('git', ['add', 'seed.txt'], { cwd: TEST_DIR, stdio: 'ignore' });
+    execFileSync('git', [
+      '-c', 'user.name=CanopyTag Test', '-c', 'user.email=test@example.invalid',
+      'commit', '-m', 'seed',
+    ], { cwd: TEST_DIR, stdio: 'ignore' });
+    execFileSync('git', ['worktree', 'add', '-b', 'linked-test', LINKED_TEST_DIR], {
+      cwd: TEST_DIR,
+      stdio: 'ignore',
+    });
+
+    const localPath = path.join(LINKED_TEST_DIR, 'canopytag', '.active_work.json');
+    ensureLocalFileIgnored(LINKED_TEST_DIR, localPath, '# CanopyTag local active work', '*');
+
+    expect(fs.existsSync(path.join(LINKED_TEST_DIR, '.gitignore'))).toBe(false);
+    expect(execFileSync('git', ['check-ignore', 'canopytag/.active_work.json'], {
+      cwd: LINKED_TEST_DIR,
+      encoding: 'utf-8',
+    }).trim()).toBe('canopytag/.active_work.json');
+    expect(execFileSync('git', ['check-ignore', 'canopytag/.active_work.json.lock'], {
+      cwd: LINKED_TEST_DIR,
+      encoding: 'utf-8',
+    }).trim()).toBe('canopytag/.active_work.json.lock');
+    expect(execFileSync('git', ['check-ignore', 'canopytag/.active_work.json.1234.abcd.tmp'], {
+      cwd: LINKED_TEST_DIR,
+      encoding: 'utf-8',
+    }).trim()).toBe('canopytag/.active_work.json.1234.abcd.tmp');
+  });
+
+  it('refuses local-only state that is already tracked', () => {
+    execFileSync('git', ['init'], { cwd: TEST_DIR, stdio: 'ignore' });
+    const localPath = path.join(TEST_DIR, 'canopytag', '.active_work.json');
+    fs.mkdirSync(path.dirname(localPath), { recursive: true });
+    fs.writeFileSync(localPath, '{}\n');
+    execFileSync('git', ['add', 'canopytag/.active_work.json'], { cwd: TEST_DIR, stdio: 'ignore' });
+
+    expect(() => ensureLocalFileIgnored(TEST_DIR, localPath)).toThrow(/tracked by Git/);
   });
 });

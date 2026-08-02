@@ -318,6 +318,46 @@ export interface CanopyAnalytics {
   daily: Record<string, DailyAnalytics>;  // keyed YYYY-MM-DD
 }
 
+// ---- Local active-work claims ----
+//
+// Ephemeral coordination is deliberately separate from authored canopy.json
+// metadata and the review-oriented agent_manifest.json activity feed.
+
+export type WorkClaimState = 'active' | 'released';
+export type WorkClaimPathKind = 'file' | 'directory' | 'unknown';
+
+export interface WorkClaimPath {
+  path: string;
+  kind: WorkClaimPathKind;
+}
+
+export interface WorkClaimTodoLink {
+  file: string;
+  id: string;
+}
+
+export interface WorkClaim {
+  id: string;
+  paths: WorkClaimPath[];
+  owner: string;
+  session?: string;
+  summary: string;
+  branch?: string;
+  exclusive: boolean;
+  state: WorkClaimState;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+  releasedAt?: string;
+  releaseNote?: string;
+  todo?: WorkClaimTodoLink;
+}
+
+export interface ActiveWorkState {
+  version: 1;
+  claims: WorkClaim[];
+}
+
 // ---- Repo index types (subset of fields we consume) ----
 
 export interface RepoIndexItem {

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo_root": "",
-  "last_modified_at": "2026-08-02T03:08:02.708Z",
+  "last_modified_at": "2026-08-02T08:40:00.000Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -19,7 +19,7 @@
   "files": {
     "src/shared/types.ts": {
       "title": "Canopy Schema & Authority Health",
-      "summary": "Single source of truth for every type in the system: FileCanopy, Todo, Comment, Feature, AuthorityHealth, RelationType, Closeness, IoMetadata, and the authority-vs-quality health check algorithm. All CLI tools, routes, and frontend components import from here. On-disk format is snake_case; TypeScript is camelCase — the case-transform boundary is documented but lives in a sibling file.",
+      "summary": "Single source of truth for shared and local types including file annotations, TODOs, comments, features, trust, lifecycle, relationships, analytics, agent review, and expiring active-work claims. All CLI tools, routes, frontend components, and MCP adapters import from here. On-disk format is snake_case; TypeScript is camelCase.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -178,13 +178,39 @@
     },
     "src/backend/lib/profile.ts": {
       "title": "Local Human Attribution Profile",
-      "summary": "Resolves human attribution from explicit environment values, Git configuration, or OS identity, sanitizes it, and stores the profile in ignored profile.local.json. The profile stays local, while its chosen author signature is deliberately copied into shared review and edit attribution.",
+      "summary": "Resolves human attribution from explicit environment values, Git configuration, or OS identity, sanitizes it, and stores the profile in ignored profile.local.json. It also provides the reusable safe-ignore helper for other local CanopyTag sidecars. Local state stays uncommitted while selected author signatures may be copied into shared review attribution.",
       "tags": ["governance", "privacy"],
       "feature_id": "annotation-engine",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
         {"path": "docs/repo-local-data.md", "relation": "implements", "closeness": 5}
+      ]
+    },
+    "src/backend/lib/active-work.ts": {
+      "title": "Local Expiring Work-Claim Engine",
+      "summary": "Persists advisory file and directory claims in an ignored sidecar with atomic writes, owned locking, platform-aware overlap detection, exclusive or shared modes, expiry, owner/session checks, TODO links, renewal, release, and bounded seven-day local history. Expired work must be claimed again. It does not enforce Git writes, mutate canonical annotations, or own durable task dependencies.",
+      "tags": ["coordination", "local-first", "persistence", "agent-interface"],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/cli/work.ts", "relation": "fed-by", "closeness": 5},
+        {"path": "src/mcp/tools/active-work.ts", "relation": "fed-by", "closeness": 5},
+        {"path": "src/shared/types.ts", "relation": "fed-by", "closeness": 5},
+        {"path": "docs/repo-local-data.md", "relation": "implements", "closeness": 5}
+      ]
+    },
+    "src/cli/work.ts": {
+      "title": "canopytag work — Advisory Check-In And Check-Out",
+      "summary": "Agent-facing CLI for checking path claims, creating expiring exclusive or shared claims, linking a unique CanopyTag TODO, renewing owned work, and releasing with a handoff note. JSON output supports harness integration; conflicts return a distinct exit code and claims never complete TODOs.",
+      "tags": ["cli", "coordination", "agent-interface", "local-first"],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/backend/lib/active-work.ts", "relation": "fed-by", "closeness": 5},
+        {"path": "docs/cli-cheatsheet.md", "relation": "doc-for", "closeness": 5}
       ]
     },
     "src/cli/stats.ts": {
@@ -766,6 +792,28 @@
         {"path": "src/cli/doctor.ts", "relation": "test-of", "closeness": 5}
       ]
     },
+    "src/backend/lib/__tests__/active-work.test.ts": {
+      "title": "Active Work Persistence And Lease Contracts",
+      "summary": "Protects snake-case persistence, file/directory conflicts, shared overlap, expiry, path filtering, retained history, owner/session enforcement, TODO links, and TTL validation for the local coordination engine.",
+      "tags": ["coordination", "tests", "local-first"],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/backend/lib/active-work.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
+    "src/cli/__tests__/work.test.ts": {
+      "title": "Active Work CLI Workflow Contract",
+      "summary": "Runs the real CLI through claim, parent-path query, overlap rejection, TODO linkage, ignored-sidecar setup, release, and history inspection.",
+      "tags": ["cli", "coordination", "tests"],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/cli/work.ts", "relation": "test-of", "closeness": 5}
+      ]
+    },
     "src/cli/__tests__/graph.test.ts": {
       "title": "Semantic Fan-In And Fan-Out Traversal Contracts",
       "summary": "Protects reverse-index construction, normalized paths, bounded multi-hop traversal, closeness and relation filters, cycle and self-reference termination, prebuilt-index reuse, and directional text rendering.",
@@ -919,13 +967,13 @@
     },
     "README.md": {
       "title": "Public-Facing Project Overview",
-      "summary": "Public entry point for installation and the local CLI/MCP workflow. It presents bounded authored catalogue discovery and post-rg enrichment as complementary, keeps source as truth, and documents shared-versus-local data plus the loopback default for the unauthenticated backend.",
+      "summary": "Public entry point for installation and the local CLI/MCP workflow. It presents authored catalogue discovery and post-rg enrichment as complementary, keeps source as truth, and documents local active-work coordination, shared-versus-local data, and the loopback default for the unauthenticated backend.",
       "validity": 4,
       "clarity": 5,
       "completeness": 3,
       "stability": 3,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-08-02",
       "authority_level": "guideline",
       "status": "active",
       "tags": ["docs", "onboarding"],
@@ -964,13 +1012,13 @@
     },
     "docs/cli-cheatsheet.md": {
       "title": "CLI Cheatsheet",
-      "summary": "Compact agent sequence: use query --search for authored catalogue discovery, confirm source with rg, enrich paths with context, compare trust, traverse authored relations, then review TODO, health, or analytics signals.",
+      "summary": "Compact agent sequence: discover with authored search, confirm with rg, enrich and compare exact paths, traverse relations, check or claim active work before editing, then review TODO, health, doctor, and analytics signals.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-25",
+      "last_reviewed": "2026-08-02",
       "authority_level": "guideline",
       "status": "active",
       "tags": ["docs", "cli", "agent-interface"],
@@ -984,13 +1032,13 @@
     },
     "docs/repo-local-data.md": {
       "title": "Repo-Local Data And Public Repo Hygiene",
-      "summary": "Canonical boundary between reviewable shared metadata and local-only identity, analytics, MCP, and hook configuration. It also defines portable repo-root resolution and the UTF-8 write versus BOM-tolerant read contract for CanopyTag JSON.",
+      "summary": "Canonical boundary between reviewable shared metadata and local-only identity, analytics, active-work claims, MCP, and hook configuration. It documents the same-checkout limit of the default work sidecar, portable repo-root resolution, and the UTF-8 write versus BOM-tolerant read contract.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-29",
+      "last_reviewed": "2026-08-02",
       "authority_level": "guideline",
       "status": "active",
       "tags": ["docs", "privacy", "local-first", "public-release"],
@@ -1006,13 +1054,13 @@
     },
     "docs/roadmap.md": {
       "title": "Public Roadmap",
-      "summary": "Curated public roadmap replacing the old root TODO log. Captures current prerelease status, release blockers, near-term product work, agent navigation ideas, analytics and benchmarking plans, multi-repo ideas, structural-data/cartography philosophy, and design principles to preserve.",
+      "summary": "Curated public roadmap covering prerelease status, release blockers, active-work dogfooding, agent navigation, analytics and benchmarking, multi-repo ideas, structural-data/cartography boundaries, and design principles to preserve.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
       "stability": 2,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-25",
+      "last_reviewed": "2026-08-02",
       "authority_level": "guideline",
       "status": "active",
       "tags": ["docs", "strategy", "design"],
@@ -1333,7 +1381,7 @@
     },
     "src/mcp/server.ts": {
       "title": "MCP Server Entry Point",
-      "summary": "17-line entry point — creates McpServer, registers read and write tools via separate modules, connects over stdio transport. Agents invoke this via Claude Code's MCP config. No business logic here; all tool implementations are in reads.ts and writes-registration.ts.",
+      "summary": "Small stdio entry point that creates McpServer and registers catalogue reads, canonical/review writes, and local active-work coordination through separate modules. Agents invoke it through project-local MCP config; business logic stays in the registered tool modules and shared libraries.",
       "validity": 5,
       "clarity": 5,
       "completeness": 5,
@@ -1346,7 +1394,8 @@
       "feature_id": "mcp-server",
       "related_files": [
         {"path": "src/mcp/tools/reads.ts", "closeness": 5},
-        {"path": "src/mcp/tools/writes-registration.ts", "closeness": 5}
+        {"path": "src/mcp/tools/writes-registration.ts", "closeness": 5},
+        {"path": "src/mcp/tools/active-work.ts", "closeness": 5}
       ]
     },
     "src/mcp/tools/agent-manifest.ts": {
@@ -1389,6 +1438,29 @@
         {"path": "src/cli/doctor.ts", "closeness": 4, "relation": "fed-by"},
         {"path": "src/cli/graph.ts", "closeness": 4, "relation": "fed-by"},
         {"path": "src/backend/lib/analytics.ts", "closeness": 3}
+      ]
+    },
+    "src/mcp/tools/active-work.ts": {
+      "title": "MCP Active Work Coordination Tools",
+      "summary": "Registers agent-first tools to query, claim, renew, and release local expiring work. It shares the CLI claim engine, emits snake-case JSON, links TODOs without mutating them, reports conflicts explicitly, and keeps all coordination offline in the ignored target-repo sidecar.",
+      "tags": ["mcp", "coordination", "agent-interface", "local-first"],
+      "feature_id": "mcp-server",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/backend/lib/active-work.ts", "relation": "fed-by", "closeness": 5},
+        {"path": "src/mcp/server.ts", "closeness": 5}
+      ]
+    },
+    "src/mcp/__tests__/active-work.test.ts": {
+      "title": "MCP Active Work Surface Contract",
+      "summary": "Pins the four bounded MCP coordination tool names so check-in, query, renewal, and check-out remain discoverable to agent harnesses.",
+      "tags": ["mcp", "coordination", "tests"],
+      "feature_id": "mcp-server",
+      "authority_level": "guideline",
+      "status": "active",
+      "related_files": [
+        {"path": "src/mcp/tools/active-work.ts", "relation": "test-of", "closeness": 5}
       ]
     },
     "src/mcp/tools/writes.ts": {
@@ -1579,13 +1651,13 @@
   },
   "directories": {
     "src/cli": {
-      "summary": "Serverless agent commands for orientation, filtering, context, comparison, TODOs, health, deterministic maintenance checks, coverage, graph walks, analytics, and integration setup. Most read commands share filtering and sorting primitives, and several builders are reused by MCP."
+      "summary": "Serverless agent commands for orientation, filtering, context, comparison, TODOs, health, maintenance, coverage, graph walks, analytics, integration setup, and local expiring work claims. Most read commands share filtering and sorting primitives, and several surfaces are reused by MCP."
     },
     "src/mcp": {
-      "summary": "Stdio MCP adapter for compatible agents. Read tools reuse CLI builders; write tools record attribution and undo data, support staged suggestions, and expose tag and activity-review context without requiring the web server."
+      "summary": "Stdio MCP adapter for compatible agents. Read tools reuse CLI builders; write tools record attribution and undo data; local coordination tools expose expiring file or directory claims without requiring the web server."
     },
     "src/backend/lib": {
-      "summary": "Backend helpers for canopy persistence, agent manifests, local profiles, analytics, Git dates, merged records, filesystem trees, and network exposure. They support routes and CLI or MCP operations without owning UI policy."
+      "summary": "Backend helpers for canopy persistence, agent manifests, local profiles, analytics, expiring work claims, Git dates, merged records, filesystem trees, and network exposure. They support routes and CLI or MCP operations without owning UI policy."
     },
     "src/backend/routes": {
       "summary": "Fastify API surface for repository selection, tree and merged index reads, annotation mutations, settings, analytics, profiles, archives, and activity review. Routes share mutable per-repository state initialized by the server bootstrap."
@@ -1610,7 +1682,7 @@
     },
     "cli-tools": {
       "name": "Agent-Facing CLI",
-      "description": "Local command surface for orientation, bounded authored catalogue search, comparison, health, deterministic maintenance checks, TODOs, coverage, analytics, MCP setup, and hooks. Commands verify repo-local metadata without requiring the web server, and MCP reuses several builders.",
+      "description": "Local command surface for orientation, bounded authored catalogue search, comparison, health, maintenance, TODOs, coverage, analytics, MCP setup, hooks, and advisory active-work claims. Commands verify repo-local metadata without requiring the web server, and MCP reuses several engines.",
       "tags": ["cli", "agent-interface", "retrieval"],
       "status": "active",
       "canonical_file": "bin/canopytag.mjs"
@@ -1624,7 +1696,7 @@
     },
     "mcp-server": {
       "name": "MCP Server",
-      "description": "Local stdio adapter exposing catalogue reads, semantic relationship traversal, attributed mutations, staged suggestions, and activity-review inspection to compatible agents. It reuses CLI builders where practical instead of becoming a second intelligence store.",
+      "description": "Local stdio adapter exposing catalogue reads, semantic relationship traversal, attributed mutations, staged suggestions, activity review, and expiring work coordination to compatible agents. It reuses shared engines instead of becoming a second intelligence store or orchestrator.",
       "tags": ["mcp", "agent-interface", "review-feed", "retrieval"],
       "status": "active",
       "canonical_file": "src/mcp/server.ts"

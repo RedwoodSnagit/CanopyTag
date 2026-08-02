@@ -16,6 +16,7 @@
  *   canopytag todos [options]
  *   canopytag health [options]
  *   canopytag doctor [options]
+ *   canopytag work <subcommand> [options]
  *   canopytag analytics [options]
  *   canopytag mcp [options]          # write project-local .mcp.json
  *   canopytag serve [options]        # start the web UI server
@@ -43,6 +44,7 @@ const COMMANDS = {
   todos:     join(cliDir, 'todos.ts'),
   health:    join(cliDir, 'health.ts'),
   doctor:    join(cliDir, 'doctor.ts'),
+  work:      join(cliDir, 'work.ts'),
   analytics: join(cliDir, 'analytics.ts'),
   mcp:       join(cliDir, 'mcp.ts'),
   coverage:  join(cliDir, 'coverage.ts'),
@@ -63,6 +65,7 @@ Commands:
   todos       List open TODOs across the repo
   health      Authority vs quality mismatch detection
   doctor      Deterministic metadata and maintenance checks
+  work        Claim, query, renew, and release local active work
   coverage    Annotation coverage report with orphan detection
   analytics   Inspect agent activity heatmap
   mcp         Write or preview a project-local .mcp.json entry

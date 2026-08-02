@@ -91,6 +91,31 @@ relationships. Use
 `canopytag doctor --strict` when warnings should fail a local check or CI job;
 use `--format json` for machine-readable output.
 
+## Coordinate Concurrent Edits
+
+```bash
+canopytag work check src/auth
+canopytag work claim --path src/auth --summary "Repair token refresh" --ttl 2h --owner codex --session thread-123
+canopytag work list --owner codex
+canopytag work renew AW-... --ttl 2h --owner codex --session thread-123
+canopytag work release AW-... --note "Focused tests passing" --owner codex --session thread-123
+```
+
+Claims are local, advisory, and expiring. They live in the git-ignored
+`canopytag/.active_work.json`, may link to a TODO with `--todo-id` and
+`--todo-file`, and never edit `canopy.json` or complete the TODO. Use a persistent
+`in_progress` TODO or lifecycle/status metadata for unfinished repository work;
+use `work` for who is editing a path now.
+
+Active claims complement the heatmap without changing it: claims are declared
+current intent, while analytics are observed recent activity.
+
+Mutation commands require an owner from `--owner`, `CANOPYTAG_AGENT_NAME`, or
+`MCP_CLIENT_NAME`; use a per-task session when agents can share an owner name.
+Expired claims must be claimed again so conflicts are rechecked. End planned
+directory paths with `/`. Local released/expired history is retained for seven
+days, up to 500 records.
+
 ## Install Agent Hooks
 
 ```bash
@@ -98,7 +123,9 @@ canopytag mcp --repo /path/to/repo
 canopytag hook install
 ```
 
-`mcp` writes project-local MCP config. `hook install` is Claude Code-specific
+MCP exposes `canopytag_active_work`, `canopytag_claim_work`,
+`canopytag_renew_work`, and `canopytag_release_work` for the same check-in and
+check-out loop. `mcp` writes project-local MCP config. `hook install` is Claude Code-specific
 and records recent read/edit/search heat in `canopytag/.analytics.json`.
 
 For public repos, review or keep local the generated `.mcp.json` and

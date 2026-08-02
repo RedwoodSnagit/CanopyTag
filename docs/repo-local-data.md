@@ -31,13 +31,19 @@ These files are local operating state and should not be committed:
 
 - `canopytag/profile.local.json` - local human identity for UI attribution.
 - `canopytag/.analytics.json` - local agent read/edit/search heat.
+- `canopytag/.active_work.json` - local, expiring advisory work claims for
+  concurrent agents or humans. Claims may link to shared TODO IDs, but the claim
+  state itself is not durable project status. The default file is shared by
+  processes in one checkout, not across separate Git worktrees. Released and
+  expired history is pruned after seven days and capped at 500 records.
 - `.mcp.json` - MCP launch config; the generated file contains absolute local
   paths to this CanopyTag checkout and the target repo.
 - `.claude/settings.json` when installed by `canopytag hook install` - may
   contain an absolute local path to `hooks/canopytag-analytics.mjs`.
 
-`canopytag init` keeps `profile.local.json` ignored. Analytics, MCP config, and
-Claude settings are written where the host tools expect them; add ignore rules
+`canopytag init` keeps `profile.local.json` ignored. The first active-work claim
+keeps `.active_work.json` ignored. Analytics, MCP config, and Claude settings are
+written where the host tools expect them; add ignore rules
 if your repo would otherwise track them, or review them before sharing.
 
 ## Encoding

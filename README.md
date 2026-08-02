@@ -34,6 +34,7 @@ should I read next?
 - File relationships and feature clustering so agents can follow meaning, not just folders
 - Authority, quality, freshness, lifecycle, and attention signals so agents know what to trust
 - Hot spots from recent reads, writes, and searches
+- Local, expiring work claims so concurrent agents can see current editing intent
 - A review feed for agent-authored metadata changes
 - A Claude Code analytics hook for recent file/search heat
 - A small forest-themed demo repo that shows the full workflow
@@ -214,9 +215,16 @@ The intended loop is:
 4. Use `context` to enrich those hits with summaries, authority, warnings, and relationships.
 5. Use `compare` when deciding which of several files should win a conflict.
 6. Use `query --feature ... --detail 4` when the hits cluster around a feature.
-7. Let agents update `canopy.json` through MCP as they learn.
-8. Review recent agent activity in the UI when practical.
-9. Run `doctor` periodically or before committing shared metadata.
+7. Check `work` before editing shared paths, claim the paths you will change,
+   and release the claim when finished or handed off.
+8. Let agents update `canopy.json` through MCP as they learn.
+9. Review recent agent activity in the UI when practical.
+10. Run `doctor` periodically or before committing shared metadata.
+
+Active work and activity heat answer different questions. A work claim records
+explicit current intent: who is editing which paths, why, and until when. The
+heatmap records observed recent reads, writes, and searches. Claims do not alter
+heat or attention scores, and heat never implies that a path is reserved.
 
 ## CLI Reference
 
@@ -251,6 +259,10 @@ canopytag tags --health                  # soft tag hygiene report
 
 canopytag health                         # authority/quality and lifecycle attention
 canopytag doctor                         # deterministic metadata maintenance checks
+canopytag work check src/auth            # inspect active claims overlapping a path
+canopytag work claim --path src/auth --summary "Repair token refresh" --owner codex --session thread-123
+canopytag work renew AW-... --ttl 2h --owner codex --session thread-123
+canopytag work release AW-... --note "Tests passing; ready for review" --owner codex --session thread-123
 canopytag analytics                      # recent agent/search heat
 canopytag coverage                       # annotation coverage report
 canopytag mcp --repo /path/to/repo       # write project-local MCP config
@@ -338,10 +350,49 @@ or to a client settings file that supports `mcpServers`:
 | `canopytag_add_todo` | Log work items |
 | `canopytag_rename_tag` | Consolidate duplicate tags |
 | `canopytag_stage_suggestion` | Add sidecar-only suggestions or manual stale notes |
+| `canopytag_active_work` | Query local active work by path or owner |
+| `canopytag_claim_work` | Claim files/directories with an expiring advisory lease |
+| `canopytag_renew_work` | Renew an owned work claim |
+| `canopytag_release_work` | Release or hand off a work claim |
 
 Agents write directly to `canopy.json` by default. `agent_manifest.json` acts as
 the companion activity/review feed so humans can later agree, fix, or reject
 agent-authored changes.
+
+### Active Work Coordination
+
+`canopytag work` is a deliberately small coordination layer, not a new task
+manager or orchestrator. It stores advisory claims in the git-ignored
+`canopytag/.active_work.json` sidecar. Claims may cover files or directories,
+default to exclusive, expire after four hours, and can link to a CanopyTag TODO:
+
+```bash
+canopytag work check src/auth
+canopytag work claim --path src/auth --summary "Repair token refresh" \
+  --owner codex --session thread-123 --ttl 2h --todo-id AUTH-014 \
+  --todo-file src/auth/token.ts
+canopytag work release AW-... --owner codex --session thread-123 \
+  --note "Implementation and focused tests complete"
+```
+
+Use an `in_progress` TODO, draft/experimental status, or lifecycle mark when the
+repository itself is unfinished. Use active work only for the ephemeral fact
+that a particular worker is editing paths now. Claims do not block Git writes,
+complete linked TODOs, call a model, or upload repository data. Expiry prevents
+abandoned claims from becoming permanent locks; `--force` is an explicit escape
+hatch after reviewing a stale or abandoned claim.
+
+Mutation commands require an explicit owner unless `CANOPYTAG_AGENT_NAME` or
+`MCP_CLIENT_NAME` is set; a session is strongly recommended for concurrent
+agents. Expired claims cannot be renewed: create a new claim so overlaps are
+checked again. End a planned directory path with `/` to give it directory scope.
+Released and expired history is retained locally for seven days, capped at 500
+records.
+
+The default sidecar coordinates processes using the same checkout. Separate Git
+worktrees have separate sidecars; use the same working directory for shared
+claims today. Cross-worktree coordination belongs in a future adapter or shared
+store only if that workflow becomes common enough to justify it.
 
 ## Claude Code Analytics Hook
 
@@ -373,6 +424,10 @@ git-ignored so cloned repos do not inherit another person's name.
 MCP write tools accept optional `agent_name` and `agent_session` parameters. If
 omitted, the server uses `CANOPYTAG_AGENT_NAME` and `CANOPYTAG_AGENT_SESSION`,
 then falls back to a generic agent signature.
+
+Active-work mutations are stricter because identity controls claim ownership:
+they require `agent_name`, `CANOPYTAG_AGENT_NAME`, or `MCP_CLIENT_NAME`. Supply a
+per-task `agent_session` whenever multiple agents may use the same name.
 
 Agent-authored changes stay useful immediately. Human review is a confidence
 layer, not a gate. The Activity view lets humans agree, request a fix, or reject

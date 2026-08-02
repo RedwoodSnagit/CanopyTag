@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { registerReadTools } from './tools/reads.js';
 import { registerWriteTools } from './tools/writes-registration.js';
+import { registerActiveWorkTools } from './tools/active-work.js';
 
 const server = new McpServer({
   name: 'canopytag',
@@ -11,6 +12,7 @@ const server = new McpServer({
 
 registerReadTools(server);
 registerWriteTools(server);
+registerActiveWorkTools(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

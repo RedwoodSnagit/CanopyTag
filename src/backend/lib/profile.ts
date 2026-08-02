@@ -118,14 +118,14 @@ export function readOrCreateProfile(profilePath: string, repoRoot?: string): Can
   return profile;
 }
 
-function appendIgnorePattern(targetPath: string, pattern: string): void {
+function appendIgnorePattern(targetPath: string, pattern: string, commentText: string): void {
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
   const existing = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf-8') : '';
   const lines = existing.split(/\r?\n/).map(line => line.trim());
   if (lines.includes(pattern)) return;
 
   const prefix = existing.length > 0 && !existing.endsWith('\n') ? '\n' : '';
-  const comment = lines.includes('# CanopyTag local identity') ? '' : '# CanopyTag local identity\n';
+  const comment = lines.includes(commentText) ? '' : `${commentText}\n`;
   fs.appendFileSync(targetPath, `${prefix}${comment}${pattern}\n`, 'utf-8');
 }
 
@@ -135,17 +135,70 @@ function hasIgnorePattern(targetPath: string, pattern: string): boolean {
   return lines.includes(pattern);
 }
 
-export function ensureProfileIgnored(repoRoot: string, profilePath: string = resolveProfilePath(repoRoot)): void {
-  const relative = path.relative(repoRoot, profilePath).replace(/\\/g, '/');
+function gitPath(repoRoot: string, ...gitArguments: string[]): string | undefined {
+  try {
+    const result = execFileSync(
+      'git',
+      ['-C', repoRoot, 'rev-parse', '--path-format=absolute', ...gitArguments],
+      { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 2_000 },
+    ).trim();
+    return result || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function gitCommandSucceeds(repoRoot: string, ...gitArguments: string[]): boolean {
+  try {
+    execFileSync('git', ['-C', repoRoot, ...gitArguments], {
+      stdio: 'ignore',
+      timeout: 2_000,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function ensureLocalFileIgnored(
+  repoRoot: string,
+  filePath: string,
+  commentText = '# CanopyTag local state',
+  patternSuffix = '',
+): void {
+  const relative = path.relative(repoRoot, filePath).replace(/\\/g, '/');
   if (!relative || relative.startsWith('..')) return;
+  const ignorePattern = `${relative}${patternSuffix}`;
 
   const repoGitignore = path.join(repoRoot, '.gitignore');
-  if (hasIgnorePattern(repoGitignore, relative)) return;
+  const gitTopLevel = gitPath(repoRoot, '--show-toplevel');
+  const resolvedGitTopLevel = gitTopLevel ? path.resolve(gitTopLevel) : undefined;
+  const resolvedRepoRoot = path.resolve(repoRoot);
+  const isWorktreeRoot = gitTopLevel !== undefined
+    && (process.platform === 'win32' || process.platform === 'darwin'
+      ? resolvedGitTopLevel?.toLowerCase() === resolvedRepoRoot.toLowerCase()
+      : resolvedGitTopLevel === resolvedRepoRoot);
+  const gitExclude = isWorktreeRoot
+    ? gitPath(repoRoot, '--git-path', 'info/exclude')
+    : undefined;
+  if (gitExclude) {
+    if (gitCommandSucceeds(repoRoot, 'ls-files', '--error-unmatch', '--', relative)) {
+      throw new Error(`${relative} is tracked by Git and cannot be used as local-only CanopyTag state.`);
+    }
+    if (gitCommandSucceeds(repoRoot, 'check-ignore', '-q', '--', relative)) return;
+  } else if (hasIgnorePattern(repoGitignore, ignorePattern)) {
+    return;
+  }
 
-  const gitInfoDir = path.join(repoRoot, '.git', 'info');
-  const ignorePath = fs.existsSync(gitInfoDir)
-    ? path.join(gitInfoDir, 'exclude')
-    : repoGitignore;
+  const ignorePath = gitExclude ?? repoGitignore;
 
-  appendIgnorePattern(ignorePath, relative);
+  appendIgnorePattern(ignorePath, ignorePattern, commentText);
+
+  if (gitExclude && !gitCommandSucceeds(repoRoot, 'check-ignore', '-q', '--', relative)) {
+    throw new Error(`Could not verify that local CanopyTag state is ignored: ${relative}`);
+  }
+}
+
+export function ensureProfileIgnored(repoRoot: string, profilePath: string = resolveProfilePath(repoRoot)): void {
+  ensureLocalFileIgnored(repoRoot, profilePath, '# CanopyTag local identity');
 }

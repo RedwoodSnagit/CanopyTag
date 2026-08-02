@@ -66,6 +66,8 @@ hooks/               Claude Code analytics hook
   selection (`--repo`, `REPO_ROOT`, cwd, or the web UI) instead of committed
   local absolute paths.
 - Never commit `profile.local.json` or local `.analytics.json` files.
+- Never commit `.active_work.json`; it is expiring local coordination, not
+  persistent project status.
 - Review `.mcp.json` and `.claude/settings.json` before committing; generated
   versions may contain local absolute paths.
 - The unauthenticated web backend binds to `127.0.0.1` by default. A
@@ -83,6 +85,8 @@ rg -l "keyword" src tests
 canopytag context path/from/search.ts another/path.md
 canopytag compare path/from/search.ts another/path.md
 canopytag query --feature feature-id --detail 4
+canopytag work check path/to/edit
+canopytag work claim --path path/to/edit --summary "Bounded purpose" --owner codex --session thread-id
 ```
 
 Use:
@@ -94,6 +98,8 @@ Use:
 - `query` with feature, tag, or relation filters to explore a neighborhood
 - `todos`, `health`, `doctor`, and `analytics` before wrapping up when the task
   touched shared CanopyTag metadata
+- `work check` before editing shared paths; claim bounded paths and release the
+  claim on completion or handoff
 
 ## MCP And Hooks
 
@@ -111,6 +117,9 @@ canopytag hook install
 
 The hook records reads, edits, writes, grep/glob, Bash `rg`/`ripgrep`, and
 CanopyTag query heat. Query strings are intentionally not stored.
+
+Active-work claims are a separate local signal. They describe declared editing
+intent and expiry; they do not change the heatmap or persistent TODO state.
 
 ## Scoring And Trust
 
@@ -144,6 +153,7 @@ promotion workflows exist, agents should stage proposed lifecycle changes in
   CLI/MCP surfaces.
 - Add or update `canopytag/canopy.json` entries for important new files.
 - Keep package hygiene in mind: local screenshots, profiles, analytics, output,
-  workspace scratch data, and tests are excluded from npm artifacts.
+  active-work state, workspace scratch data, and tests are excluded from npm
+  artifacts.
 - Run `npm run build` and `npm test -- --run` for code changes.
 - Run `npm pack --dry-run --json` when changing packaging or root files.
