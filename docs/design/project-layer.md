@@ -172,9 +172,12 @@ canopytag_update_project  edit fields, add/remove file and feature links (write)
 
 Changes to existing tools:
 
-- `canopytag_add_todo` — `file` becomes optional **when** `project` is supplied.
-  Exactly one of `file` or `project` is required. Supplying both is an error:
-  a TODO has one home, and inheritance handles the rest.
+- `canopytag_add_todo` — `file` becomes optional when a project is supplied.
+  Exactly one of `file`, `directory`, or `project` is required; supplying more
+  than one is an error, because a TODO has one home and inheritance handles the
+  rest. The `directory` option is specified in
+  [directory-annotation.md](directory-annotation.md) — file and directory are
+  both *where* at different granularity, while project is *intent*.
 - `canopytag_query` — gains `project` filter.
 - `canopytag_context` — gains a `projects` section for file lookups.
 
