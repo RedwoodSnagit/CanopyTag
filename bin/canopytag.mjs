@@ -19,7 +19,7 @@
  *   canopytag work <subcommand> [options]
  *   canopytag analytics [options]
  *   canopytag mcp [options]          # write project-local .mcp.json
- *   canopytag serve [options]        # start the web UI server
+ *   canopytag serve [options]        # start the backend JSON API (not the web UI)
  *   canopytag hook install           # install analytics hook
  */
 
@@ -69,11 +69,19 @@ Commands:
   coverage    Annotation coverage report with orphan detection
   analytics   Inspect agent activity heatmap
   mcp         Write or preview a project-local .mcp.json entry
-  serve       Start the web UI (frontend + backend)
+  serve       Start the backend JSON API (does not serve the web UI)
   hook        Install/manage the analytics hook
 
 Run \`canopytag <command> --help\` for command-specific options.
 Global: --repo <path> or REPO_ROOT env to target a specific repo.
+
+Opening the web UI (humans):
+  From a CanopyTag checkout, run \`npm run dev\` and open http://localhost:5180
+  This starts the Vite frontend and the backend API together.
+
+  \`canopytag serve\` starts only the API on http://127.0.0.1:3100 — opening that
+  port in a browser returns JSON, not the interface. Use it when you want the API
+  alone, or are already running the frontend yourself.
 `;
 
 const command = process.argv[2];
