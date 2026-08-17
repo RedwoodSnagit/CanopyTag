@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Tree } from 'react-arborist';
 import type { NodeRendererProps } from 'react-arborist';
 import { useWorkspace } from '../stores/workspace';
@@ -260,9 +260,25 @@ export function FileTree({ defaultShowHeat = false }: { defaultShowHeat?: boolea
     [badgeMap, selectedPath, heatMap, showHeat],
   );
 
+  // react-arborist is virtualized: it renders only enough rows to fill the height
+  // it is handed. Reading the ref during render captured null on the first pass and
+  // never re-measured, so the tree stayed frozen at the fallback size and silently
+  // truncated the file list. Observe the container instead so the row count tracks
+  // the real viewport as the pane resizes.
   const containerRef = useRef<HTMLDivElement>(null);
-  const containerWidth = containerRef.current?.clientWidth ?? 280;
-  const containerHeight = containerRef.current?.clientHeight ?? 600;
+  const [{ width: containerWidth, height: containerHeight }, setSize] = useState({ width: 280, height: 600 });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setSize(prev => (prev.width === width && prev.height === height ? prev : { width, height }));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -288,7 +304,7 @@ export function FileTree({ defaultShowHeat = false }: { defaultShowHeat?: boolea
           {showHeat ? `Heat bars: ${HEAT_WINDOW_DAYS}d on` : `Show ${HEAT_WINDOW_DAYS}d heat bars`}
         </button>
       </div>
-      <div className="flex-1 overflow-auto" ref={containerRef}>
+      <div className="flex-1 overflow-hidden" ref={containerRef}>
         <Tree<ArboristNode>
           data={data}
           openByDefault={false}
