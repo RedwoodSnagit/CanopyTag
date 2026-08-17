@@ -115,8 +115,9 @@ export function WelcomeScreen() {
 
   const handleDemo = async () => {
     setConnecting(true);
+    setError('');
     try {
-      const config = await api.getConfig();
+      const config = await api.setDemoRepo();
       setRepoConfig(config);
       await initialize();
     } catch (e) {

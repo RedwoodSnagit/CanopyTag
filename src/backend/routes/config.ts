@@ -6,16 +6,125 @@ import { ensureProfileIgnored, readOrCreateProfile, resolveProfilePath } from '.
 import { snakeToCamel } from '../../shared/case-transform';
 import type { RepoIndexItem } from '../../shared/types';
 
+export interface RepoConfigPayload {
+  repoRoot: string;
+  repoName: string;
+  isDemo: boolean;
+}
+
+/**
+ * Compare two paths for equality. Windows filesystems are case-insensitive, so a
+ * literal string compare would miss `C:/…/demo` vs `c:/…/Demo`.
+ */
+function samePath(a: string, b: string): boolean {
+  const norm = (p: string) => {
+    const resolved = path.resolve(p);
+    return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+  };
+  return norm(a) === norm(b);
+}
+
+/**
+ * Describe a repo root for the frontend. `isDemo` is decided by comparing against
+ * the bundled demo path rather than by checking for a trailing "demo" segment, so
+ * a user's own directory named `demo` is not mistaken for the tutorial workspace.
+ */
+export function describeRepo(repoRoot: string, demoRoot: string): RepoConfigPayload {
+  const isDemo = samePath(repoRoot, demoRoot);
+  return {
+    repoRoot,
+    repoName: isDemo ? 'forest_repo_demo' : path.basename(path.resolve(repoRoot)),
+    isDemo,
+  };
+}
+
+/**
+ * Point the running server at a different repo root, loading that repo's canopy
+ * data, settings, tags, profile, and index. Shared by the repo picker and the
+ * demo switch so both paths stay in sync.
+ */
+function applyRepoRoot(app: FastifyInstance, newRoot: string): RepoConfigPayload {
+  const canopyDir = resolveCanopyDir(newRoot);
+  if (!fs.existsSync(canopyDir)) {
+    fs.mkdirSync(canopyDir, { recursive: true });
+  }
+
+  const canopyPath = path.join(canopyDir, 'canopy.json');
+  const settingsPath = path.join(canopyDir, 'settings.json');
+  const archivePath = path.join(canopyDir, 'canopy_archive.json');
+  const analyticsPath = path.join(canopyDir, '.analytics.json');
+  const profilePath = resolveProfilePath(newRoot);
+
+  // Load canopy data for the new repo
+  const canopy = readCanopy(canopyPath);
+  ensureCommentIds(canopy);
+  const settings = readSettings(settingsPath);
+  ensureProfileIgnored(newRoot, profilePath);
+  const profile = readOrCreateProfile(profilePath, newRoot);
+
+  // Load repo index (optional)
+  const repoIndex = new Map<string, RepoIndexItem>();
+  const indexPath = path.join(newRoot, 'docs', '_meta', 'repo_index.json');
+  if (fs.existsSync(indexPath)) {
+    const rawIndex = parseJsonFile(indexPath) as { items: unknown };
+    const items = snakeToCamel(rawIndex.items) as RepoIndexItem[];
+    for (const item of items) {
+      repoIndex.set(item.path, item);
+    }
+  }
+
+  // Load tags
+  let tags: string[] = [];
+  const canopyTagsPath = path.join(canopyDir, 'tags.json');
+  const legacyTagPolicyPath = path.join(newRoot, 'docs', 'tag_policy.json');
+  if (fs.existsSync(canopyTagsPath)) {
+    const tagData = parseJsonFile(canopyTagsPath) as any;
+    tags = Array.isArray(tagData) ? tagData : Object.keys(tagData.tags ?? tagData);
+  } else if (fs.existsSync(legacyTagPolicyPath)) {
+    const tagPolicy = parseJsonFile(legacyTagPolicyPath) as any;
+    tags = Object.keys(tagPolicy.tags);
+  } else {
+    const tagSet = new Set<string>();
+    for (const file of Object.values(canopy.files)) {
+      for (const tag of file.tags ?? []) {
+        tagSet.add(tag);
+      }
+    }
+    tags = Array.from(tagSet).sort();
+  }
+
+  // Run archive sweep
+  const archive = readArchive(archivePath);
+  const { canopy: swept, archive: updated, swept: count } = runArchiveSweep(canopy, archive, settings.archiveRetention);
+  if (count > 0) {
+    writeCanopy(canopyPath, swept);
+    writeArchive(archivePath, updated);
+  }
+
+  // Update server state
+  app.serverState.repoRoot = newRoot;
+  app.serverState.canopyPath = canopyPath;
+  app.serverState.canopy = count > 0 ? swept : canopy;
+  app.serverState.repoIndex = repoIndex;
+  app.serverState.tags = tags;
+  app.serverState.settings = settings;
+  app.serverState.settingsPath = settingsPath;
+  app.serverState.profile = profile;
+  app.serverState.profilePath = profilePath;
+  app.serverState.archivePath = archivePath;
+  app.serverState.analyticsPath = analyticsPath;
+
+  console.log(`[canopytag] Switched to repo: ${newRoot}`);
+  console.log(`[canopytag] canopy    = ${canopyPath}`);
+
+  return describeRepo(newRoot, app.serverState.demoRoot);
+}
+
 export async function configRoutes(app: FastifyInstance) {
   // GET /api/config — returns current repo info
   app.get('/api/config', async () => {
-    const { repoRoot } = app.serverState;
-    const isDemo = repoRoot.endsWith('/demo') || repoRoot.endsWith('\\demo');
-    return {
-      repoRoot,
-      repoName: isDemo ? 'forest_repo_demo' : path.basename(repoRoot),
-      isDemo,
-    };
+    const { repoRoot, demoRoot } = app.serverState;
+    return describeRepo(repoRoot, demoRoot);
   });
 
   // POST /api/config/repo — switch to a different repo root
@@ -31,85 +140,19 @@ export async function configRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Path is not a directory' });
     }
 
-    // Resolve canopy dir.
-    const canopyDir = resolveCanopyDir(newRoot);
-    if (!fs.existsSync(canopyDir)) {
-      fs.mkdirSync(canopyDir, { recursive: true });
+    return applyRepoRoot(app, newRoot);
+  });
+
+  // POST /api/config/demo — switch to the bundled demo workspace.
+  // The frontend cannot know the demo's absolute path, so it is resolved here.
+  app.post('/api/config/demo', async (_req, reply) => {
+    const { demoRoot } = app.serverState;
+
+    if (!fs.existsSync(demoRoot)) {
+      return reply.status(404).send({ error: `Demo workspace not found at ${demoRoot}` });
     }
 
-    const canopyPath = path.join(canopyDir, 'canopy.json');
-    const settingsPath = path.join(canopyDir, 'settings.json');
-    const archivePath = path.join(canopyDir, 'canopy_archive.json');
-    const analyticsPath = path.join(canopyDir, '.analytics.json');
-    const profilePath = resolveProfilePath(newRoot);
-
-    // Load canopy data for the new repo
-    const canopy = readCanopy(canopyPath);
-    ensureCommentIds(canopy);
-    const settings = readSettings(settingsPath);
-    ensureProfileIgnored(newRoot, profilePath);
-    const profile = readOrCreateProfile(profilePath, newRoot);
-
-    // Load repo index (optional)
-    const repoIndex = new Map<string, RepoIndexItem>();
-    const indexPath = path.join(newRoot, 'docs', '_meta', 'repo_index.json');
-    if (fs.existsSync(indexPath)) {
-      const rawIndex = parseJsonFile(indexPath) as { items: unknown };
-      const items = snakeToCamel(rawIndex.items) as RepoIndexItem[];
-      for (const item of items) {
-        repoIndex.set(item.path, item);
-      }
-    }
-
-    // Load tags
-    let tags: string[] = [];
-    const canopyTagsPath = path.join(canopyDir, 'tags.json');
-    const legacyTagPolicyPath = path.join(newRoot, 'docs', 'tag_policy.json');
-    if (fs.existsSync(canopyTagsPath)) {
-      const tagData = parseJsonFile(canopyTagsPath) as any;
-      tags = Array.isArray(tagData) ? tagData : Object.keys(tagData.tags ?? tagData);
-    } else if (fs.existsSync(legacyTagPolicyPath)) {
-      const tagPolicy = parseJsonFile(legacyTagPolicyPath) as any;
-      tags = Object.keys(tagPolicy.tags);
-    } else {
-      const tagSet = new Set<string>();
-      for (const file of Object.values(canopy.files)) {
-        for (const tag of file.tags ?? []) {
-          tagSet.add(tag);
-        }
-      }
-      tags = Array.from(tagSet).sort();
-    }
-
-    // Run archive sweep
-    const archive = readArchive(archivePath);
-    const { canopy: swept, archive: updated, swept: count } = runArchiveSweep(canopy, archive, settings.archiveRetention);
-    if (count > 0) {
-      writeCanopy(canopyPath, swept);
-      writeArchive(archivePath, updated);
-    }
-
-    // Update server state
-    app.serverState.repoRoot = newRoot;
-    app.serverState.canopyPath = canopyPath;
-    app.serverState.canopy = count > 0 ? swept : canopy;
-    app.serverState.repoIndex = repoIndex;
-    app.serverState.tags = tags;
-    app.serverState.settings = settings;
-    app.serverState.settingsPath = settingsPath;
-    app.serverState.profile = profile;
-    app.serverState.profilePath = profilePath;
-    app.serverState.archivePath = archivePath;
-    app.serverState.analyticsPath = analyticsPath;
-
-    console.log(`[canopytag] Switched to repo: ${newRoot}`);
-    console.log(`[canopytag] canopy    = ${canopyPath}`);
-
-    return {
-      repoRoot: newRoot,
-      repoName: path.basename(newRoot),
-      isDemo: false,
-    };
+    return applyRepoRoot(app, demoRoot);
   });
 
   // GET /api/config/browse?path=... — list directories for folder browser

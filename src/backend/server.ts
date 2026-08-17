@@ -30,6 +30,8 @@ import { profileRoutes } from './routes/profile.js';
 
 interface ServerState {
   repoRoot: string;
+  /** Absolute path to the bundled demo workspace. Never changes after bootstrap. */
+  demoRoot: string;
   canopyPath: string;
   canopy: Canopy;
   repoIndex: Map<string, RepoIndexItem>;
@@ -63,6 +65,13 @@ const { values: args } = parseArgs({
 
 const serverDir = import.meta.dirname;
 
+// serverDir is src/backend — go up 2 levels to reach the CanopyTag project root.
+// The demo workspace ships inside the package, so it resolves identically whether
+// CanopyTag runs from its own checkout or as an installed dependency. Resolved
+// unconditionally so /api/config/demo can switch back to it at runtime.
+const canopyTagRoot = path.resolve(serverDir, '../..');
+const demoRoot = path.join(canopyTagRoot, 'demo');
+
 // Resolve repo root: CLI arg > env var > default
 const explicitRoot = (typeof args.repo === 'string' ? args.repo : undefined)
   ?? process.env.REPO_ROOT;
@@ -71,8 +80,6 @@ let repoRoot: string;
 if (explicitRoot) {
   repoRoot = explicitRoot;
 } else {
-  // serverDir is src/backend — go up 2 levels to reach the CanopyTag project root
-  const canopyTagRoot = path.resolve(serverDir, '../..');
   const canopyTagPkg = path.join(canopyTagRoot, 'package.json');
   let isCanopyTagInstall = false;
   try {
@@ -84,7 +91,7 @@ if (explicitRoot) {
 
   if (isCanopyTagInstall) {
     // Running from CanopyTag itself — use the bundled demo workspace
-    repoRoot = path.join(canopyTagRoot, 'demo');
+    repoRoot = demoRoot;
   } else {
     // Running as a dependency — default to the parent project root
     repoRoot = path.resolve(canopyTagRoot, '..');
@@ -162,6 +169,7 @@ await app.register(cors, { origin: ['http://localhost:5180'], methods: ['GET', '
 // Decorate with shared state
 app.decorate('serverState', {
   repoRoot,
+  demoRoot,
   canopyPath,
   canopy,
   repoIndex,

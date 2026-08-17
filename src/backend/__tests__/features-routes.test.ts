@@ -30,6 +30,7 @@ async function createApp(features: Record<string, Feature>) {
 
   app.decorate('serverState', {
     repoRoot: TEST_DIR,
+    demoRoot: path.join(TEST_DIR, 'demo'),
     canopyPath,
     canopy,
     repoIndex: new Map(),

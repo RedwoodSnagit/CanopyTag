@@ -114,6 +114,12 @@ export const api = {
   setRepoRoot: (path: string) =>
     post<{ repoRoot: string; repoName: string; isDemo: boolean }>('/config/repo', { path }),
 
+  // Switches the backend to the bundled demo workspace. Must be a POST — a plain
+  // GET /config only reports the current root and would leave the server pointed
+  // at whatever repo was loaded before.
+  setDemoRepo: () =>
+    post<{ repoRoot: string; repoName: string; isDemo: boolean }>('/config/demo', {}),
+
   fetchAnalytics: () => get<CanopyAnalytics>('/analytics'),
 
   fetchManifest: () => get<AgentManifestEntry[]>('/manifest'),
