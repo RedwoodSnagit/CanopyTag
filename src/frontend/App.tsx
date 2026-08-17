@@ -4,7 +4,6 @@ import { DirectoryDetail } from './components/DirectoryDetail';
 import { ViewToggle } from './components/ViewToggle';
 import { TableView } from './components/TableView';
 import { AnalyticsView } from './components/AnalyticsView';
-import { AgentBanner } from './components/AgentBanner';
 import { CanopyLogo } from './components/CanopyLogo';
 import { DemoOrientation } from './components/DemoOrientation';
 import { GraphView } from './components/GraphView';
@@ -13,7 +12,7 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { useWorkspace } from './stores/workspace';
 
 export function App() {
-  const { connected, repoConfig, loading, error, selectedFile, selectedDirectory, viewMode, saveNotice, agentNotes, disconnect } = useWorkspace();
+  const { connected, repoConfig, loading, error, selectedFile, selectedDirectory, viewMode, saveNotice, disconnect } = useWorkspace();
 
   // Show welcome screen when not connected to a repo
   if (!connected) {
@@ -68,8 +67,6 @@ export function App() {
         </div>
       </header>
 
-      <AgentBanner notes={agentNotes} />
-
       {loading && <p className="text-text-muted text-sm p-3">Loading...</p>}
       {error && <p className="text-error text-sm p-3">Error: {error}</p>}
 
@@ -83,7 +80,7 @@ export function App() {
         <AnalyticsView />
       ) : (
         <div className="flex flex-1 overflow-hidden">
-          <aside className="w-72 border-r border-border overflow-y-auto flex flex-col">
+          <aside className="w-72 border-r border-border overflow-hidden flex flex-col">
             <FileTree />
           </aside>
           <main className="flex-1 p-3 overflow-y-auto">
