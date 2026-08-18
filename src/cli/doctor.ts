@@ -42,6 +42,13 @@ export interface DoctorReport {
   ok: boolean;
   strictOk: boolean;
   counts: DoctorCounts;
+  /**
+   * Full finding counts per code, computed before any truncation. A limit
+   * bounds how much detail is rendered; it must never hide that a class of
+   * finding exists at all.
+   */
+  countsByCode: Record<string, number>;
+  totalIssues: number;
   checked: {
     annotations: number;
     features: number;
@@ -430,18 +437,53 @@ export function inspectCanopyDoctor(canopy: Canopy, evidence: DoctorEvidence): D
   };
   const issueLimit = clampIssueLimit(evidence.issueLimit);
 
+  const countsByCode: Record<string, number> = {};
+  for (const issue of allIssues) {
+    countsByCode[issue.code] = (countsByCode[issue.code] ?? 0) + 1;
+  }
+
   return {
     ok: counts.errors === 0,
     strictOk: counts.errors === 0 && counts.warnings === 0,
     counts,
+    countsByCode,
+    totalIssues: allIssues.length,
     checked: {
       annotations: Object.keys(canopy.files).length,
       features: Object.keys(canopy.features).length,
       trackedFiles: evidence.repoFiles.size,
     },
-    issues: allIssues.slice(0, issueLimit),
+    issues: selectRepresentativeIssues(allIssues, issueLimit),
     omittedIssues: Math.max(0, allIssues.length - issueLimit),
   };
+}
+
+/**
+ * Truncate to `limit` while guaranteeing every finding code keeps at least one
+ * example. A flat slice of a severity-then-code sort lets a high-volume code
+ * bury a low-volume one entirely: 43 review-drift warnings pushed the single
+ * repo-wide unattributed-agent finding past a limit of 50, so the reader learned
+ * nothing about it. Volume of detail is worth bounding; existence is not.
+ */
+export function selectRepresentativeIssues(sorted: DoctorIssue[], limit: number): DoctorIssue[] {
+  if (sorted.length <= limit) return sorted;
+
+  const picked = new Set<number>();
+  const seenCodes = new Set<string>();
+
+  // First pass: the highest-ranked example of each code, in sort order.
+  for (let i = 0; i < sorted.length && picked.size < limit; i += 1) {
+    if (seenCodes.has(sorted[i].code)) continue;
+    seenCodes.add(sorted[i].code);
+    picked.add(i);
+  }
+
+  // Second pass: spend whatever budget is left following the existing order.
+  for (let i = 0; i < sorted.length && picked.size < limit; i += 1) {
+    picked.add(i);
+  }
+
+  return [...picked].sort((a, b) => a - b).map(index => sorted[index]);
 }
 
 function repoPathKind(repoRoot: string, relativePath: string): 'file' | 'directory' | undefined {
@@ -508,7 +550,18 @@ export function renderDoctorText(report: DoctorReport): string {
     if (issue.suggestion) lines.push(`   Next: ${issue.suggestion}`);
   }
   if (report.omittedIssues > 0) {
-    lines.push('', `${report.omittedIssues} additional findings omitted; increase --limit (max ${MAX_ISSUE_LIMIT}) or use focused commands.`);
+    const byCode = Object.entries(report.countsByCode)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([code, count]) => `${code} ${count}`)
+      .join(', ');
+    lines.push(
+      '',
+      `${report.omittedIssues} of ${report.totalIssues} findings not shown. At least one of every type appears above.`,
+      `All types: ${byCode}`,
+      report.totalIssues <= MAX_ISSUE_LIMIT
+        ? `Use --limit ${report.totalIssues} to see every finding, or a focused command.`
+        : `Use --limit ${MAX_ISSUE_LIMIT} (the maximum) or a focused command.`,
+    );
   }
   lines.push('', 'Doctor does not rewrite summaries, scores, authority, tags, or relationships.');
   return lines.join('\n');

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Canopy } from '../../shared/types.js';
-import { inspectCanopyDoctor, renderDoctorText } from '../doctor.js';
+import { inspectCanopyDoctor, renderDoctorText, selectRepresentativeIssues } from '../doctor.js';
 
 function makeCanopy(overrides: Partial<Canopy> = {}): Canopy {
   return {
@@ -109,7 +109,8 @@ describe('inspectCanopyDoctor', () => {
     expect(report.issues).toHaveLength(3);
     expect(report.counts.warnings).toBe(8);
     expect(report.omittedIssues).toBe(5);
-    expect(renderDoctorText(report)).toContain('5 additional findings omitted');
+    expect(renderDoctorText(report)).toContain('5 of 8 findings not shown');
+    expect(report.countsByCode['orphaned-annotation']).toBe(8);
   });
 
   it('distinguishes directories, untracked files, and deleted orphans', () => {
@@ -274,5 +275,101 @@ describe('inspectCanopyDoctor — agent attribution', () => {
     expect(matching).toHaveLength(1);
     expect(matching[0].message).toContain('40 agent-authored record(s)');
     expect(matching[0].message).toContain('+37 more');
+  });
+});
+
+describe('selectRepresentativeIssues', () => {
+  const issue = (code: string, path: string) => ({
+    severity: 'warning' as const, code, path, message: `${code} ${path}`,
+  });
+
+  it('returns everything when under the limit', () => {
+    const issues = [issue('a', '1'), issue('b', '2')];
+    expect(selectRepresentativeIssues(issues, 50)).toHaveLength(2);
+  });
+
+  it('keeps at least one example of every code when truncating', () => {
+    // 40 of one code sorted ahead of a single instance of another: a flat
+    // slice at limit 5 would drop the rare code entirely.
+    const issues = [
+      ...Array.from({ length: 40 }, (_, i) => issue('review-drift', `f${i}.ts`)),
+      issue('unattributed-agent', 'repo'),
+    ];
+
+    const selected = selectRepresentativeIssues(issues, 5);
+
+    expect(selected).toHaveLength(5);
+    expect(selected.map(i => i.code)).toContain('unattributed-agent');
+  });
+
+  it('spends leftover budget in sort order', () => {
+    const issues = [
+      issue('a', '1'), issue('a', '2'), issue('a', '3'), issue('b', '9'),
+    ];
+    const selected = selectRepresentativeIssues(issues, 3);
+
+    expect(selected.map(i => i.path)).toEqual(['1', '2', '9']);
+  });
+
+  it('degrades predictably when codes outnumber the limit', () => {
+    const issues = ['a', 'b', 'c', 'd'].map(code => issue(code, code));
+    const selected = selectRepresentativeIssues(issues, 2);
+
+    expect(selected.map(i => i.code)).toEqual(['a', 'b']);
+  });
+});
+
+describe('doctor limit reporting', () => {
+  function noisyCanopy(driftCount: number) {
+    const files: Record<string, any> = {};
+    for (let i = 0; i < driftCount; i += 1) {
+      files[`src/f${i}.ts`] = {
+        todos: [{
+          id: `RT-${i}`,
+          text: 'Example',
+          priority: 3,
+          status: 'open',
+          createdAt: '2026-08-01T00:00:00Z',
+          createdBy: { role: 'agent', name: 'agent' },
+        }],
+      };
+    }
+    return makeCanopy({ files });
+  }
+
+  it('reports full per-code counts even when truncating', () => {
+    const canopy = noisyCanopy(60);
+    const report = inspectCanopyDoctor(canopy, {
+      repoFiles: new Set(),
+      issueLimit: 5,
+    });
+
+    expect(report.totalIssues).toBeGreaterThan(5);
+    expect(report.issues).toHaveLength(5);
+    expect(report.countsByCode['unattributed-agent']).toBe(1);
+    // Counts are pre-truncation, so they exceed what was rendered.
+    const summed = Object.values(report.countsByCode).reduce((a, b) => a + b, 0);
+    expect(summed).toBe(report.totalIssues);
+  });
+
+  it('names the exact limit that would show everything', () => {
+    const report = inspectCanopyDoctor(noisyCanopy(60), {
+      repoFiles: new Set(),
+      issueLimit: 5,
+    });
+    const text = renderDoctorText(report);
+
+    expect(text).toContain(`Use --limit ${report.totalIssues}`);
+    expect(text).toContain('At least one of every type appears above.');
+    expect(text).toContain('All types:');
+  });
+
+  it('keeps the rare finding visible in rendered output', () => {
+    const report = inspectCanopyDoctor(noisyCanopy(60), {
+      repoFiles: new Set(),
+      issueLimit: 5,
+    });
+
+    expect(renderDoctorText(report)).toContain('unattributed-agent');
   });
 });
