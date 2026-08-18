@@ -93,3 +93,23 @@ describe('canopytag mcp helpers', () => {
     }
   });
 });
+
+describe('buildCanopytagMcpServer — agent name', () => {
+  it('omits CANOPYTAG_AGENT_NAME when no agent name is given', () => {
+    const server = buildCanopytagMcpServer(process.cwd());
+    expect(server.env.CANOPYTAG_AGENT_NAME).toBeUndefined();
+    expect(server.env.REPO_ROOT).toBeDefined();
+  });
+
+  it('pins CANOPYTAG_AGENT_NAME when one is given', () => {
+    const server = buildCanopytagMcpServer(process.cwd(), 'Claude Opus 5');
+    expect(server.env.CANOPYTAG_AGENT_NAME).toBe('Claude Opus 5');
+  });
+
+  it('trims surrounding whitespace and ignores a blank name', () => {
+    expect(buildCanopytagMcpServer(process.cwd(), '  Claude Opus 5  ').env.CANOPYTAG_AGENT_NAME)
+      .toBe('Claude Opus 5');
+    expect(buildCanopytagMcpServer(process.cwd(), '   ').env.CANOPYTAG_AGENT_NAME)
+      .toBeUndefined();
+  });
+});

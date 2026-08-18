@@ -47,9 +47,10 @@ export function getMcpConfigPath(repoRoot: string): string {
   return path.join(path.resolve(repoRoot), '.mcp.json');
 }
 
-export function buildCanopytagMcpServer(repoRoot: string): McpServerConfig {
+export function buildCanopytagMcpServer(repoRoot: string, agentName?: string): McpServerConfig {
   const resolvedRepoRoot = path.resolve(repoRoot);
   const canopytagRoot = getCanopytagRoot();
+  const trimmedAgentName = agentName?.trim();
   return {
     command: process.execPath,
     args: [
@@ -58,6 +59,11 @@ export function buildCanopytagMcpServer(repoRoot: string): McpServerConfig {
     ],
     env: {
       REPO_ROOT: resolvedRepoRoot,
+      // Only written when explicitly requested. Write tools require agent_name
+      // per call, which is the accurate source because a config can be reused
+      // by a different model than the one it names. This is a fallback for
+      // clients that cannot pass tool arguments.
+      ...(trimmedAgentName ? { CANOPYTAG_AGENT_NAME: trimmedAgentName } : {}),
     },
   };
 }
@@ -79,18 +85,18 @@ export function readMcpConfig(configPath: string): McpConfig {
   return parsed;
 }
 
-export function buildMergedMcpConfig(existingConfig: McpConfig, repoRoot: string): McpConfig {
+export function buildMergedMcpConfig(existingConfig: McpConfig, repoRoot: string, agentName?: string): McpConfig {
   const existingServers = isObject(existingConfig.mcpServers) ? existingConfig.mcpServers : {};
   return {
     ...existingConfig,
     mcpServers: {
       ...existingServers,
-      canopytag: buildCanopytagMcpServer(repoRoot),
+      canopytag: buildCanopytagMcpServer(repoRoot, agentName),
     },
   };
 }
 
-export function writeMcpConfig(repoRoot: string, force = false): {
+export function writeMcpConfig(repoRoot: string, force = false, agentName?: string): {
   configPath: string;
   status: 'created' | 'updated' | 'unchanged';
 } {
@@ -99,7 +105,7 @@ export function writeMcpConfig(repoRoot: string, force = false): {
   const existingServer = isObject(existingConfig.mcpServers)
     ? existingConfig.mcpServers.canopytag
     : undefined;
-  const nextServer = buildCanopytagMcpServer(repoRoot);
+  const nextServer = buildCanopytagMcpServer(repoRoot, agentName);
 
   if (existingServer && JSON.stringify(existingServer) !== JSON.stringify(nextServer) && !force) {
     throw new Error(
@@ -107,7 +113,7 @@ export function writeMcpConfig(repoRoot: string, force = false): {
     );
   }
 
-  const nextConfig = buildMergedMcpConfig(existingConfig, repoRoot);
+  const nextConfig = buildMergedMcpConfig(existingConfig, repoRoot, agentName);
   const nextText = JSON.stringify(nextConfig, null, 2) + '\n';
   const currentText = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf-8') : null;
   if (currentText === nextText) {
@@ -128,13 +134,18 @@ function printHelp(): void {
   process.stdout.write(`canopytag mcp - scaffold per-project MCP config
 
 Usage:
-  canopytag mcp [--repo <path>] [--print] [--force]
+  canopytag mcp [--repo <path>] [--print] [--force] [--agent-name <model>]
 
 Options:
-  --repo, -r  Target repo for the generated .mcp.json (default: current directory)
-  --print     Print the merged .mcp.json instead of writing it
-  --force     Replace an existing canopytag MCP entry if one already exists
-  --help, -h  Show this help
+  --repo, -r     Target repo for the generated .mcp.json (default: current directory)
+  --print        Print the merged .mcp.json instead of writing it
+  --force        Replace an existing canopytag MCP entry if one already exists
+  --agent-name   Pin CANOPYTAG_AGENT_NAME in the generated env block, e.g.
+                 --agent-name "Claude Opus 5". Only needed for clients that
+                 cannot pass tool arguments; write tools ask each caller for
+                 its own model identity, which is more reliable than a config
+                 that may be reused by a different model.
+  --help, -h     Show this help
 
 Writes a preferred project-local .mcp.json entry for CanopyTag.
 After changing MCP config, restart the client/session and verify with:
@@ -149,6 +160,7 @@ if (isDirectRun) {
       ...CORE_OPTIONS,
       print: { type: 'boolean' },
       force: { type: 'boolean' },
+      'agent-name': { type: 'string' },
     },
     allowPositionals: false,
   });
@@ -164,12 +176,12 @@ if (isDirectRun) {
   try {
     const existingConfig = readMcpConfig(configPath);
     if (values.print) {
-      const merged = buildMergedMcpConfig(existingConfig, repoRoot);
+      const merged = buildMergedMcpConfig(existingConfig, repoRoot, values['agent-name'] as string | undefined);
       process.stdout.write(JSON.stringify(merged, null, 2) + '\n');
       process.exit(0);
     }
 
-    const { status } = writeMcpConfig(repoRoot, values.force === true);
+    const { status } = writeMcpConfig(repoRoot, values.force === true, values['agent-name'] as string | undefined);
     if (status === 'unchanged') {
       process.stdout.write(`Already configured: ${configPath}\n`);
     } else if (status === 'created') {

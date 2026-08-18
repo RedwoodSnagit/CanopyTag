@@ -13,8 +13,13 @@ import {
 const RELATION_TYPES = ['doc-for', 'test-of', 'implements', 'procedure-for', 'audit-of', 'update-on', 'fed-by'] as const;
 
 const attributionFields = {
-  agent_name: z.string().optional()
-    .describe('Optional agent name for attribution. Falls back to CANOPYTAG_AGENT_NAME or "agent".'),
+  // Required, because the calling model is the only party that reliably knows
+  // which model it is. An env var can go stale when a config is reused, and an
+  // optional field is simply never sent — every agent write in a long-running
+  // repo then reads "agent", which cannot answer "which model produced the work
+  // I later had to fix".
+  agent_name: z.string().min(1)
+    .describe('Your model identity, e.g. "Claude Opus 5", "ChatGPT 5.6 Sol", "Gemini 3 Pro". Use the specific model and version, never a role word such as "agent", "assistant", or "ai".'),
   agent_session: z.string().optional()
     .describe('Optional session/run identifier for attribution. Falls back to CANOPYTAG_AGENT_SESSION.'),
 };

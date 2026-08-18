@@ -14,7 +14,7 @@ import { readAgentManifest, resolveAgentManifestPathFromCanopyPath } from '../ba
 import { readCanopy } from '../backend/lib/canopy.js';
 import { getLastModifiedBatch } from '../backend/lib/git-info.js';
 import type { Canopy, FileCanopy, FileRelation, RelatedFileEntry } from '../shared/types.js';
-import { checkFreshness, normalizeRelation } from '../shared/types.js';
+import { checkFreshness, isUnattributedAgent, normalizeRelation } from '../shared/types.js';
 import { discoverTrackedFiles } from './coverage.js';
 import {
   resolveCanopyPath,
@@ -373,6 +373,45 @@ export function inspectCanopyDoctor(canopy: Canopy, evidence: DoctorEvidence): D
       code: 'invalid-agent-manifest',
       message: `agent_manifest.json could not be read: ${evidence.manifestError}`,
       suggestion: 'Repair the sidecar before relying on agent activity or undo review.',
+    });
+  }
+
+  // Agent writes that recorded no model identity. Reported as one aggregate
+  // rather than per record: a repo that has been running a while accumulates
+  // these in bulk, and hundreds of identical findings would crowd out every
+  // other check without telling the reader anything more.
+  const unattributedPaths: string[] = [];
+  let unattributedRecords = 0;
+  for (const [filePath, rawCard] of Object.entries(canopy.files)) {
+    if (!isRecord(rawCard)) continue;
+    const card = rawCard as FileCanopy;
+    let fileHasGap = false;
+    const noteGap = (author: unknown) => {
+      if (!isUnattributedAgent(author as FileCanopy['lastReviewedBy'])) return;
+      unattributedRecords += 1;
+      fileHasGap = true;
+    };
+
+    // Malformed cards reach doctor by design — it must report them, not crash.
+    noteGap(card.lastReviewedBy);
+    if (Array.isArray(card.todos)) {
+      for (const todo of card.todos) if (isRecord(todo)) noteGap(todo.createdBy);
+    }
+    if (Array.isArray(card.comments)) {
+      for (const comment of card.comments) if (isRecord(comment)) noteGap(comment.author);
+    }
+
+    if (fileHasGap) unattributedPaths.push(filePath);
+  }
+
+  if (unattributedRecords > 0) {
+    const sample = unattributedPaths.slice(0, 3).join(', ');
+    const more = unattributedPaths.length > 3 ? `, +${unattributedPaths.length - 3} more` : '';
+    add({
+      severity: 'warning',
+      code: 'unattributed-agent',
+      message: `${unattributedRecords} agent-authored record(s) across ${unattributedPaths.length} file(s) record no model identity (${sample}${more}).`,
+      suggestion: 'Pass agent_name on canopytag writes (e.g. "Claude Opus 5"), or set CANOPYTAG_AGENT_NAME for the MCP server.',
     });
   }
 

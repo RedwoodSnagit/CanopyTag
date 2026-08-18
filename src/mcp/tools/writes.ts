@@ -13,6 +13,7 @@ import type {
   FileCanopy,
   Todo,
 } from '../../shared/types.js';
+import { UNATTRIBUTED_AGENT_NAME, isUnattributedAgentName } from '../../shared/types.js';
 import { collectTags, levenshtein, normalizeSeparators } from './tags.js';
 
 export interface AgentAttributionParams {
@@ -26,11 +27,15 @@ function cleanEnv(value: string | undefined): string | undefined {
 }
 
 export function resolveAgentAuthor(params: AgentAttributionParams = {}): AuthorSignature {
-  const name =
+  const candidate =
     cleanEnv(params.agent_name) ??
     cleanEnv(process.env.CANOPYTAG_AGENT_NAME) ??
-    cleanEnv(process.env.MCP_CLIENT_NAME) ??
-    'agent';
+    cleanEnv(process.env.MCP_CLIENT_NAME);
+  // A role word is not a model identity. Recording "agent" as a name makes a
+  // missing attribution look like a real one, which is how every entry in a
+  // long-running repo ends up anonymous without anyone noticing. Mark the gap
+  // explicitly instead; `canopytag doctor` reports it.
+  const name = isUnattributedAgentName(candidate) ? UNATTRIBUTED_AGENT_NAME : candidate!;
   const session =
     cleanEnv(params.agent_session) ??
     cleanEnv(process.env.CANOPYTAG_AGENT_SESSION);

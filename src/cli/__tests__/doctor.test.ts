@@ -178,3 +178,101 @@ describe('inspectCanopyDoctor', () => {
     ]));
   });
 });
+
+describe('inspectCanopyDoctor — agent attribution', () => {
+  it('flags agent records that carry no model identity', () => {
+    const canopy = makeCanopy({
+      files: {
+        'src/app.ts': {
+          todos: [{
+            id: 'RT-001',
+            text: 'Example',
+            priority: 3,
+            status: 'open',
+            createdAt: '2026-08-01T00:00:00Z',
+            createdBy: { role: 'agent', name: 'agent' },
+          }],
+          comments: [{
+            text: 'Observation',
+            author: { role: 'agent', name: 'unattributed' },
+            createdAt: '2026-08-01T00:00:00Z',
+          }],
+        },
+      },
+    });
+
+    const report = inspectCanopyDoctor(canopy, { repoFiles: new Set(['src/app.ts']) });
+    const issue = report.issues.find(i => i.code === 'unattributed-agent');
+
+    expect(issue).toBeDefined();
+    expect(issue!.severity).toBe('warning');
+    expect(issue!.message).toContain('2 agent-authored record(s)');
+    expect(issue!.message).toContain('src/app.ts');
+    expect(issue!.suggestion).toContain('agent_name');
+  });
+
+  it('stays silent when agents record a real model identity', () => {
+    const canopy = makeCanopy({
+      files: {
+        'src/app.ts': {
+          todos: [{
+            id: 'RT-001',
+            text: 'Example',
+            priority: 3,
+            status: 'open',
+            createdAt: '2026-08-01T00:00:00Z',
+            createdBy: { role: 'agent', name: 'Claude Opus 5' },
+          }],
+        },
+      },
+    });
+
+    const report = inspectCanopyDoctor(canopy, { repoFiles: new Set(['src/app.ts']) });
+    expect(report.issues.find(i => i.code === 'unattributed-agent')).toBeUndefined();
+  });
+
+  it('does not flag human authors, who are attributed via the profile', () => {
+    const canopy = makeCanopy({
+      files: {
+        'src/app.ts': {
+          todos: [{
+            id: 'RT-001',
+            text: 'Example',
+            priority: 3,
+            status: 'open',
+            createdAt: '2026-08-01T00:00:00Z',
+            createdBy: 'human',
+          }],
+        },
+      },
+    });
+
+    const report = inspectCanopyDoctor(canopy, { repoFiles: new Set(['src/app.ts']) });
+    expect(report.issues.find(i => i.code === 'unattributed-agent')).toBeUndefined();
+  });
+
+  it('aggregates rather than emitting one finding per record', () => {
+    const files: Record<string, any> = {};
+    for (let i = 0; i < 40; i += 1) {
+      files[`src/f${i}.ts`] = {
+        todos: [{
+          id: `RT-${i}`,
+          text: 'Example',
+          priority: 3,
+          status: 'open',
+          createdAt: '2026-08-01T00:00:00Z',
+          createdBy: { role: 'agent', name: 'agent' },
+        }],
+      };
+    }
+
+    const report = inspectCanopyDoctor(makeCanopy({ files }), {
+      repoFiles: new Set(Object.keys(files)),
+    });
+    const matching = report.issues.filter(i => i.code === 'unattributed-agent');
+
+    expect(matching).toHaveLength(1);
+    expect(matching[0].message).toContain('40 agent-authored record(s)');
+    expect(matching[0].message).toContain('+37 more');
+  });
+});

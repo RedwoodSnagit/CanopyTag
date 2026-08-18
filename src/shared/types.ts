@@ -113,6 +113,36 @@ export function normalizeAuthor(author: Author): AuthorSignature {
   return author;
 }
 
+// ---- Agent attribution ----
+//
+// Agent writes must record which model acted, not merely that "an agent" did.
+// A role word carries no accountability signal: it cannot answer "which model
+// produced the work I later had to fix", which is the whole point of recording
+// an agent author. Role words are therefore treated as missing attribution
+// rather than as a name.
+
+export const UNATTRIBUTED_AGENT_NAME = 'unattributed';
+
+const AGENT_ROLE_WORDS = new Set([
+  'agent', 'assistant', 'ai', 'bot', 'model', 'llm',
+  'unattributed', 'unknown', 'anonymous', 'none',
+]);
+
+/** True when an agent name is absent or is a role word rather than a model identity. */
+export function isUnattributedAgentName(name: string | null | undefined): boolean {
+  if (name == null) return true;
+  const trimmed = name.trim().toLowerCase();
+  return trimmed.length === 0 || AGENT_ROLE_WORDS.has(trimmed);
+}
+
+/** True when an author is an agent whose model identity was never recorded. */
+export function isUnattributedAgent(author: Author | undefined): boolean {
+  if (author === undefined) return false;
+  const signature = normalizeAuthor(author);
+  if (signature.role !== 'agent') return false;
+  return isUnattributedAgentName(signature.name);
+}
+
 export interface CanopyProfile {
   version: number;
   currentAuthor: AuthorSignature;

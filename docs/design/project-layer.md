@@ -196,15 +196,33 @@ type already carries `{ role, name, session }`. The mechanism is sound; nothing
 populates it. All 32 manifest entries in the BikeCRT working repo fell through
 to `'agent'`.
 
-Required, and worth doing independently of the rest of this proposal:
+**Status: implemented 2026-08-17.** What shipped:
 
-1. Promote `agent_name` from optional to **required** in the write tool schemas,
-   described as the model identity — `"Claude Opus 5"`, `"ChatGPT 5.6 Sol"` —
-   not a role word.
-2. `canopytag mcp` writes `CANOPYTAG_AGENT_NAME` into the generated `.mcp.json`
-   env block so correctly configured clients get it without per-call effort.
-3. `canopytag doctor` reports entries attributed to the bare string `'agent'` as
-   a metadata defect, the same way it reports other maintenance issues.
+1. `agent_name` is **required** in the authored-metadata write schemas, described
+   as model identity — `"Claude Opus 5"`, `"ChatGPT 5.6 Sol"` — explicitly not a
+   role word. Required rather than env-driven because the calling model is the
+   only party that reliably knows which model it is; a config can be reused by a
+   different model than the one it names. Left optional on active-work claims,
+   which are ephemeral local coordination rather than durable record, and whose
+   renew/release flow matches on session rather than name.
+2. `resolveAgentAuthor()` no longer falls back to the string `'agent'`. Role
+   words resolve to `UNATTRIBUTED_AGENT_NAME`, so a missing attribution stops
+   looking like a real one. `isUnattributedAgentName()` and
+   `isUnattributedAgent()` in `shared/types.ts` are the shared predicate.
+3. `canopytag mcp --agent-name "<model>"` pins `CANOPYTAG_AGENT_NAME` in the
+   generated `.mcp.json` env block. Not written by default: the per-call
+   argument is the accurate source, and this exists for clients that cannot pass
+   tool arguments.
+4. `canopytag doctor` reports code `unattributed-agent`, aggregated across the
+   repo rather than one finding per record — hundreds of identical findings
+   would crowd out every other check.
+
+Measured against the BikeCRT working repo on implementation: **34 agent-authored
+records across 24 files** carry no model identity, against 20 that do
+(`claude-opus`, `claude-opus-5`, `codex`, `gpt-5-codex`). The aggregate finding
+sorts below per-file `review-drift` warnings and is therefore hidden at the
+default `--limit 50`. Whether repo-level findings should outrank per-file ones
+in doctor's sort order is left open rather than changed unilaterally.
 
 The human side already works correctly via `profile.local.json` and needs no
 change. This is specifically an agent-side gap.

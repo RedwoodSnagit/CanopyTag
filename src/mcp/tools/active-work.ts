@@ -39,8 +39,11 @@ function json(value: unknown): string {
 }
 
 const attributionFields = {
+  // Left optional here, unlike the authored-metadata writes: claims are
+  // ephemeral local coordination, not part of the durable record, and the
+  // renew/release flow matches on session rather than name.
   agent_name: z.string().optional()
-    .describe('Agent/worker name. Required unless CANOPYTAG_AGENT_NAME or MCP_CLIENT_NAME is set.'),
+    .describe('Your model identity, e.g. "Claude Opus 5". Falls back to CANOPYTAG_AGENT_NAME or MCP_CLIENT_NAME.'),
   agent_session: z.string().optional()
     .describe('Session/thread identifier. A claimed session must match on renew/release.'),
 };
