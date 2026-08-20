@@ -61,7 +61,7 @@
     },
     "src/shared/case-transform.ts": {
       "title": "Snake/Case Metadata Boundary",
-      "summary": "Recursively converts committed snake_case metadata to runtime camelCase and back while preserving opaque file-path and PRJ identifier map keys. This prevents filenames or project IDs from being silently rewritten during persistence.",
+      "summary": "Recursively converts committed snake_case schema fields to runtime camelCase and back while preserving authored keys inside files, features, directories, and projects maps. Cards nested under those identifiers still convert normally, preventing paths, underscore feature IDs, or project IDs from being silently rewritten.",
       "tags": ["schema", "persistence"],
       "feature_id": "annotation-engine",
       "authority_level": "specification",

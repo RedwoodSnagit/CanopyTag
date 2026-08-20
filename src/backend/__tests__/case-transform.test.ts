@@ -42,6 +42,17 @@ describe('snakeToCamel', () => {
     }) as any;
     expect(result.projects['PRJ-001']).toEqual({ featureIds: ['core'], createdAt: '2026-08-20' });
   });
+
+  it('preserves authored feature IDs with underscores while converting cards', () => {
+    const result = snakeToCamel({
+      features: { ride_analysis: { canonical_file: 'docs/ride.md', open_questions: ['Ready?'] } },
+    }) as any;
+    expect(result.features.ride_analysis).toEqual({
+      canonicalFile: 'docs/ride.md',
+      openQuestions: ['Ready?'],
+    });
+    expect(result.features.rideAnalysis).toBeUndefined();
+  });
 });
 
 describe('camelToSnake', () => {
@@ -73,5 +84,16 @@ describe('camelToSnake', () => {
       projects: { 'PRJ-001': { featureIds: ['core'], createdAt: '2026-08-20' } },
     }) as any;
     expect(result.projects['PRJ-001']).toEqual({ feature_ids: ['core'], created_at: '2026-08-20' });
+  });
+
+  it('preserves authored feature IDs with underscores while converting cards', () => {
+    const result = camelToSnake({
+      features: { ride_analysis: { canonicalFile: 'docs/ride.md', openQuestions: ['Ready?'] } },
+    }) as any;
+    expect(result.features.ride_analysis).toEqual({
+      canonical_file: 'docs/ride.md',
+      open_questions: ['Ready?'],
+    });
+    expect(result.features.rideAnalysis).toBeUndefined();
   });
 });
