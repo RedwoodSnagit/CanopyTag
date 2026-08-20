@@ -34,6 +34,7 @@ import {
   collectFreshnessPaths, getFreshnessStatus, freshnessLabel,
   type SortKey, type FileFilters,
 } from './shared.js';
+import { findProject } from './projects.js';
 
 // Detail is 1-5. Higher = more content. Named aliases for convenience.
 // 1 = low:          top files only, no connections
@@ -127,6 +128,7 @@ export interface QueryOptions {
   limit?: number;
   showAll?: boolean;
   repoRoot?: string;
+  project?: string;
 }
 
 export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOptions = {}): BuildQueryResult {
@@ -137,6 +139,8 @@ export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOpti
   const search = opts.search?.trim();
   const sortKey = opts.sortKey ?? 'authority';
   const repoRoot = opts.repoRoot;
+  const projectEntry = opts.project ? findProject(canopy, opts.project) : undefined;
+  const project = projectEntry?.[1];
 
   // Don't mutate caller's filters — create a copy with detail-derived settings
   const resolvedFilters = { ...filters, includeDeprecated: opts.showAll || detail >= 4 };
@@ -147,9 +151,14 @@ export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOpti
     : undefined;
 
   let directMatches = filterFiles(allEntries, resolvedFilters, gitDates);
+  if (project) {
+    const projectFiles = new Set(project.files ?? []);
+    directMatches = directMatches.filter(([filePath]) => projectFiles.has(filePath));
+  }
 
   if (directMatches.length === 0) {
-    return { text: 'No files match the given filters.', matchedPaths: [] };
+    const scope = project ? ` for project ${project.id} — ${project.name}` : '';
+    return { text: `No annotated files match the given filters${scope}.`, matchedPaths: [] };
   }
 
   let searchHits: CatalogueSearchHit[] = [];
@@ -250,8 +259,10 @@ export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOpti
   const featureName = filters.feature;
   const tagName = filters.tag;
   const featureObj = featureName ? canopy.features[featureName] ?? canopy.features[featureName.toLowerCase()] : undefined;
-  const scopeHeading = featureName
-    ? `${featureName}${featureObj?.name ? ` — ${featureObj.name}` : ''}`
+  const scopeHeading = project
+    ? `${project.id} — ${project.name}`
+    : featureName
+      ? `${featureName}${featureObj?.name ? ` — ${featureObj.name}` : ''}`
     : tagName ? `tag: ${tagName}` : undefined;
   const heading = search
     ? `search: "${search}"${scopeHeading ? ` · ${scopeHeading}` : ''}`
@@ -261,6 +272,10 @@ export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOpti
   lines.push(`── ${heading} (${detailLabel}) ${'─'.repeat(Math.max(1, 60 - heading.length - detailLabel.length - 6))}`);
   if (featureObj?.description) {
     lines.push(truncate(featureObj.description, 80));
+  }
+  if (project?.description) lines.push(`Why: ${truncate(project.description, 100)}`);
+  if (project?.openQuestions?.length) {
+    lines.push(`Open questions: ${project.openQuestions.map(question => truncate(question, 80)).join('; ')}`);
   }
   lines.push('');
 
@@ -360,6 +375,20 @@ export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOpti
       }
       lines.push('');
     }
+
+    const projectTodos = (project?.todos ?? [])
+      .filter(todo => todo.status === 'open' || todo.status === 'in_progress')
+      .sort((a, b) => a.priority - b.priority);
+    if (projectTodos.length > 0) {
+      const todoLimit = detail <= 2 ? 5 : detail === 3 ? 15 : 999;
+      lines.push('── project TODOs ──', '');
+      for (const todo of projectTodos.slice(0, todoLimit)) {
+        const diff = todo.difficulty ? ` D${todo.difficulty}` : '';
+        lines.push(`  ${todo.id}  P${todo.priority}${diff}  ${truncate(todo.text, 65)}`);
+      }
+      if (projectTodos.length > todoLimit) lines.push(`  ... ${projectTodos.length - todoLimit} more`);
+      lines.push('');
+    }
   }
 
   // Summary line — tell the agent what it's seeing and what it's missing
@@ -370,7 +399,10 @@ export function buildQuery(canopy: Canopy, filters: FileFilters, opts: QueryOpti
 
   // Count what's hidden: files excluded by depth filters or limit
   let totalInScope: [string, FileCanopy][];
-  if (featureName) {
+  if (project) {
+    const projectFiles = new Set(project.files ?? []);
+    totalInScope = allEntries.filter(([filePath]) => projectFiles.has(filePath));
+  } else if (featureName) {
     const feat = featureName.toLowerCase();
     totalInScope = allEntries.filter(([, fc]) => fc.featureId?.toLowerCase() === feat);
   } else if (tagName) {
@@ -405,6 +437,7 @@ function run() {
         detail:   { type: 'string', short: 'd' },
         relation: { type: 'string' },
         search:   { type: 'string' },
+        project:  { type: 'string', short: 'p' },
       },
       strict: true,
     }));
@@ -429,6 +462,7 @@ Options:
   -r, --repo <path>         Repo root (default: cwd)
       --search <text>       Search authored catalogue fields (default limit: 10)
   -f, --feature <name>      Filter by feature ID
+  -p, --project <id>        Filter to files implicated by a project
   -t, --tag <name>          Filter by tag
   -d, --detail <1-5|name>   Detail level (default: 1)
       --relation <type>     Filter connections: doc-for|test-of|implements|
@@ -482,17 +516,24 @@ Options:
   const sortKey = (values.sort as SortKey | undefined) ?? 'authority';
   const limit = parseInt(values.limit as string, 10) || undefined;
 
-  const result = buildQuery(canopy, filters, {
-    detail,
-    relation: relationFilter,
-    search,
-    sortKey,
-    limit,
-    showAll: values.all as boolean | undefined,
-    repoRoot,
-  });
+  let result: BuildQueryResult;
+  try {
+    result = buildQuery(canopy, filters, {
+      detail,
+      relation: relationFilter,
+      search,
+      sortKey,
+      limit,
+      showAll: values.all as boolean | undefined,
+      repoRoot,
+      project: values.project as string | undefined,
+    });
+  } catch (error: any) {
+    console.error(error.message);
+    process.exit(1);
+  }
 
-  if ((search || filters.feature || filters.tag) && result.matchedPaths.length > 0) {
+  if ((search || filters.feature || filters.tag || values.project) && result.matchedPaths.length > 0) {
     trackCanopyQueries(repoRoot, result.matchedPaths);
   }
 

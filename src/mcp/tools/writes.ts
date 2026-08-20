@@ -1,4 +1,4 @@
-import { readCanopy, writeCanopy, nextTodoId, nextCommentId } from '../../backend/lib/canopy.js';
+import { readCanopy, writeCanopy, nextTodoId, nextCommentId, nextProjectId } from '../../backend/lib/canopy.js';
 import {
   appendAgentManifestEntry,
   nextManifestEntryId,
@@ -8,9 +8,11 @@ import {
 } from '../../backend/lib/agent-manifest.js';
 import type {
   AgentManifestEntry,
+  Author,
   AuthorSignature,
   Comment,
   FileCanopy,
+  Project,
   Todo,
 } from '../../shared/types.js';
 import { UNATTRIBUTED_AGENT_NAME, isUnattributedAgentName } from '../../shared/types.js';
@@ -49,6 +51,143 @@ export function resolveAgentAuthor(params: AgentAttributionParams = {}): AuthorS
 
 function cloneValue<T>(value: T): T {
   return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
+function resolveProject(canopy: ReturnType<typeof readCanopy>, ref: string): [string, Project] {
+  const matches = Object.entries(canopy.projects ?? {}).filter(([key, project]) =>
+    key === ref || project.id === ref || project.name.toLowerCase() === ref.toLowerCase()
+  );
+  if (matches.length === 0) throw new Error(`Project not found: ${ref}`);
+  if (matches.length > 1) throw new Error(`Project reference is ambiguous: ${ref}`);
+  return matches[0];
+}
+
+export function handleAddProject(canopyPath: string, params: {
+  id?: string;
+  name: string;
+  description?: string;
+  status?: Project['status'];
+  owners?: Author[];
+  feature_ids?: string[];
+  files?: string[];
+  open_questions?: string[];
+} & AgentAttributionParams): string {
+  const name = params.name.trim();
+  if (!name) throw new Error('Project name cannot be empty.');
+
+  const author = resolveAgentAuthor(params);
+  const canopy = readCanopy(canopyPath);
+  if (!canopy.projects) canopy.projects = {};
+  const id = params.id?.trim() || nextProjectId(canopy);
+  if (!/^PRJ-\d+$/.test(id)) throw new Error('Project ID must use the form PRJ-001.');
+  if (canopy.projects[id] || Object.values(canopy.projects).some(project => project.id === id)) {
+    throw new Error(`Project already exists: ${id}`);
+  }
+  if (Object.values(canopy.projects).some(project => project.name.toLowerCase() === name.toLowerCase())) {
+    throw new Error(`Project name already exists: ${name}`);
+  }
+
+  const now = new Date().toISOString();
+  const project: Project = {
+    id,
+    name,
+    description: params.description?.trim() || undefined,
+    status: params.status ?? 'active',
+    owners: params.owners?.length ? cloneValue(params.owners) : undefined,
+    featureIds: params.feature_ids?.length ? [...params.feature_ids] : undefined,
+    files: params.files?.length ? [...params.files] : undefined,
+    openQuestions: params.open_questions?.length ? [...params.open_questions] : undefined,
+    createdAt: now,
+    createdBy: author,
+    completedAt: params.status === 'done' ? now : undefined,
+  };
+  canopy.projects[id] = project;
+  writeCanopy(canopyPath, canopy);
+
+  const manifestPath = resolveAgentManifestPathFromCanopyPath(canopyPath);
+  appendAgentManifestEntry(manifestPath, manifest => ({
+    id: nextManifestEntryId(manifest),
+    projectId: id,
+    createdAt: now,
+    author,
+    status: 'pending',
+    kind: 'project-create',
+    headline: `Created project ${id}: ${name}`,
+    fields: ['projects'],
+    applied: true,
+    canReject: true,
+    undo: { type: 'project-create', projectId: id, project: cloneValue(project) },
+  }));
+  return `Created project ${id}: ${name}`;
+}
+
+export function handleUpdateProject(canopyPath: string, params: {
+  project: string;
+  name?: string;
+  description?: string;
+  status?: Project['status'];
+  owners?: Author[];
+  feature_ids?: string[];
+  files?: string[];
+  open_questions?: string[];
+} & AgentAttributionParams): string {
+  const author = resolveAgentAuthor(params);
+  const canopy = readCanopy(canopyPath);
+  const [projectKey, project] = resolveProject(canopy, params.project);
+  const before: Partial<Project> = {};
+  const changed: Array<keyof Project> = [];
+
+  const replace = <K extends keyof Project>(field: K, value: Project[K] | undefined): void => {
+    before[field] = cloneValue(project[field]) as any;
+    if (value === undefined) delete (project as any)[field];
+    else (project as any)[field] = cloneValue(value);
+    changed.push(field);
+  };
+
+  if (params.name !== undefined) {
+    const name = params.name.trim();
+    if (!name) throw new Error('Project name cannot be empty.');
+    const duplicate = Object.entries(canopy.projects ?? {}).some(([key, candidate]) =>
+      key !== projectKey && candidate.name.toLowerCase() === name.toLowerCase()
+    );
+    if (duplicate) throw new Error(`Project name already exists: ${name}`);
+    replace('name', name);
+  }
+  if (params.description !== undefined) replace('description', params.description.trim() || undefined);
+  if (params.owners !== undefined) replace('owners', params.owners.length ? params.owners : undefined);
+  if (params.feature_ids !== undefined) replace('featureIds', params.feature_ids.length ? params.feature_ids : undefined);
+  if (params.files !== undefined) replace('files', params.files.length ? params.files : undefined);
+  if (params.open_questions !== undefined) replace('openQuestions', params.open_questions.length ? params.open_questions : undefined);
+  if (params.status !== undefined && params.status !== project.status) {
+    replace('status', params.status);
+    replace('completedAt', params.status === 'done' ? new Date().toISOString() : undefined);
+  }
+  if (changed.length === 0) throw new Error('Provide at least one project field to update.');
+
+  const after: Partial<Project> = {};
+  for (const field of changed) (after as any)[field] = cloneValue(project[field]);
+  writeCanopy(canopyPath, canopy);
+
+  const manifestPath = resolveAgentManifestPathFromCanopyPath(canopyPath);
+  appendAgentManifestEntry(manifestPath, manifest => ({
+    id: nextManifestEntryId(manifest),
+    projectId: project.id,
+    createdAt: new Date().toISOString(),
+    author,
+    status: 'pending',
+    kind: 'project-update',
+    headline: `Updated project ${project.id}: ${changed.join(', ')}`,
+    fields: changed.map(String),
+    applied: true,
+    canReject: true,
+    undo: {
+      type: 'project-update',
+      projectId: projectKey,
+      before,
+      after,
+    },
+  }));
+  return `Updated project ${project.id}: ${changed.join(', ')}`;
 }
 
 /**
@@ -219,13 +358,16 @@ export function handleAnnotate(canopyPath: string, params: {
 }
 
 export function handleAddTodo(canopyPath: string, params: {
-  file: string; text: string; priority: number;
+  file?: string; project?: string; text: string; priority: number;
   difficulty?: number; tags?: string[];
 } & AgentAttributionParams): string {
   const author = resolveAgentAuthor(params);
   const manifestPath = resolveAgentManifestPathFromCanopyPath(canopyPath);
   const canopy = readCanopy(canopyPath);
-  const fc = canopy.files[params.file];
+  if (!!params.file === !!params.project) {
+    throw new Error('Provide exactly one TODO scope: file or project.');
+  }
+  const fc = params.file ? canopy.files[params.file] : undefined;
 
   if (fc?.locked) {
     throw new Error(`File is locked: ${params.file}. Use add_comment to leave observations.`);
@@ -234,11 +376,20 @@ export function handleAddTodo(canopyPath: string, params: {
   // Collect vocab before writing so we can detect new tags
   const vocabBefore = params.tags !== undefined ? collectTags(canopy) : null;
 
-  if (!fc) {
-    canopy.files[params.file] = { todos: [] } as any;
+  let projectKey: string | undefined;
+  let targetTodos: Todo[];
+  if (params.project) {
+    const resolved = resolveProject(canopy, params.project);
+    projectKey = resolved[0];
+    if (!resolved[1].todos) resolved[1].todos = [];
+    targetTodos = resolved[1].todos;
+  } else {
+    const filePath = params.file!;
+    if (!fc) canopy.files[filePath] = { todos: [] } as any;
+    const file = canopy.files[filePath];
+    if (!file.todos) file.todos = [];
+    targetTodos = file.todos;
   }
-  const file = canopy.files[params.file];
-  if (!file.todos) file.todos = [];
 
   const id = nextTodoId(canopy);
   const todo: Todo = {
@@ -251,11 +402,12 @@ export function handleAddTodo(canopyPath: string, params: {
     createdAt: new Date().toISOString(),
     createdBy: author,
   };
-  file.todos.push(todo);
+  targetTodos.push(todo);
   writeCanopy(canopyPath, canopy);
   appendAgentManifestEntry(manifestPath, (manifest) => ({
     id: nextManifestEntryId(manifest),
     file: params.file,
+    projectId: projectKey,
     createdAt: todo.createdAt,
     author,
     status: 'pending',
@@ -277,7 +429,7 @@ export function handleAddTodo(canopyPath: string, params: {
     },
   }));
   const tagWarning = vocabBefore ? warnNewTagsWithVocab(vocabBefore, params.tags!) : '';
-  return `Added TODO ${id} (P${params.priority}) to ${params.file}${tagWarning}`;
+  return `Added TODO ${id} (P${params.priority}) to ${params.file ?? `project ${projectKey}`}${tagWarning}`;
 }
 
 export function handleRenameTag(canopyPath: string, params: {

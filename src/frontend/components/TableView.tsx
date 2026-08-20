@@ -23,6 +23,7 @@ type SortDirection = false | 'asc' | 'desc';
 
 const TABLE_HEADER_CLASS = 'cursor-pointer select-none border-b border-border px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-text-secondary hover:text-text-primary';
 const TABLE_ROW_CLASS = 'cursor-pointer border-b border-border/60 transition-colors hover:bg-surface-hover/60';
+const TABLE_STATIC_ROW_CLASS = 'border-b border-border/60';
 const TABLE_EXPANDED_ROW_CLASS = 'bg-surface-hover/40';
 const TABLE_EMPTY_CLASS = 'mt-8 text-center text-sm text-text-muted';
 const TEXT_PRIMARY_CLASS = 'text-xs text-text-primary';
@@ -280,7 +281,7 @@ export function buildManifestPreview(entry: AgentManifestEntry): string {
 export function toManifestRow(entry: AgentManifestEntry): ManifestRow {
   return {
     id: entry.id,
-    file: entry.file,
+    file: entry.file ?? (entry.projectId ? `project:${entry.projectId}` : '-'),
     createdAt: entry.createdAt,
     status: entry.status,
     kinds: buildManifestKinds(entry),
@@ -973,7 +974,7 @@ function ManifestTable({
         cell: info => <span className={MONO_MUTED_CLASS}>{info.getValue()}</span>,
       }),
       manifestColumnHelper.accessor('file', {
-        header: 'File',
+        header: 'Subject',
         cell: info => <span className={MONO_PRIMARY_CLASS}>{info.getValue()}</span>,
       }),
       manifestColumnHelper.accessor('status', {
@@ -1129,8 +1130,10 @@ function ManifestTable({
             {table.getRowModel().rows.map(row => (
               <Fragment key={row.id}>
                 <tr
-                  onClick={() => onRowClick(row.original.file)}
-                  className={TABLE_ROW_CLASS}
+                  onClick={() => {
+                    if (row.original.entry.file) onRowClick(row.original.entry.file);
+                  }}
+                  className={row.original.entry.file ? TABLE_ROW_CLASS : TABLE_STATIC_ROW_CLASS}
                 >
                   {row.getVisibleCells().map(cell => (
                     <td key={cell.id} className="px-2 py-1.5 align-top">

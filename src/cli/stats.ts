@@ -44,18 +44,30 @@ export function buildStats(canopy: Canopy, filters: FileFilters, repoRoot?: stri
   let entries = Object.entries(canopy.files);
   entries = filterFiles(entries, filters);
 
-  if (entries.length === 0) {
-    return 'No annotated files match.';
+  const featureName = filters.feature;
+  const tagName = filters.tag;
+  const fileSpecificFilter = filters.kind || filters.unreviewed || filters.surprising ||
+    filters.taggedAfter || filters.taggedBefore || filters.gitAfter || filters.gitBefore;
+  const scopedProjects = fileSpecificFilter
+    ? []
+    : Object.values(canopy.projects ?? {}).filter(project => {
+        if (featureName && !(project.featureIds ?? []).includes(featureName)) return false;
+        if (tagName) {
+          return (project.todos ?? []).some(todo => (todo.tags ?? []).some(tag => tag.toLowerCase() === tagName.toLowerCase()));
+        }
+        return true;
+      });
+
+  if (entries.length === 0 && scopedProjects.length === 0) {
+    return 'No annotated files or projects match.';
   }
 
   // Scope label
-  const featureName = filters.feature;
-  const tagName = filters.tag;
   const scope = featureName
     ? `feature: ${featureName}`
     : tagName
       ? `tag: ${tagName}`
-      : 'all annotated files';
+      : 'all Canopy context';
 
   lines.push(`${scope}: ${entries.length} files`);
   lines.push('');
@@ -84,6 +96,10 @@ export function buildStats(canopy: Canopy, filters: FileFilters, repoRoot?: stri
     totalOpenTodos += openTodos;
   }
 
+  for (const project of scopedProjects) {
+    totalOpenTodos += (project.todos ?? []).filter(todo => todo.status === 'open' || todo.status === 'in_progress').length;
+  }
+
   // Print kind rows
   for (const kind of KIND_ORDER) {
     const bucket = kindCounts.get(kind);
@@ -110,6 +126,10 @@ export function buildStats(canopy: Canopy, filters: FileFilters, repoRoot?: stri
   }
   if (totalOpenTodos > 0) {
     parts.push(`Open TODOs: ${totalOpenTodos}`);
+  }
+  if (scopedProjects.length > 0) {
+    const activeProjects = scopedProjects.filter(project => project.status === 'active').length;
+    parts.push(`Projects: ${scopedProjects.length}${activeProjects ? ` (${activeProjects} active)` : ''}`);
   }
 
   // Status breakdown (deprecated, draft, experimental)

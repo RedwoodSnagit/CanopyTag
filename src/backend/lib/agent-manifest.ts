@@ -9,6 +9,7 @@ import type {
   Author,
   Comment,
   FileCanopy,
+  Project,
 } from '../../shared/types';
 import { resolveCanopyPath } from '../../cli/shared.js';
 
@@ -133,15 +134,29 @@ function applyBeforeSnapshot(target: FileCanopy, snapshot: Partial<FileCanopy>, 
   }
 }
 
+function applyProjectBeforeSnapshot(target: Project, snapshot: Partial<Project>, field: keyof Project): void {
+  const value = snapshot[field];
+  if (value === undefined) {
+    delete (target as any)[field];
+  } else {
+    (target as any)[field] = value;
+  }
+}
+
+function sameSnapshotValue(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 function revertManifestEntry(canopyPath: string, entry: AgentManifestEntry): void {
   const undo = entry.undo;
   if (!undo || !entry.canReject) return;
 
   const canopy = readCanopy(canopyPath);
-  const file = ensureFileEntry(canopy, entry.file);
 
   switch (undo.type) {
     case 'annotate': {
+      if (!entry.file) throw new Error(`Activity entry ${entry.id} has no file subject.`);
+      const file = ensureFileEntry(canopy, entry.file);
       const fields = new Set<keyof FileCanopy>([
         ...(Object.keys(undo.before) as Array<keyof FileCanopy>),
         ...(Object.keys(undo.after) as Array<keyof FileCanopy>),
@@ -153,6 +168,8 @@ function revertManifestEntry(canopyPath: string, entry: AgentManifestEntry): voi
       break;
     }
     case 'comment': {
+      if (!entry.file) throw new Error(`Activity entry ${entry.id} has no file subject.`);
+      const file = ensureFileEntry(canopy, entry.file);
       const comments = file.comments ?? [];
       file.comments = comments.filter((comment) => comment.id !== undo.commentId);
       if (file.comments.length === 0) delete file.comments;
@@ -160,10 +177,18 @@ function revertManifestEntry(canopyPath: string, entry: AgentManifestEntry): voi
       break;
     }
     case 'todo': {
-      const todos = file.todos ?? [];
-      file.todos = todos.filter((todo) => todo.id !== undo.todoId);
-      if (file.todos.length === 0) delete file.todos;
-      pruneEmptyFileCanopy(canopy, entry.file);
+      if (entry.projectId) {
+        const project = canopy.projects?.[entry.projectId];
+        if (!project) throw new Error(`Project not found while reverting ${entry.id}: ${entry.projectId}`);
+        project.todos = (project.todos ?? []).filter((todo) => todo.id !== undo.todoId);
+        if (project.todos.length === 0) delete project.todos;
+      } else {
+        if (!entry.file) throw new Error(`Activity entry ${entry.id} has no TODO subject.`);
+        const file = ensureFileEntry(canopy, entry.file);
+        file.todos = (file.todos ?? []).filter((todo) => todo.id !== undo.todoId);
+        if (file.todos.length === 0) delete file.todos;
+        pruneEmptyFileCanopy(canopy, entry.file);
+      }
       break;
     }
     case 'rename-tag': {
@@ -180,6 +205,30 @@ function revertManifestEntry(canopyPath: string, entry: AgentManifestEntry): voi
     }
     case 'suggestion':
       break;
+    case 'project-create': {
+      const current = canopy.projects?.[undo.projectId];
+      if (!current) break;
+      if (!sameSnapshotValue(current, undo.project)) {
+        throw new Error(`Cannot reject ${entry.id}: project ${undo.projectId} changed after creation.`);
+      }
+      delete canopy.projects![undo.projectId];
+      break;
+    }
+    case 'project-update': {
+      const project = canopy.projects?.[undo.projectId];
+      if (!project) throw new Error(`Project not found while reverting ${entry.id}: ${undo.projectId}`);
+      const fields = new Set<keyof Project>([
+        ...(Object.keys(undo.before) as Array<keyof Project>),
+        ...(Object.keys(undo.after) as Array<keyof Project>),
+      ]);
+      for (const field of fields) {
+        if (!sameSnapshotValue(project[field], undo.after[field])) {
+          throw new Error(`Cannot reject ${entry.id}: project ${undo.projectId}.${String(field)} changed afterward.`);
+        }
+      }
+      for (const field of fields) applyProjectBeforeSnapshot(project, undo.before, field);
+      break;
+    }
   }
 
   writeCanopy(canopyPath, canopy);
@@ -227,7 +276,10 @@ export function reviewAgentManifestEntry(
     if (!note) {
       throw new Error('Fix requires a note.');
     }
-    addHumanFixComment(canopyPath, entry.file, note, reviewer);
+    // File fixes retain the established visible improvement comment. Project
+    // activities have no comment collection, so the review note is the audit
+    // record and no unrelated file path is fabricated.
+    if (entry.file) addHumanFixComment(canopyPath, entry.file, note, reviewer);
     entry.status = 'fixed';
     entry.reviewNote = note;
   } else if (params.action === 'reject') {

@@ -4,10 +4,12 @@ import { resolveCanopyPath } from '../../cli/shared.js';
 import { resolveAgentManifestPath } from '../../backend/lib/agent-manifest.js';
 import {
   handleAddComment,
+  handleAddProject,
   handleAnnotate,
   handleAddTodo,
   handleRenameTag,
   handleStageSuggestion,
+  handleUpdateProject,
 } from './writes.js';
 
 const RELATION_TYPES = ['doc-for', 'test-of', 'implements', 'procedure-for', 'audit-of', 'update-on', 'fed-by'] as const;
@@ -30,6 +32,15 @@ const relatedFileSchema = z.union([
     path: z.string().describe('Related file path'),
     closeness: z.number().min(1).max(5).optional().describe('Closeness 1-5'),
     relation: z.enum(RELATION_TYPES).optional().describe('Typed file relationship'),
+  }),
+]);
+
+const ownerSchema = z.union([
+  z.enum(['human', 'agent']),
+  z.object({
+    role: z.enum(['human', 'agent']),
+    name: z.string().min(1).optional(),
+    session: z.string().optional(),
   }),
 ]);
 
@@ -82,9 +93,10 @@ export function registerWriteTools(server: McpServer): void {
 
   server.tool(
     'canopytag_add_todo',
-    "Log work that needs doing. Don't create TODOs for work you're about to do yourself. Blocked on locked files.",
+    "Log Canopy-native work on exactly one file or project. Don't create TODOs for work you're about to do yourself. File TODOs are blocked on locked files.",
     {
-      file: z.string().describe('File path relative to repo root'),
+      file: z.string().optional().describe('File path relative to repo root. Mutually exclusive with project.'),
+      project: z.string().optional().describe('Project ID or exact name. Mutually exclusive with file.'),
       text: z.string().describe('TODO description'),
       priority: z.number().min(1).max(5).describe('Priority 1-5 (P1=critical)'),
       difficulty: z.number().min(1).max(5).optional().describe('Difficulty 1-5'),
@@ -95,6 +107,54 @@ export function registerWriteTools(server: McpServer): void {
       try {
         const canopyPath = resolveCanopyPath();
         return { content: [{ type: 'text' as const, text: handleAddTodo(canopyPath, params) }] };
+      } catch (e: any) {
+        return { content: [{ type: 'text' as const, text: e.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'canopytag_add_project',
+    'Create a thin multi-file work/context umbrella. This is not a board, sprint, or nested project tree.',
+    {
+      id: z.string().regex(/^PRJ-\d+$/).optional().describe('Optional explicit ID such as PRJ-001; generated when omitted'),
+      name: z.string().min(1),
+      description: z.string().optional().describe('Why this work exists and what outcome it advances'),
+      status: z.enum(['active', 'paused', 'done']).optional(),
+      owners: z.array(ownerSchema).optional(),
+      feature_ids: z.array(z.string()).optional(),
+      files: z.array(z.string()).optional().describe('Repo-relative file paths implicated by the project'),
+      open_questions: z.array(z.string()).optional(),
+      ...attributionFields,
+    },
+    async (params) => {
+      try {
+        const canopyPath = resolveCanopyPath();
+        return { content: [{ type: 'text' as const, text: handleAddProject(canopyPath, params) }] };
+      } catch (e: any) {
+        return { content: [{ type: 'text' as const, text: e.message }], isError: true };
+      }
+    }
+  );
+
+  server.tool(
+    'canopytag_update_project',
+    'Update one project. Array fields replace their current values; send [] to clear them. Add TODOs separately with canopytag_add_todo.',
+    {
+      project: z.string().describe('Project ID or exact name'),
+      name: z.string().min(1).optional(),
+      description: z.string().optional(),
+      status: z.enum(['active', 'paused', 'done']).optional(),
+      owners: z.array(ownerSchema).optional().describe('Replacement owner list'),
+      feature_ids: z.array(z.string()).optional().describe('Replacement feature ID list'),
+      files: z.array(z.string()).optional().describe('Replacement repo-relative file list'),
+      open_questions: z.array(z.string()).optional().describe('Replacement open-question list'),
+      ...attributionFields,
+    },
+    async (params) => {
+      try {
+        const canopyPath = resolveCanopyPath();
+        return { content: [{ type: 'text' as const, text: handleUpdateProject(canopyPath, params) }] };
       } catch (e: any) {
         return { content: [{ type: 'text' as const, text: e.message }], isError: true };
       }

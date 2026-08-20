@@ -78,6 +78,7 @@ const empty: Canopy = {
   lastModifiedAt: '',
   files: {},
   features: {},
+  projects: {},
 };
 writeCanopy(canopyJsonPath, empty);
 

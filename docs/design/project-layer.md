@@ -1,27 +1,27 @@
 # Project Layer
 
 **Date:** 2026-08-17
-**Status:** proposed
+**Status:** CLI/MCP core implemented 2026-08-20; UI deferred
 **Scope:** an additive project umbrella that links features, TODOs, and files,
 plus the agent attribution fix it depends on
 
 ## Summary
 
-CanopyTag annotates files. Every unit of meaning it stores — TODOs, comments,
-activity entries, scores, tags — is keyed by a file path. That is the right
-primary key for a navigation layer and it is why the tool works.
+CanopyTag began as file annotation. TODOs, comments, activity entries, scores,
+and tags were all keyed by a file path. That remains the right primary key for
+navigation and most annotations.
 
-It is also why work that spans files has nowhere to live. `canopytag_add_todo`
-requires `file`, so a TODO like "integrate Ride Parameter Estimator V5 into Ride
-Analysis" must be parked on an arbitrary file in the pipeline or not recorded at
-all. The same is true of the activity feed: `AgentManifestEntry.file` is
-required, so the record of a multi-file change is scattered across the files it
-touched with nothing tying it together.
+Before this layer, work that spanned files had nowhere honest to live.
+`canopytag_add_todo` required `file`, so a TODO like "integrate Ride Parameter
+Estimator V5 into Ride Analysis" had to be parked on an arbitrary pipeline file
+or omitted. `AgentManifestEntry.file` had the same constraint, scattering the
+record of a multi-file change across paths with nothing tying it together.
 
-This proposal adds `Project` as a top-level record that **links** to features,
-files, and TODOs. It does not own them and does not change how any existing
-record is stored. Projects are a queryable layer and a link to follow, not a
-task tracker.
+The implemented core adds `Project` as a top-level record that **links** to
+features and files and may own TODOs whose natural scope is the multi-file body
+of work. It does not take ownership of linked feature or file records and does
+not move existing file TODOs. Projects are a queryable layer and a link to
+follow, not a task tracker.
 
 ## Non-Goals
 
@@ -101,8 +101,10 @@ export interface Canopy {
 projectId?: string;   // NEW — optional, links an action to a project
 ```
 
-`file` stays required on manifest entries. An action always happened *somewhere*;
-the project link is additional context, not a replacement.
+Manifest entries now require a meaningful subject in practice: a file-scoped
+write records `file`, while a project-scoped write records `projectId`. `file`
+is optional in the TypeScript schema so a project-owned TODO or project edit
+does not need a fabricated representative path.
 
 Nothing else changes. `FileCanopy`, `Todo`, `Feature`, `Comment`, and the tree
 walker are untouched.
@@ -143,10 +145,11 @@ in practice.
 
 This is where the layer earns its place for agents.
 
-**Queryable.** `canopytag_query` gains a `project` filter, accepting a project id
-or a name substring. Results are the union of the project's files and the files
-implicated by its TODOs, with the project's `description` and `openQuestions`
-included in the response header so an agent gets the *why* without a second call.
+**Queryable.** `canopytag_query` has a `project` filter, accepting a project id
+or a unique name substring. Direct results are the project's `files[]`; normal
+detail-level relationship traversal may add connected files. The project's
+`description` and `openQuestions` are included in the response header so an
+agent gets the *why* without a second call.
 
 **A link to follow, in both directions:**
 
@@ -167,23 +170,26 @@ canopytag_projects        list/filter projects (read)
 canopytag_project         full detail for one project: features, files,
                           TODOs, recent actions (read)
 canopytag_add_project     create a project (write)
-canopytag_update_project  edit fields, add/remove file and feature links (write)
+canopytag_update_project  edit fields; replace file/feature link lists (write)
 ```
 
 Changes to existing tools:
 
 - `canopytag_add_todo` — `file` becomes optional when a project is supplied.
-  Exactly one of `file`, `directory`, or `project` is required; supplying more
-  than one is an error, because a TODO has one home and inheritance handles the
-  rest. The `directory` option is specified in
-  [directory-annotation.md](directory-annotation.md) — file and directory are
-  both *where* at different granularity, while project is *intent*.
+  Exactly one of `file` or `project` is required; supplying both or neither is
+  an error, because a TODO has one home and inheritance handles the rest. The
+  separate directory proposal has not been folded into this shipped contract.
 - `canopytag_query` — gains `project` filter.
 - `canopytag_context` — gains a `projects` section for file lookups.
 
+This slice creates project-owned TODOs but does not invent a project-only status
+mutation tool. CanopyTag has no general MCP TODO-update tool today; project TODO
+status changes therefore remain an intentional metadata edit until a reviewed,
+scope-aware TODO update contract is designed for both file and project owners.
+
 Project writes go through the same agent manifest review path as every other
-agent write, so creating or editing a project is reviewable and undoable like
-any annotation.
+agent write. Rejection is guarded: if a project field changed after the
+reviewed write, CanopyTag stops rather than clobbering the later value.
 
 ## Attribution (prerequisite)
 
@@ -234,7 +240,7 @@ Accountability, not just attribution: the manifest already models
 "which model produced work I later had to fix" is only answerable once the name
 is real.
 
-## UI Surface
+## Deferred UI Surface
 
 Minimum viable, consistent with the existing app:
 
@@ -256,9 +262,12 @@ The tree stays the primary navigation surface.
 - Referential integrity: warn on `featureIds` and `files[]` entries that do not
   resolve. Warn, not error — a file may be deleted while the project record is
   still meaningful history.
-- `doctor` flags: projects with no files and no TODOs (empty umbrella), projects
-  `active` with zero open TODOs and no activity in N days (likely stale), and
-  the `'agent'` attribution defect above.
+- `doctor` flags malformed projects, key/ID mismatches, missing file/feature
+  references, duplicate IDs across file/project TODO scopes, empty umbrellas,
+  completion timestamp inconsistencies, and unattributed agent records.
+- Inactivity is not inferred yet. A deterministic "no activity in N days"
+  check needs an explicit activity contract instead of guessing from unrelated
+  file timestamps.
 
 ## Migration
 
@@ -282,6 +291,11 @@ projects grow a need for tasks that are neither open work nor completed work.
 **Rolling inherited TODOs into tree badge counts.** Excluded above; noted here
 so the reasoning is not relitigated silently.
 
+**Archiving completed project TODOs.** The existing archive record requires a
+file path, so the shipped sweep leaves project-owned completed TODOs in the
+project. A future archive change needs an explicit project subject; it must not
+write a fake file path such as `project:PRJ-001` into `filePath`.
+
 ## Open Questions
 
 1. Should a project be able to link another project (parent/child), or is one
@@ -296,18 +310,19 @@ so the reasoning is not relitigated silently.
 
 ## Implementation Phases
 
-1. **Attribution fix.** Independent, small, unblocks meaningful `createdBy` on
-   everything that follows.
-2. **Schema and persistence.** `Project` type, `Canopy.projects`, `readCanopy`
-   validation, round-trip tests including snake_case on disk.
-3. **MCP read surface.** `canopytag_projects`, `canopytag_project`, `project`
-   filter on query, `projects` section in context.
-4. **MCP write surface.** Create/update project, optional `project` on
-   `add_todo`, manifest entries carrying `projectId`.
-5. **UI.** Table lane, project detail panel, file panel "Implicated in" section
-   and inherited TODOs.
-6. **Doctor checks.**
+1. **Attribution fix — implemented.** Meaningful `createdBy` is required for
+   durable agent writes.
+2. **Schema and persistence — implemented.** `Project`, optional
+   `Canopy.projects`, snake/camel round trips, and ID allocation include project
+   TODOs.
+3. **CLI/MCP reads — implemented.** `projects`, `project`, project filters on
+   `query`, project context, inherited read-only TODOs, and aggregate TODO scope.
+4. **MCP writes/review — implemented.** Create/update, project-owned TODOs,
+   manifest subjects, guarded undo. General TODO status mutation remains
+   deferred rather than being hidden inside whole-project replacement.
+5. **Doctor checks — implemented for deterministic integrity.**
+6. **UI — deferred.** A project lane/detail panel should follow only after the
+   agent-facing shape is dogfooded and shown not to overload file navigation.
 
-Phases 1–3 are useful on their own: agents can read and follow projects before
-anything can write them, and a project authored by hand in `canopy.json` is
-valid input.
+The shipped core is useful without UI: agents can author, review, query, and
+follow a project while the existing tree remains the primary human surface.

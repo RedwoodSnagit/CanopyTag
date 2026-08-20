@@ -13,7 +13,7 @@ import { parseArgs } from 'node:util';
 import { readAgentManifest, resolveAgentManifestPathFromCanopyPath } from '../backend/lib/agent-manifest.js';
 import { readCanopy } from '../backend/lib/canopy.js';
 import { getLastModifiedBatch } from '../backend/lib/git-info.js';
-import type { Canopy, FileCanopy, FileRelation, RelatedFileEntry } from '../shared/types.js';
+import type { Canopy, FileCanopy, FileRelation, Project, RelatedFileEntry } from '../shared/types.js';
 import { checkFreshness, isUnattributedAgent, normalizeRelation } from '../shared/types.js';
 import { discoverTrackedFiles } from './coverage.js';
 import {
@@ -52,6 +52,7 @@ export interface DoctorReport {
   checked: {
     annotations: number;
     features: number;
+    projects: number;
     trackedFiles: number;
   };
   issues: DoctorIssue[];
@@ -126,6 +127,7 @@ function collectDoctorFreshnessPaths(files: Record<string, FileCanopy>): string[
 function collectDuplicateIds(
   files: Record<string, FileCanopy>,
   kind: 'todo' | 'comment',
+  projects: Record<string, Project> = {},
 ): Map<string, string[]> {
   const occurrences = new Map<string, string[]>();
   for (const [filePath, rawCard] of Object.entries(files)) {
@@ -138,6 +140,18 @@ function collectDuplicateIds(
       const locations = occurrences.get(id) ?? [];
       locations.push(filePath);
       occurrences.set(id, locations);
+    }
+  }
+  if (kind === 'todo') {
+    for (const [projectId, rawProject] of Object.entries(projects)) {
+      if (!isRecord(rawProject)) continue;
+      const items = Array.isArray(rawProject.todos) ? rawProject.todos : [];
+      for (const item of items) {
+        if (!isRecord(item) || typeof item.id !== 'string' || !item.id) continue;
+        const locations = occurrences.get(item.id) ?? [];
+        locations.push(`project:${projectId}`);
+        occurrences.set(item.id, locations);
+      }
     }
   }
   return new Map([...occurrences].filter(([, locations]) => locations.length > 1));
@@ -348,7 +362,129 @@ export function inspectCanopyDoctor(canopy: Canopy, evidence: DoctorEvidence): D
     }
   }
 
-  for (const [id, locations] of collectDuplicateIds(canopy.files, 'todo')) {
+  for (const [projectKey, rawProject] of Object.entries(canopy.projects ?? {})) {
+    if (!isRecord(rawProject)) {
+      add({
+        severity: 'error',
+        code: 'invalid-project-card',
+        path: projectKey,
+        message: 'Project metadata must be an object.',
+        suggestion: 'Restore the project card object or remove the malformed entry intentionally.',
+      });
+      continue;
+    }
+
+    if (typeof rawProject.id !== 'string' || rawProject.id.length === 0) {
+      add({ severity: 'error', code: 'invalid-project-id', path: projectKey, message: 'Project id must be a non-empty string.' });
+    } else if (rawProject.id !== projectKey) {
+      add({
+        severity: 'error',
+        code: 'project-key-mismatch',
+        path: projectKey,
+        message: `Project key does not match its id "${rawProject.id}".`,
+        suggestion: 'Use the project ID as both the map key and card id.',
+      });
+    }
+    if (typeof rawProject.name !== 'string' || rawProject.name.trim().length === 0) {
+      add({ severity: 'error', code: 'invalid-project-name', path: projectKey, message: 'Project name must be a non-empty string.' });
+    }
+    if (!['active', 'paused', 'done'].includes(String(rawProject.status))) {
+      add({ severity: 'error', code: 'invalid-project-status', path: projectKey, message: 'Project status must be active, paused, or done.' });
+    }
+    if (typeof rawProject.createdAt !== 'string' || rawProject.createdAt.length === 0) {
+      add({ severity: 'error', code: 'invalid-project-created-at', path: projectKey, message: 'Project created_at must be a non-empty ISO date string.' });
+    }
+    if (rawProject.createdBy === undefined ||
+        (typeof rawProject.createdBy !== 'string' && !isRecord(rawProject.createdBy))) {
+      add({ severity: 'error', code: 'invalid-project-created-by', path: projectKey, message: 'Project created_by must be an author signature.' });
+    }
+    if (rawProject.status === 'done' && typeof rawProject.completedAt !== 'string') {
+      add({
+        severity: 'warning', code: 'missing-project-completed-at', path: projectKey,
+        message: 'Completed project has no completed_at timestamp.',
+      });
+    } else if (rawProject.status !== 'done' && rawProject.completedAt !== undefined) {
+      add({
+        severity: 'warning', code: 'unexpected-project-completed-at', path: projectKey,
+        message: 'Active or paused project still has a completed_at timestamp.',
+      });
+    }
+
+    for (const field of ['owners', 'featureIds', 'files', 'todos', 'openQuestions'] as const) {
+      if (rawProject[field] !== undefined && !Array.isArray(rawProject[field])) {
+        add({
+          severity: 'error',
+          code: `invalid-project-${field.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`)}`,
+          path: projectKey,
+          message: `Project ${field} must be an array.`,
+        });
+      }
+    }
+
+    if (Array.isArray(rawProject.files)) {
+      for (const candidate of rawProject.files) {
+        if (typeof candidate !== 'string') {
+          add({ severity: 'error', code: 'invalid-project-file', path: projectKey, message: 'Each project file must be a string path.' });
+          continue;
+        }
+        const fileProblem = unsafePathReason(candidate);
+        if (fileProblem) {
+          add({ severity: 'error', code: 'unsafe-project-file', path: projectKey, message: `Project file "${candidate}" uses an unsafe ${fileProblem}.` });
+        } else if (!exists(normalizeRepoPath(candidate))) {
+          add({
+            severity: 'warning',
+            code: 'missing-project-file',
+            path: projectKey,
+            message: `Project file "${candidate}" does not exist.`,
+            suggestion: 'Update the project file list without inventing a replacement path.',
+          });
+        }
+      }
+    }
+    if (Array.isArray(rawProject.featureIds)) {
+      for (const featureId of rawProject.featureIds) {
+        if (typeof featureId !== 'string') {
+          add({ severity: 'error', code: 'invalid-project-feature', path: projectKey, message: 'Each project feature ID must be a string.' });
+        } else if (!canopy.features[featureId]) {
+          add({
+            severity: 'warning',
+            code: 'missing-project-feature',
+            path: projectKey,
+            message: `Project feature "${featureId}" is not defined.`,
+            suggestion: 'Correct the feature ID or add the feature card intentionally.',
+          });
+        }
+      }
+    }
+    if ((!Array.isArray(rawProject.files) || rawProject.files.length === 0) &&
+        (!Array.isArray(rawProject.todos) || rawProject.todos.length === 0)) {
+      add({
+        severity: 'info',
+        code: 'empty-project',
+        path: projectKey,
+        message: 'Project has neither implicated files nor project-owned TODOs.',
+        suggestion: 'Add a concrete file or TODO, or remove the placeholder project.',
+      });
+    }
+  }
+
+  const projectIdLocations = new Map<string, string[]>();
+  for (const [projectKey, rawProject] of Object.entries(canopy.projects ?? {})) {
+    if (!isRecord(rawProject) || typeof rawProject.id !== 'string') continue;
+    const locations = projectIdLocations.get(rawProject.id) ?? [];
+    locations.push(projectKey);
+    projectIdLocations.set(rawProject.id, locations);
+  }
+  for (const [id, locations] of projectIdLocations) {
+    if (locations.length < 2) continue;
+    add({
+      severity: 'error', code: 'duplicate-project-id',
+      message: `Project ID ${id} is reused by keys ${locations.join(', ')}.`,
+      suggestion: 'Assign unique PRJ identifiers and update references intentionally.',
+    });
+  }
+
+  for (const [id, locations] of collectDuplicateIds(canopy.files, 'todo', canopy.projects ?? {})) {
     add({
       severity: 'error',
       code: 'duplicate-todo-id',
@@ -410,6 +546,21 @@ export function inspectCanopyDoctor(canopy: Canopy, evidence: DoctorEvidence): D
 
     if (fileHasGap) unattributedPaths.push(filePath);
   }
+  for (const [projectId, rawProject] of Object.entries(canopy.projects ?? {})) {
+    if (!isRecord(rawProject)) continue;
+    let projectHasGap = false;
+    const noteGap = (author: unknown) => {
+      if (!isUnattributedAgent(author as Project['createdBy'])) return;
+      unattributedRecords += 1;
+      projectHasGap = true;
+    };
+    noteGap(rawProject.createdBy);
+    if (Array.isArray(rawProject.owners)) for (const owner of rawProject.owners) noteGap(owner);
+    if (Array.isArray(rawProject.todos)) {
+      for (const todo of rawProject.todos) if (isRecord(todo)) noteGap(todo.createdBy);
+    }
+    if (projectHasGap) unattributedPaths.push(`project:${projectId}`);
+  }
 
   if (unattributedRecords > 0) {
     const sample = unattributedPaths.slice(0, 3).join(', ');
@@ -451,6 +602,7 @@ export function inspectCanopyDoctor(canopy: Canopy, evidence: DoctorEvidence): D
     checked: {
       annotations: Object.keys(canopy.files).length,
       features: Object.keys(canopy.features).length,
+      projects: Object.keys(canopy.projects ?? {}).length,
       trackedFiles: evidence.repoFiles.size,
     },
     issues: selectRepresentativeIssues(allIssues, issueLimit),
@@ -534,7 +686,7 @@ export function buildDoctorFromRepo(
 export function renderDoctorText(report: DoctorReport): string {
   const lines = [
     `CanopyTag doctor: ${report.counts.errors} errors, ${report.counts.warnings} warnings, ${report.counts.info} info`,
-    `Checked ${report.checked.annotations} annotations, ${report.checked.features} features, ${report.checked.trackedFiles} tracked files.`,
+    `Checked ${report.checked.annotations} annotations, ${report.checked.features} features, ${report.checked.projects} projects, ${report.checked.trackedFiles} tracked files.`,
   ];
 
   if (report.issues.length === 0) {

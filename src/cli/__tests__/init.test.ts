@@ -37,6 +37,7 @@ describe('canopytag init', () => {
     expect(canopy.version).toBe(1);
     expect(canopy.repo_root).toBe('');
     expect(canopy.files).toEqual({});
+    expect(canopy.projects).toEqual({});
 
     const manifest = JSON.parse(fs.readFileSync(path.join(canopyDir, 'agent_manifest.json'), 'utf-8'));
     expect(manifest.version).toBe(1);

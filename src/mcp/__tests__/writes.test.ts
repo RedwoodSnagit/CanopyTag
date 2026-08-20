@@ -6,11 +6,13 @@ import { readCanopy } from '../../backend/lib/canopy.js';
 import { readAgentManifest } from '../../backend/lib/agent-manifest.js';
 import {
   handleAddComment,
+  handleAddProject,
   handleAnnotate,
   handleAddTodo,
   handleRenameTag,
   resolveAgentAuthor,
   handleStageSuggestion,
+  handleUpdateProject,
 } from '../tools/writes.js';
 
 let tmpDir: string;
@@ -199,6 +201,56 @@ describe('handleRenameTag', () => {
   it('errors when old tag not found', () => {
     const result = handleRenameTag(canopyPath, { old_tag: 'nonexistent', new_tag: 'foo' });
     expect(result).toContain('not found');
+  });
+
+  it('requires exactly one file or project scope', () => {
+    expect(() => handleAddTodo(canopyPath, { text: 'Unscoped', priority: 2 })).toThrow('exactly one');
+    expect(() => handleAddTodo(canopyPath, {
+      file: 'src/auth.ts', project: 'PRJ-001', text: 'Doubly scoped', priority: 2,
+    })).toThrow('exactly one');
+  });
+});
+
+describe('project writes', () => {
+  it('creates and updates a project through reviewable manifest entries', () => {
+    const created = handleAddProject(canopyPath, {
+      name: 'Context layer',
+      description: 'Connect work across files.',
+      files: ['src/auth.ts'],
+      feature_ids: ['core'],
+      agent_name: 'ChatGPT 5.6 Sol',
+    });
+    expect(created).toContain('PRJ-001');
+
+    const todoResult = handleAddTodo(canopyPath, {
+      project: 'PRJ-001',
+      text: 'Validate project retrieval',
+      priority: 2,
+      agent_name: 'ChatGPT 5.6 Sol',
+    });
+    expect(todoResult).toContain('project PRJ-001');
+
+    handleUpdateProject(canopyPath, {
+      project: 'PRJ-001',
+      status: 'paused',
+      open_questions: ['What is the smallest useful UI?'],
+      agent_name: 'ChatGPT 5.6 Sol',
+    });
+
+    const canopy = readCanopy(canopyPath);
+    expect(canopy.projects?.['PRJ-001']).toMatchObject({
+      name: 'Context layer',
+      status: 'paused',
+      files: ['src/auth.ts'],
+      featureIds: ['core'],
+      openQuestions: ['What is the smallest useful UI?'],
+    });
+    expect(canopy.projects?.['PRJ-001'].todos?.[0].id).toBe('RT-001');
+
+    const manifest = readAgentManifest(manifestPath);
+    expect(manifest.entries.map(entry => entry.kind)).toEqual(['project-create', 'todo', 'project-update']);
+    expect(manifest.entries.every(entry => entry.file === undefined)).toBe(true);
+    expect(manifest.entries.every(entry => entry.projectId === 'PRJ-001')).toBe(true);
   });
 });
 

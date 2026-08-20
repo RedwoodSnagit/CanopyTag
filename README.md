@@ -16,10 +16,11 @@ them durable context they can reuse next session.
 CanopyTag gives your repo that missing map.
 
 It stores structured, repo-local context next to your code: file summaries,
-authority levels, quality scores, TODOs, comments, related files, hot spots,
-tags, feature clusters, and agent activity. Humans can browse and maintain the
-map in the web UI. Agents can query it through the CLI or MCP before they burn
-tokens guessing which files matter.
+authority levels, quality scores, file/project TODOs, comments, related files,
+hot spots, tags, feature clusters, thin multi-file projects, and agent activity.
+Humans can browse and maintain the file map in the web UI. Agents can query the
+full context through the CLI or MCP before they burn tokens guessing which
+files matter.
 
 README.md and AGENTS.md can explain the basics. CanopyTag turns that context
 into a queryable, per-file navigation layer: what is this file, how important is
@@ -32,6 +33,7 @@ should I read next?
 - A CLI for orientation, search-result enrichment, TODOs, health and maintenance checks, and analytics
 - An MCP server so agents can read and write repo context directly
 - File relationships and feature clustering so agents can follow meaning, not just folders
+- Thin projects that connect multi-file intent, open questions, and TODOs without a board
 - Authority, quality, freshness, lifecycle, and attention signals so agents know what to trust
 - Hot spots from recent reads, writes, and searches
 - Local, expiring work claims so concurrent agents can see current editing intent
@@ -65,6 +67,7 @@ enrichment when `rg` has already found concrete candidates:
 canopytag query --search "token validation"
 canopytag context src/auth/middleware.ts src/auth/tokens.ts
 canopytag query --feature auth --detail 4
+canopytag context --project PRJ-001
 ```
 
 Catalogue search is local, bounded, and limited to authored metadata: path,
@@ -219,11 +222,13 @@ The intended loop is:
 4. Use `context` to enrich those hits with summaries, authority, warnings, and relationships.
 5. Use `compare` when deciding which of several files should win a conflict.
 6. Use `query --feature ... --detail 4` when the hits cluster around a feature.
-7. Check `work` before editing shared paths, claim the paths you will change,
+7. Use `projects` or `context --project` when work spans files and the missing
+   context is why they belong together.
+8. Check `work` before editing shared paths, claim the paths you will change,
    and release the claim when finished or handed off.
-8. Let agents update `canopy.json` through MCP as they learn.
-9. Review recent agent activity in the UI when practical.
-10. Run `doctor` periodically or before committing shared metadata.
+9. Let agents update `canopy.json` through MCP as they learn.
+10. Review recent agent activity in the UI when practical.
+11. Run `doctor` periodically or before committing shared metadata.
 
 Active work and activity heat answer different questions. A work claim records
 explicit current intent: who is editing which paths, why, and until when. The
@@ -252,11 +257,17 @@ canopytag query --search "cache" --tag backend # search + filters compose
 canopytag context src/lib/api.ts         # compact file context
 canopytag context hit1.ts hit2.md        # enrich grep hits
 canopytag context --feature auth         # feature context
+canopytag context --project PRJ-001      # multi-file project context
+
+canopytag projects                       # active project contexts
+canopytag projects PRJ-001               # one project's why/files/questions/TODOs
+canopytag query --project PRJ-001 --detail 3
 
 canopytag compare docs/spec.md src/api.ts # authority, quality, review, trust order
 
-canopytag todos                          # open TODOs by priority
+canopytag todos                          # Canopy-native file/project TODOs by priority
 canopytag todos --priority 2             # P1 and P2
+canopytag todos --project PRJ-001        # project-owned TODOs only
 
 canopytag tags                           # browse tag usage
 canopytag tags --health                  # soft tag hygiene report
@@ -339,9 +350,11 @@ or to a client settings file that supports `mcpServers`:
 | `canopytag_stats` | Repo counts, authority distribution, open TODOs |
 | `canopytag_ls` | List annotated files by score, authority, or attention |
 | `canopytag_query` | Bounded authored catalogue search and progressive relationship exploration |
-| `canopytag_context` | Compact context for files or features |
+| `canopytag_context` | Compact context for files, features, or projects |
 | `canopytag_compare` | Compare exact files by authority, quality, review, and trust order |
-| `canopytag_todos` | Open TODOs across the repo |
+| `canopytag_todos` | Canopy-native file/project TODOs with explicit scope |
+| `canopytag_projects` | List thin multi-file project contexts |
+| `canopytag_project` | Inspect one project's why, files, questions, TODOs, and activity |
 | `canopytag_health` | Authority/quality mismatches and lifecycle attention |
 | `canopytag_doctor` | Broken paths, ID collisions, review drift, orphans, portability, and pending review |
 | `canopytag_tags` | Browse tag usage and run soft tag hygiene checks |
@@ -352,6 +365,8 @@ or to a client settings file that supports `mcpServers`:
 | `canopytag_annotate` | Update file metadata |
 | `canopytag_add_comment` | Add observations, even on locked files |
 | `canopytag_add_todo` | Log work items |
+| `canopytag_add_project` | Create a reviewable project context |
+| `canopytag_update_project` | Replace selected project fields through reviewed writes |
 | `canopytag_rename_tag` | Consolidate duplicate tags |
 | `canopytag_stage_suggestion` | Add sidecar-only suggestions or manual stale notes |
 | `canopytag_active_work` | Query local active work by path or owner |
@@ -516,7 +531,8 @@ is revisited, corrected, and connected over time.
 - Use CanopyTag to order that work: importance, trust, freshness, TODOs,
   relationships, hot spots, and feature clusters.
 - CanopyTag does not show or edit source code; it is the map beside the code.
-- TODOs are repo context, not a full project-management system.
+- Projects and TODOs are repo context, not a full project-management system:
+  no boards, sprints, due dates, notifications, or task dependency graph.
 - Graph views visualize CanopyTag relationships, not language import graphs.
 - Annotations travel with the repo; local-only files should stay uncommitted or
   be explicitly reviewed before sharing.

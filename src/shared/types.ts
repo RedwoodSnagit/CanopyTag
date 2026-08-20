@@ -265,6 +265,25 @@ export interface Feature {
   promotionStatus?: FeaturePromotionStatus;
 }
 
+// A project is a thin, multi-file work/context umbrella. It deliberately does
+// not model boards, sprints, estimates, or nested project-management state.
+export type ProjectStatus = 'active' | 'paused' | 'done';
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  status: ProjectStatus;
+  owners?: Author[];
+  featureIds?: string[];
+  files?: string[];
+  todos?: Todo[];
+  openQuestions?: string[];
+  createdAt: string;
+  createdBy: Author;
+  completedAt?: string;
+}
+
 export interface AgentNote {
   text: string;
   agent: string;         // agent name, e.g. "claude-opus"
@@ -284,6 +303,7 @@ export interface Canopy {
   files: Record<string, FileCanopy>;
   directories?: Record<string, DirectorySummary>;  // human-facing context only
   features: Record<string, Feature>;
+  projects?: Record<string, Project>;
 }
 
 // ---- Settings and archive ----
@@ -478,7 +498,14 @@ export function checkFreshness(item: FreshnessSubject): FreshnessStatus | null {
 // fix, or reject specific agent changes without gating the initial write.
 
 export type AgentManifestEntryStatus = 'pending' | 'agreed' | 'fixed' | 'rejected';
-export type AgentManifestEntryKind = 'annotate' | 'comment' | 'todo' | 'rename-tag' | 'suggestion';
+export type AgentManifestEntryKind =
+  | 'annotate'
+  | 'comment'
+  | 'todo'
+  | 'rename-tag'
+  | 'suggestion'
+  | 'project-create'
+  | 'project-update';
 export type AgentReviewAction = 'agree' | 'fix' | 'reject';
 export type SuggestedFreshness = FreshnessStatus | 'stale';
 
@@ -536,16 +563,34 @@ export interface AgentManifestSuggestionUndo {
   type: 'suggestion';
 }
 
+export interface AgentManifestProjectCreateUndo {
+  type: 'project-create';
+  projectId: string;
+  project: Project;
+}
+
+export interface AgentManifestProjectUpdateUndo {
+  type: 'project-update';
+  projectId: string;
+  before: Partial<Project>;
+  after: Partial<Project>;
+}
+
 export type AgentManifestUndo =
   | AgentManifestAnnotateUndo
   | AgentManifestCommentUndo
   | AgentManifestTodoUndo
   | AgentManifestRenameTagUndo
-  | AgentManifestSuggestionUndo;
+  | AgentManifestSuggestionUndo
+  | AgentManifestProjectCreateUndo
+  | AgentManifestProjectUpdateUndo;
 
 export interface AgentManifestEntry {
   id: string;
-  file: string;
+  // Exactly one subject is normally present. `file` stays optional so a
+  // project-owned TODO or project edit does not need a fabricated file path.
+  file?: string;
+  projectId?: string;
   createdAt: string;
   author: Author;
   status: AgentManifestEntryStatus;

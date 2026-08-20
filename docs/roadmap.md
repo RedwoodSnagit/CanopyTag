@@ -11,12 +11,14 @@ Working now:
 
 - Web UI with Explorer, Table, Graph, Analytics, and Activity views
 - Visible per-repo `canopytag/` metadata folder
-- CLI: `init`, `stats`, `ls`, `query`, `context`, `compare`, `todos`, `health`,
-  `doctor`, `work`, `analytics`, `coverage`, `mcp`, and `hook`
+- CLI: `init`, `stats`, `ls`, `query`, `context`, `compare`, `projects`, `todos`,
+  `health`, `doctor`, `work`, `analytics`, `coverage`, `mcp`, and `hook`
 - Local bounded catalogue search across authored CanopyTag metadata, with field
   boosts, prefix matching, conservative typo tolerance, composable filters, and
   visible match evidence in CLI/MCP query results
 - MCP read/write tools for agent integration
+- Thin project context linking intent, features, files, project-owned TODOs,
+  and reviewable activity without adding board/sprint machinery
 - Agent activity/review feed in `agent_manifest.json`
 - Read-only `doctor` checks for objective maintenance hazards, with bounded
   text/JSON output and optional strict exit behavior
@@ -63,6 +65,12 @@ Working now:
 - Continue graph hardening on larger real repos: dense labels, edge priority,
   cluster heuristics, and saved graph presets only if repeated workflows emerge.
 - Improve Activity review ergonomics for high-speed human review of agent writes.
+- Dogfood the project CLI/MCP core before deciding whether a bounded project
+  lane/detail panel earns UI space. Keep inherited project TODOs out of file
+  badge counts and keep completed project archival deferred until usage is clear.
+- If agents need to complete or revise TODOs through MCP, add one reviewed,
+  scope-aware update contract for both file and project TODOs; do not hide TODO
+  lifecycle mutation inside whole-project array replacement.
 - Add saved table filters if real workflows repeat often enough.
 - Keep score/authority education clear in the UI so authority is understood as
   conflict precedence, not just a documentation label.

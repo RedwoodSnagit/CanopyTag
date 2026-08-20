@@ -14,6 +14,7 @@ import { buildContext } from '../../cli/context.js';
 import { buildCompare } from '../../cli/compare.js';
 import { buildHealth } from '../../cli/health.js';
 import { buildTodos } from '../../cli/todos.js';
+import { buildProjectDetail, buildProjects } from '../../cli/projects.js';
 import { buildAgentManifestReport } from './agent-manifest.js';
 import { buildTags, buildTagHealth, readTagVocabularyForCanopy } from './tags.js';
 import { walkGraph, renderGraphTree } from '../../cli/graph.js';
@@ -118,6 +119,7 @@ export function registerReadTools(server: McpServer): void {
       ...filterParams,
       search: z.string().min(1).optional()
         .describe('Search authored path, title, summary, tags, feature metadata, open TODOs, active lifecycle reasons, and finding/warning comments'),
+      project: z.string().optional().describe('Restrict direct file matches to one project ID or name'),
       detail: z.union([z.number().min(1).max(5), z.enum(['low', 'medium', 'medium-high', 'high', 'full'])]).optional()
         .describe('Detail level 1-5 or low/medium/medium-high/high/full (default: medium)'),
       relation: z.string().optional().describe('Filter connections by relation type'),
@@ -141,9 +143,10 @@ export function registerReadTools(server: McpServer): void {
           limit: params.limit ?? 10,
           showAll: params.all,
           repoRoot,
+          project: params.project,
         });
         // Track only targeted queries (not full-repo unfiltered)
-        if ((params.search || params.feature || params.tag) && matchedPaths.length > 0) {
+        if ((params.search || params.feature || params.tag || params.project) && matchedPaths.length > 0) {
           trackFiles(matchedPaths);
         }
         return { content: [{ type: 'text' as const, text }] };
@@ -161,6 +164,7 @@ export function registerReadTools(server: McpServer): void {
       file: z.string().optional().describe('Single file path'),
       files: z.array(z.string()).optional().describe('Multiple file paths'),
       feature: z.string().optional().describe('Feature ID'),
+      project: z.string().optional().describe('Project ID or name'),
       surprising: z.boolean().optional().describe('Only surprising files'),
       depth: z.number().min(1).max(5).optional().describe('Detail depth (default: 4)'),
     },
@@ -173,6 +177,7 @@ export function registerReadTools(server: McpServer): void {
           file: params.file,
           files: params.files,
           feature: params.feature,
+          project: params.project,
           surprising: params.surprising,
           depth: params.depth,
           repoRoot,
@@ -214,9 +219,10 @@ export function registerReadTools(server: McpServer): void {
   // 6. canopytag_todos
   server.tool(
     'canopytag_todos',
-    'List open TODOs across all annotated files.',
+    'List Canopy-native TODOs across annotated files and projects. This does not claim to scan every Markdown backlog or inline source marker.',
     {
       ...filterParams,
+      project: z.string().optional().describe('Only TODOs owned by this project ID'),
       priority: z.number().min(1).max(5).optional().describe('Max priority level (e.g. 2 = P1+P2)'),
       limit: z.number().optional().describe('Max results'),
       all: z.boolean().optional().describe('Include done/deferred'),
@@ -232,6 +238,7 @@ export function registerReadTools(server: McpServer): void {
           limit: params.limit,
           all: params.all,
           repoRoot,
+          project: params.project,
         }) }] };
       } catch (e: any) {
         return { content: [{ type: 'text' as const, text: e.message }], isError: true };
@@ -301,6 +308,7 @@ export function registerReadTools(server: McpServer): void {
     'Inspect recent agent activity in canopytag/agent_manifest.json. Shows direct agent writes plus any staged suggestions, and helps review them after the fact.',
     {
       file: z.string().optional().describe('Filter to a single file path'),
+      project: z.string().optional().describe('Filter to a single project ID'),
       status: z.enum(['pending', 'agreed', 'fixed', 'rejected']).optional().describe('Filter by review status'),
       limit: z.number().optional().describe('Max results (default: pending entries up to 20)'),
       all: z.boolean().optional().describe('Include already-reviewed entries when status is not set'),
@@ -314,6 +322,7 @@ export function registerReadTools(server: McpServer): void {
             type: 'text' as const,
             text: buildAgentManifestReport(manifest, {
               file: params.file,
+              project: params.project,
               status: params.status,
               limit: params.limit,
               all: params.all,
@@ -424,6 +433,41 @@ export function registerReadTools(server: McpServer): void {
         const canopyPath = resolveCanopyPath();
         const report = buildDoctorFromRepo(repoRoot, canopyPath, params.limit);
         return { content: [{ type: 'text' as const, text: renderDoctorText(report) }] };
+      } catch (e: any) {
+        return { content: [{ type: 'text' as const, text: e.message }], isError: true };
+      }
+    }
+  );
+
+  // 14. canopytag_projects
+  server.tool(
+    'canopytag_projects',
+    'List thin multi-file project contexts. Completed projects are hidden by default.',
+    {
+      status: z.enum(['active', 'paused', 'done']).optional(),
+      all: z.boolean().optional().describe('Include completed projects'),
+      limit: z.number().int().min(1).max(500).optional(),
+    },
+    async (params) => {
+      try {
+        const canopy = readCanopy(resolveCanopyPath());
+        return { content: [{ type: 'text' as const, text: buildProjects(canopy, params) }] };
+      } catch (e: any) {
+        return { content: [{ type: 'text' as const, text: e.message }], isError: true };
+      }
+    }
+  );
+
+  // 15. canopytag_project
+  server.tool(
+    'canopytag_project',
+    'Inspect one project: why it exists, implicated features/files, open questions, project-owned TODOs, and recent reviewed activity.',
+    { project: z.string().describe('Project ID, exact name, or unique name substring') },
+    async (params) => {
+      try {
+        const canopy = readCanopy(resolveCanopyPath());
+        const manifest = readAgentManifest(resolveAgentManifestPath());
+        return { content: [{ type: 'text' as const, text: buildProjectDetail(canopy, params.project, manifest) }] };
       } catch (e: any) {
         return { content: [{ type: 'text' as const, text: e.message }], isError: true };
       }

@@ -9,6 +9,7 @@ import { normalizeRelation } from '../../shared/types.js';
 
 interface ManifestReportOptions {
   file?: string;
+  project?: string;
   status?: AgentManifestEntryStatus;
   limit?: number;
   all?: boolean;
@@ -43,6 +44,7 @@ function formatRelatedFiles(entries: RelatedFileEntry[]): string {
 
 function matchesOptions(entry: AgentManifestEntry, options: ManifestReportOptions): boolean {
   if (options.file && entry.file !== options.file) return false;
+  if (options.project && entry.projectId !== options.project) return false;
   if (options.status) return entry.status === options.status;
   if (options.all) return true;
   return entry.status === 'pending';
@@ -74,6 +76,9 @@ export function buildAgentManifestReport(
     if (options.file) {
       return `No manifest entries for ${options.file}.`;
     }
+    if (options.project) {
+      return `No manifest entries for project ${options.project}.`;
+    }
     if (options.status) {
       return `No ${options.status} manifest entries.`;
     }
@@ -93,7 +98,8 @@ export function buildAgentManifestReport(
 
   for (const entry of entries) {
     lines.push('');
-    lines.push(`${entry.id}  ${entry.status.toUpperCase()}  ${entry.file}`);
+    const subject = entry.file ?? (entry.projectId ? `project:${entry.projectId}` : 'unscoped');
+    lines.push(`${entry.id}  ${entry.status.toUpperCase()}  ${subject}`);
     lines.push(`  created: ${entry.createdAt}`);
     if (entry.headline) lines.push(`  headline: ${entry.headline}`);
     if (entry.kind) lines.push(`  kind: ${formatKinds(entry)}`);

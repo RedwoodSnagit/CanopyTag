@@ -14,6 +14,7 @@
  *   canopytag compare <file...> [options]
  *   canopytag tags [options]
  *   canopytag todos [options]
+ *   canopytag projects [project] [options]
  *   canopytag health [options]
  *   canopytag doctor [options]
  *   canopytag work <subcommand> [options]
@@ -42,6 +43,7 @@ const COMMANDS = {
   compare:   join(cliDir, 'compare.ts'),
   tags:      join(cliDir, 'tags.ts'),
   todos:     join(cliDir, 'todos.ts'),
+  projects:  join(cliDir, 'projects.ts'),
   health:    join(cliDir, 'health.ts'),
   doctor:    join(cliDir, 'doctor.ts'),
   work:      join(cliDir, 'work.ts'),
@@ -63,6 +65,7 @@ Commands:
   compare     Compare authority, quality, review status, and trust order
   tags        Browse tags and report tag hygiene
   todos       List open TODOs across the repo
+  projects    List projects or inspect one multi-file work context
   health      Authority vs quality mismatch detection
   doctor      Deterministic metadata and maintenance checks
   work        Claim, query, renew, and release local active work

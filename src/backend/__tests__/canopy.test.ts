@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { readCanopy, readSettings, readArchive, writeCanopy, nextTodoId } from '../lib/canopy';
+import { readCanopy, readSettings, readArchive, writeCanopy, nextProjectId, nextTodoId } from '../lib/canopy';
 
 const TEST_DIR = path.join(import.meta.dirname, '__test_workspace__');
 const TEST_CANOPY = path.join(TEST_DIR, 'canopy.json');
@@ -22,6 +22,7 @@ describe('readCanopy', () => {
     expect(canopy.version).toBe(1);
     expect(canopy.files).toEqual({});
     expect(canopy.features).toEqual({});
+    expect(canopy.projects).toEqual({});
   });
 
   it('reads existing canopy and converts to camelCase', () => {
@@ -157,6 +158,13 @@ describe('readCanopy validation', () => {
     expect(canopy.features).toEqual({});
   });
 
+  it('defaults projects to {} and rejects a malformed project collection', () => {
+    fs.writeFileSync(TEST_CANOPY, JSON.stringify({ version: 1, files: {}, features: {} }));
+    expect(readCanopy(TEST_CANOPY).projects).toEqual({});
+    fs.writeFileSync(TEST_CANOPY, JSON.stringify({ version: 1, files: {}, features: {}, projects: [] }));
+    expect(() => readCanopy(TEST_CANOPY)).toThrow(/projects/);
+  });
+
   it('allows extra unknown top-level keys', () => {
     fs.writeFileSync(TEST_CANOPY, JSON.stringify({
       version: 1, files: {}, features: {}, custom_field: 'hello'
@@ -197,6 +205,39 @@ describe('writeCanopy', () => {
     expect(raw.repo_root).toBe('/test');
     expect(raw.last_modified_at).toBeDefined();
   });
+
+  it('round-trips project fields and project-owned TODOs through snake_case', () => {
+    writeCanopy(TEST_CANOPY, {
+      version: 1,
+      repoRoot: '',
+      lastModifiedAt: '',
+      files: {},
+      features: {},
+      projects: {
+        'PRJ-001': {
+          id: 'PRJ-001',
+          name: 'Context layer',
+          status: 'active',
+          featureIds: ['core'],
+          openQuestions: ['UI boundary?'],
+          createdAt: '2026-08-20T00:00:00Z',
+          createdBy: { role: 'agent', name: 'ChatGPT 5.6 Sol' },
+          todos: [{
+            id: 'RT-010', text: 'Dogfood it', priority: 3, status: 'open',
+            createdAt: '2026-08-20T00:00:00Z', createdBy: 'human',
+          }],
+        },
+      },
+    });
+
+    const raw = JSON.parse(fs.readFileSync(TEST_CANOPY, 'utf-8'));
+    expect(raw.projects['PRJ-001'].feature_ids).toEqual(['core']);
+    expect(raw.projects['PRJ-001'].open_questions).toEqual(['UI boundary?']);
+    expect(raw.projects['PRJ-001'].created_at).toBe('2026-08-20T00:00:00Z');
+    expect(raw.projects['PRJ-001'].featureIds).toBeUndefined();
+    expect(readCanopy(TEST_CANOPY).projects?.['PRJ-001'].todos?.[0].createdAt)
+      .toBe('2026-08-20T00:00:00Z');
+  });
 });
 
 describe('writeCanopy atomic write', () => {
@@ -227,5 +268,20 @@ describe('nextTodoId', () => {
       }
     };
     expect(nextTodoId(canopy)).toBe('RT-004');
+  });
+
+  it('scans project-owned TODO IDs too', () => {
+    const canopy = {
+      version: 1, repoRoot: '', lastModifiedAt: '', files: {}, features: {},
+      projects: {
+        'PRJ-004': {
+          id: 'PRJ-004', name: 'Test', status: 'active' as const,
+          createdAt: '', createdBy: 'human' as const,
+          todos: [{ id: 'RT-012', text: '', priority: 2 as const, status: 'open' as const, createdAt: '', createdBy: 'human' as const }],
+        },
+      },
+    };
+    expect(nextTodoId(canopy)).toBe('RT-013');
+    expect(nextProjectId(canopy)).toBe('PRJ-005');
   });
 });

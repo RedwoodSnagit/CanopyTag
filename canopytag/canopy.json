@@ -19,7 +19,7 @@
   "files": {
     "src/shared/types.ts": {
       "title": "Canopy Schema & Authority Health",
-      "summary": "Single source of truth for shared and local types including file annotations, TODOs, comments, features, trust, lifecycle, relationships, analytics, agent review, and expiring active-work claims. All CLI tools, routes, frontend components, and MCP adapters import from here. On-disk format is snake_case; TypeScript is camelCase.",
+      "summary": "Single source of truth for shared and local types including file annotations, file/project TODOs, thin projects, comments, features, trust, lifecycle, relationships, analytics, agent review, and expiring active-work claims. All CLI tools, routes, frontend components, and MCP adapters import from here. On-disk format is snake_case; TypeScript is camelCase.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -61,7 +61,7 @@
     },
     "src/shared/case-transform.ts": {
       "title": "Snake/Case Metadata Boundary",
-      "summary": "Recursively converts committed snake_case metadata to runtime camelCase and back while preserving path-like map keys. This prevents filenames containing dots or slashes from being silently rewritten during persistence.",
+      "summary": "Recursively converts committed snake_case metadata to runtime camelCase and back while preserving opaque file-path and PRJ identifier map keys. This prevents filenames or project IDs from being silently rewritten during persistence.",
       "tags": ["schema", "persistence"],
       "feature_id": "annotation-engine",
       "authority_level": "specification",
@@ -162,7 +162,7 @@
     },
     "src/backend/lib/agent-manifest.ts": {
       "title": "Agent Review Manifest And Undo Engine",
-      "summary": "Persists the non-canonical agent review feed, normalizes legacy statuses, assigns manifest IDs, and applies agree, fix, or reject decisions. Rejection can restore prior metadata through recorded undo snapshots; suggestions remain unapplied.",
+      "summary": "Persists the agent activity/review feed, normalizes legacy statuses, assigns manifest IDs, and applies agree, fix, or reject decisions for file- or project-scoped writes. Project rejection restores recorded fields only when later changes do not conflict; suggestions remain unapplied.",
       "tags": ["review-feed", "governance"],
       "feature_id": "activity-review",
       "authority_level": "specification",
@@ -215,7 +215,7 @@
     },
     "src/cli/stats.ts": {
       "title": "canopytag stats — Orient Before You Dive",
-      "summary": "The first CLI call an agent should make. Reads canopy.json and prints file counts by kind (CODE/DOCS/TEST/CONFIG), authority distribution within each kind, open TODO count, and a next-step hint. Scoped by --feature or --tag. Output is compact enough for a prompt window. Detects file kind from extension + path conventions (test_ prefix, /test/ directory).",
+      "summary": "The first CLI call an agent should make. Reads canopy.json and prints file counts by kind, authority distribution, Canopy-native file/project TODO pressure, matching project count, and a next-step hint. Scoped by --feature or --tag and compact enough for a prompt window.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
@@ -258,7 +258,7 @@
     },
     "src/cli/query.ts": {
       "title": "canopytag query — Catalogue Search And Bounded Traversal",
-      "summary": "Primary catalogue router combining bounded authored-field search with structured feature, tag, kind, trust, date, and relation filters. Direct results expose match evidence; detail levels then expand the authored relationship graph within explicit hop and closeness bounds.",
+      "summary": "Primary catalogue router combining bounded authored-field search with structured project, feature, tag, kind, trust, date, and relation filters. Project queries include their why, open questions, and project TODOs; detail levels expand the authored relationship graph within explicit hop and closeness bounds.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -332,7 +332,7 @@
     },
     "src/cli/todos.ts": {
       "title": "canopytag todos — Flat TODO Query",
-      "summary": "Flat view of all TODOs across the repo, sorted by priority. Filters by --tag (matches TODO tags or file tags), --feature, --priority (max). The missing piece in the agent workflow: stats tells you how many TODOs exist, ls shows per-file counts, query shows TODOs scoped to a feature — but todos gives you the global prioritized list without needing to know which feature to ask about first.",
+      "summary": "Flat aggregate of Canopy-native file- and project-owned TODOs, sorted by priority and labeled with explicit scope kind. Filters include tag, feature, priority, and project. It does not claim to scan Markdown backlogs or inline source markers.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
@@ -350,6 +350,21 @@
         {"path": "src/cli/stats.ts", "closeness": 3},
         {"path": "src/cli/query.ts", "closeness": 3},
         {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"}
+      ]
+    },
+    "src/cli/projects.ts": {
+      "title": "canopytag projects — Thin Multi-File Context",
+      "summary": "Lists active project umbrellas and renders one project's why, owners, features, implicated files, open questions, project-owned TODOs, and optional recent review activity. Resolution accepts exact IDs/names or one unambiguous substring; projects remain flat and deliberately omit board machinery.",
+      "tags": ["cli", "agent-interface", "project-context"],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "docs/design/project-layer.md", "relation": "implements", "closeness": 5},
+        {"path": "src/shared/types.ts", "relation": "fed-by", "closeness": 5},
+        {"path": "src/cli/context.ts", "closeness": 4},
+        {"path": "src/cli/query.ts", "closeness": 4},
+        {"path": "src/cli/todos.ts", "closeness": 4}
       ]
     },
     "src/backend/routes/config.ts": {
@@ -1076,6 +1091,21 @@
         {"path": "docs/architecture-md-and-codeowners.md", "closeness": 3}
       ]
     },
+    "docs/design/project-layer.md": {
+      "title": "Thin Project Context Layer",
+      "summary": "Implemented CLI/MCP contract for flat multi-file project umbrellas linking intent, features, files, open questions, project-owned TODOs, and review activity. It explicitly excludes boards, sprints, due dates, nested projects, and task dependency graphs; UI remains deferred pending dogfood evidence.",
+      "tags": ["design", "project-context", "schema", "agent-interface"],
+      "feature_id": "docs",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {"path": "src/cli/projects.ts", "relation": "doc-for", "closeness": 5},
+        {"path": "src/shared/types.ts", "relation": "doc-for", "closeness": 5},
+        {"path": "src/mcp/tools/writes.ts", "relation": "doc-for", "closeness": 4},
+        {"path": "src/backend/lib/agent-manifest.ts", "relation": "doc-for", "closeness": 4},
+        {"path": "docs/roadmap.md", "closeness": 4}
+      ]
+    },
     "docs/design/document-lifecycle-marks.md": {
       "title": "Document Lifecycle Marks Proposal",
       "summary": "Design and staged implementation for lifecycle trust modifiers on file records. Preservation, strict validation, date-derived warnings, and context, compare, and health rendering work now; filters, reviewed writes, promotion, and UI editing remain proposed.",
@@ -1253,7 +1283,7 @@
     },
     "src/cli/context.ts": {
       "title": "canopytag context — Compact Agent Prompt Injection",
-      "summary": "Renders compact context blocks for files or features, designed for injecting into agent prompts. Three modes: single file, multi-file (after grep), and feature (aggregated). Per-file output shows summary, dimension warnings (scores below authority-level minimums), finding comments, open TODOs, relations (filtered by closeness >= depth), and tags. Feature mode aggregates dimension averages, flags weakest dimension, collects all TODOs. The bridge between annotation data and agent context windows.",
+      "summary": "Renders compact context blocks for files, features, or projects. File output includes direct annotations plus implicated projects and inherited project TODOs without copying ownership; project mode shows the multi-file why, questions, and TODOs. Feature mode retains aggregate quality and TODO context.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -1408,7 +1438,7 @@
     },
     "src/mcp/tools/reads.ts": {
       "title": "MCP Read Tools — Agent Query Interface",
-      "summary": "Registers 13 read-only MCP tools spanning orientation, authored search, exact-file trust comparison, TODOs, health, tag hygiene, activity review, relationship traversal, coverage, and deterministic doctor checks. It reuses CLI builders and wires analytics tracking for query/context access.",
+      "summary": "Registers 15 read-only MCP tools spanning orientation, projects, authored search, exact-file trust comparison, scoped TODOs, health, tag hygiene, activity review, relationship traversal, coverage, and deterministic doctor checks. It reuses CLI builders and wires analytics tracking for query/context access.",
       "validity": 5,
       "clarity": 4,
       "completeness": 5,
@@ -1465,7 +1495,7 @@
     },
     "src/mcp/tools/writes.ts": {
       "title": "MCP Write Handlers — Mutation Logic",
-      "summary": "MCP mutation handlers for canopy writes and sidecar suggestions. handleAddComment is always allowed, handleAnnotate and handleAddTodo respect locked files, handleRenameTag bulk-renames tags, and handleStageSuggestion writes non-canonical review-feed entries. All applied writes append agent_manifest.json activity with undo metadata. Agent attribution is dynamic via tool parameters or CANOPYTAG_AGENT_NAME / CANOPYTAG_AGENT_SESSION. Tag writes include fuzzy duplicate detection.",
+      "summary": "Mutation handlers for file metadata, project creation/update, file- or project-owned TODOs, tag renames, comments, and sidecar suggestions. Applied writes append attributed review activity with undo metadata; project scope never fabricates a representative file path.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -1498,7 +1528,7 @@
     },
     "src/mcp/tools/writes-registration.ts": {
       "title": "MCP Write Tools — Zod Registration Layer",
-      "summary": "Registers 4 MCP write tools (add_comment, annotate, add_todo, rename_tag) with Zod parameter schemas. Thin wiring layer — each tool calls the corresponding handler from writes.ts with try/catch for error responses. Separated from writes.ts so handler logic is independently testable without MCP SDK dependencies.",
+      "summary": "Registers seven MCP write tools including project creation/update and exactly-one-scope file/project TODO writes. Zod schemas document replacement-array semantics and model attribution; handlers remain independently testable without MCP SDK dependencies.",
       "validity": 5,
       "clarity": 5,
       "completeness": 5,
@@ -1739,6 +1769,48 @@
       "open_questions": [
         "How should high-volume review remain fast without auto-promoting uncertain semantic changes?"
       ]
+    }
+  },
+  "projects": {
+    "PRJ-001": {
+      "id": "PRJ-001",
+      "name": "Thin project context layer",
+      "description": "Make multi-file agent work traversable by connecting why, features, implicated files, open questions, and honestly scoped TODOs without turning CanopyTag into Jira.",
+      "status": "active",
+      "owners": [{"role": "human", "name": "jeff"}],
+      "feature_ids": ["annotation-engine", "cli-tools", "mcp-server", "activity-review", "docs"],
+      "files": [
+        "docs/design/project-layer.md",
+        "src/shared/types.ts",
+        "src/backend/lib/canopy.ts",
+        "src/backend/lib/agent-manifest.ts",
+        "src/cli/projects.ts",
+        "src/cli/query.ts",
+        "src/cli/context.ts",
+        "src/cli/todos.ts",
+        "src/cli/doctor.ts",
+        "src/mcp/tools/reads.ts",
+        "src/mcp/tools/writes.ts",
+        "src/mcp/tools/writes-registration.ts"
+      ],
+      "todos": [
+        {
+          "id": "RT-012",
+          "text": "Dogfood the agent-facing project core before deciding whether a bounded project lane and detail panel earn UI space.",
+          "priority": 3,
+          "difficulty": 2,
+          "status": "open",
+          "tags": ["project-context", "ui", "dogfood"],
+          "created_at": "2026-08-20T22:45:00Z",
+          "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "project-layer-2026-08-20"}
+        }
+      ],
+      "open_questions": [
+        "Does repeated real use justify a project lane in the existing UI without overloading file navigation?",
+        "Should completed projects and project-owned TODOs remain visible history or gain an explicit project-aware archive subject?"
+      ],
+      "created_at": "2026-08-20T22:45:00Z",
+      "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "project-layer-2026-08-20"}
     }
   }
 }

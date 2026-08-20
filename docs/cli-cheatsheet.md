@@ -75,21 +75,40 @@ you want a compact prompt block.
 
 ```bash
 canopytag todos --priority 2
+canopytag todos --project PRJ-001
 canopytag health
 canopytag doctor
 canopytag analytics --days 7
 ```
 
+`todos` is the aggregate of Canopy-native file and project TODOs. It labels the
+owning scope and does not claim to scan every Markdown backlog or inline source
+marker.
+
 `health` includes due and expired lifecycle marks, open `review_needed` marks,
 and malformed lifecycle metadata alongside authority/quality findings.
 
 `doctor` checks facts that can be automated safely: malformed nested metadata,
-broken or unsafe paths, orphaned cards, duplicate TODO/comment IDs, Git-backed
-review drift, feature entry points, portable `repo_root` usage, and pending
-agent review. It does not rewrite summaries, scores, authority, tags, or
-relationships. Use
+broken or unsafe paths, orphaned cards, duplicate TODO/comment/project IDs,
+project references, Git-backed review drift, feature entry points, portable
+`repo_root` usage, and pending agent review. It does not rewrite summaries,
+scores, authority, tags, or relationships. Use
 `canopytag doctor --strict` when warnings should fail a local check or CI job;
 use `--format json` for machine-readable output.
+
+## Follow Multi-File Work
+
+```bash
+canopytag projects
+canopytag projects PRJ-001
+canopytag query --project PRJ-001 --detail 3
+canopytag context --project PRJ-001
+```
+
+A project is a thin context umbrella: why the work exists, which features and
+files it implicates, open questions, and TODOs that have no honest single-file
+home. File context inherits those project TODOs read-only; nothing is copied
+onto the file card. Projects are not boards, sprints, or dependency graphs.
 
 ## Coordinate Concurrent Edits
 

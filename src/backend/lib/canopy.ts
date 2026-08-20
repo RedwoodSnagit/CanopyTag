@@ -23,6 +23,7 @@ const EMPTY_CANOPY: Canopy = {
   lastModifiedAt: '',
   files: {},
   features: {},
+  projects: {},
 };
 
 export function parseJsonFile(filePath: string): unknown {
@@ -51,7 +52,11 @@ function validateCanopyShape(obj: unknown): Canopy {
     const got = Array.isArray(obj.features) ? 'array' : obj.features === null ? 'null' : typeof obj.features;
     throw new Error(`Invalid canopy.json: 'features' must be an object (got ${got})`);
   }
-  return { ...obj, features: obj.features ?? {} } as Canopy;
+  if (obj.projects !== undefined && !isPlainObject(obj.projects)) {
+    const got = Array.isArray(obj.projects) ? 'array' : obj.projects === null ? 'null' : typeof obj.projects;
+    throw new Error(`Invalid canopy.json: 'projects' must be an object (got ${got})`);
+  }
+  return { ...obj, features: obj.features ?? {}, projects: obj.projects ?? {} } as Canopy;
 }
 
 export function readCanopy(filePath: string): Canopy {
@@ -78,7 +83,26 @@ export function nextTodoId(canopy: Canopy): string {
       }
     }
   }
+  for (const project of Object.values(canopy.projects ?? {})) {
+    for (const todo of project.todos ?? []) {
+      const match = todo.id.match(/^RT-(\d+)$/);
+      if (match) {
+        max = Math.max(max, parseInt(match[1], 10));
+      }
+    }
+  }
   return `RT-${String(max + 1).padStart(3, '0')}`;
+}
+
+export function nextProjectId(canopy: Canopy): string {
+  let max = 0;
+  for (const [key, project] of Object.entries(canopy.projects ?? {})) {
+    for (const candidate of [key, project.id]) {
+      const match = candidate.match(/^PRJ-(\d+)$/);
+      if (match) max = Math.max(max, parseInt(match[1], 10));
+    }
+  }
+  return `PRJ-${String(max + 1).padStart(3, '0')}`;
 }
 
 export function nextCommentId(canopy: Canopy): string {

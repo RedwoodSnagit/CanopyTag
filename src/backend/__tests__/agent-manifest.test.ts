@@ -2,9 +2,9 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { readCanopy } from '../lib/canopy.js';
+import { readCanopy, writeCanopy } from '../lib/canopy.js';
 import { readAgentManifest, reviewAgentManifestEntry } from '../lib/agent-manifest.js';
-import { handleAddComment, handleAnnotate } from '../../mcp/tools/writes.js';
+import { handleAddComment, handleAddProject, handleAnnotate, handleUpdateProject } from '../../mcp/tools/writes.js';
 
 let tmpDir: string;
 let canopyPath: string;
@@ -123,5 +123,34 @@ describe('reviewAgentManifestEntry', () => {
 
     const updatedManifest = readAgentManifest(manifestPath);
     expect(updatedManifest.entries[0].status).toBe('agreed');
+  });
+
+  it('rejects a project update by restoring only its reviewed fields', () => {
+    handleAddProject(canopyPath, { name: 'Context layer', files: ['src/auth.ts'], agent_name: 'ChatGPT 5.6 Sol' });
+    let manifest = readAgentManifest(manifestPath);
+    reviewAgentManifestEntry(canopyPath, manifestPath, { id: manifest.entries[0].id, action: 'agree' });
+
+    handleUpdateProject(canopyPath, {
+      project: 'PRJ-001', status: 'paused', open_questions: ['UI boundary?'], agent_name: 'ChatGPT 5.6 Sol',
+    });
+    manifest = readAgentManifest(manifestPath);
+    reviewAgentManifestEntry(canopyPath, manifestPath, { id: manifest.entries[1].id, action: 'reject' });
+
+    expect(readCanopy(canopyPath).projects?.['PRJ-001']).toMatchObject({ status: 'active' });
+    expect(readCanopy(canopyPath).projects?.['PRJ-001'].openQuestions).toBeUndefined();
+  });
+
+  it('refuses to reject project creation after the project changed', () => {
+    handleAddProject(canopyPath, { name: 'Context layer', agent_name: 'ChatGPT 5.6 Sol' });
+    const manifest = readAgentManifest(manifestPath);
+    const canopy = readCanopy(canopyPath);
+    canopy.projects!['PRJ-001'].description = 'A later human change.';
+    writeCanopy(canopyPath, canopy);
+
+    expect(() => reviewAgentManifestEntry(canopyPath, manifestPath, {
+      id: manifest.entries[0].id,
+      action: 'reject',
+    })).toThrow('changed after creation');
+    expect(readAgentManifest(manifestPath).entries[0].status).toBe('pending');
   });
 });

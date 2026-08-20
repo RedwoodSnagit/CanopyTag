@@ -178,6 +178,39 @@ describe('inspectCanopyDoctor', () => {
       'invalid-agent-manifest',
     ]));
   });
+
+  it('checks project references and TODO IDs across file and project scopes', () => {
+    const sharedTodo = {
+      id: 'RT-009', text: 'Collision', priority: 2 as const, status: 'open' as const,
+      createdAt: '2026-08-20T00:00:00Z', createdBy: { role: 'agent' as const, name: 'ChatGPT 5.6 Sol' },
+    };
+    const canopy = makeCanopy({
+      files: { 'src/app.ts': { todos: [sharedTodo] } },
+      features: { app: { name: 'App' } },
+      projects: {
+        'PRJ-001': {
+          id: 'PRJ-999',
+          name: 'Broken references',
+          status: 'active',
+          files: ['src/missing.ts'],
+          featureIds: ['missing-feature'],
+          todos: [sharedTodo],
+          createdAt: '2026-08-20T00:00:00Z',
+          createdBy: 'human',
+        },
+      },
+    });
+
+    const report = inspectCanopyDoctor(canopy, { repoFiles: new Set(['src/app.ts']) });
+    const codes = report.issues.map(issue => issue.code);
+    expect(codes).toEqual(expect.arrayContaining([
+      'project-key-mismatch',
+      'missing-project-file',
+      'missing-project-feature',
+      'duplicate-todo-id',
+    ]));
+    expect(report.checked.projects).toBe(1);
+  });
 });
 
 describe('inspectCanopyDoctor — agent attribution', () => {

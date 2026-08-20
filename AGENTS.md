@@ -49,7 +49,9 @@ hooks/               Claude Code analytics hook
 ## Product Boundaries
 
 - Not an IDE: CanopyTag does not show or edit source code.
-- Not a task board: TODOs are repo context, not a project-management system.
+- Not a task board: the thin project layer links intent, files, features, and
+  project-owned TODOs, but does not add sprints, due dates, boards, or task
+  dependency graphs.
 - Not a parser: graph views visualize metadata relationships, not import graphs.
 - Not a source-search replacement: use bounded catalogue search when filenames
   or terminology are uncertain, then confirm candidates with `rg` and source.
@@ -85,6 +87,8 @@ rg -l "keyword" src tests
 canopytag context path/from/search.ts another/path.md
 canopytag compare path/from/search.ts another/path.md
 canopytag query --feature feature-id --detail 4
+canopytag projects
+canopytag context --project PRJ-001
 canopytag work check path/to/edit
 canopytag work claim --path path/to/edit --summary "Bounded purpose" --owner codex --session thread-id
 ```
@@ -96,6 +100,8 @@ Use:
 - `context` to enrich known paths
 - `compare` to decide which of several files should win a conflict
 - `query` with feature, tag, or relation filters to explore a neighborhood
+- `projects` or `context --project` when work spans files and the missing
+  question is why those files belong together
 - `todos`, `health`, `doctor`, and `analytics` before wrapping up when the task
   touched shared CanopyTag metadata
 - `work check` before editing shared paths; claim bounded paths and release the

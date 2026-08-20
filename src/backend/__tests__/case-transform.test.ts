@@ -35,6 +35,13 @@ describe('snakeToCamel', () => {
     expect(result.files['src/examples/calculators/pressure_converter.py']).toBeDefined();
     expect(result.files['src/examples/calculators/pressure_converter.py'].featureId).toBe('tire-pressure');
   });
+
+  it('preserves project IDs while converting fields inside project cards', () => {
+    const result = snakeToCamel({
+      projects: { 'PRJ-001': { feature_ids: ['core'], created_at: '2026-08-20' } },
+    }) as any;
+    expect(result.projects['PRJ-001']).toEqual({ featureIds: ['core'], createdAt: '2026-08-20' });
+  });
 });
 
 describe('camelToSnake', () => {
@@ -59,5 +66,12 @@ describe('camelToSnake', () => {
     const result = camelToSnake(input) as any;
     expect(result.files['src/examples/calculators/pressure_converter.py']).toBeDefined();
     expect(result.files['src/examples/calculators/pressure_converter.py'].feature_id).toBe('tire-pressure');
+  });
+
+  it('preserves project IDs while converting fields inside project cards', () => {
+    const result = camelToSnake({
+      projects: { 'PRJ-001': { featureIds: ['core'], createdAt: '2026-08-20' } },
+    }) as any;
+    expect(result.projects['PRJ-001']).toEqual({ feature_ids: ['core'], created_at: '2026-08-20' });
   });
 });

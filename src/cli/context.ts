@@ -25,6 +25,7 @@ import {
   CORE_OPTIONS,
   filterFiles, isSurprising, fetchGitDates, collectFreshnessPaths, getFreshnessStatus, freshnessLabel,
 } from './shared.js';
+import { buildProjectDetail } from './projects.js';
 
 // ---- Per-dimension expected minimums by authority level ----
 // A spec with completeness=2 is a warning. A guideline with completeness=2 is fine.
@@ -168,6 +169,29 @@ function renderFileContext(
     lines.push(`  TODOs: ${todoLine}`);
   }
 
+  // Project context is inherited read-only. The TODO remains owned by the
+  // project and is never copied onto the file card.
+  const implicatedProjects = Object.values(canopy.projects ?? {})
+    .filter(project => (project.files ?? []).includes(filePath));
+  if (implicatedProjects.length > 0) {
+    lines.push(`  Projects: ${implicatedProjects.map(project =>
+      `${project.id} ${project.name}${project.description ? ` — ${truncate(project.description, 70)}` : ''}`
+    ).join('; ')}`);
+    const questions = implicatedProjects.flatMap(project =>
+      (project.openQuestions ?? []).map(question => `${project.id}: ${truncate(question, 70)}`)
+    );
+    if (questions.length > 0) lines.push(`  Project questions: ${questions.slice(0, 5).join('; ')}`);
+    const projectTodos = implicatedProjects
+      .flatMap(project => (project.todos ?? [])
+        .filter(todo => todo.status === 'open' || todo.status === 'in_progress')
+        .map(todo => ({ ...todo, projectId: project.id })))
+      .sort((a, b) => a.priority - b.priority)
+      .slice(0, 10);
+    if (projectTodos.length > 0) {
+      lines.push(`  Project TODOs (inherited): ${projectTodos.map(todo => `${todo.id}(P${todo.priority}, ${todo.projectId}): ${truncate(todo.text, 50)}`).join('; ')}`);
+    }
+  }
+
   // Relations (at requested depth)
   const relations = (fc.relatedFiles ?? []).map(normalizeRelation);
   const minCloseness = depth;
@@ -195,6 +219,7 @@ export interface ContextOptions {
   file?: string;
   files?: string[];   // multiple file lookup (e.g. after grep)
   feature?: string;
+  project?: string;
   depth?: number;
   surprising?: boolean;  // filter to files tagged 'surprising' or with finding comments
   repoRoot?: string;
@@ -214,6 +239,13 @@ export function buildContext(canopy: Canopy, opts: ContextOptions): string {
     if (paths.length === 0) return undefined;
     return fetchGitDates(opts.repoRoot, paths);
   };
+
+  if (opts.project && (opts.file || opts.files?.length || opts.feature)) {
+    throw new Error('Project context cannot be combined with file or feature context.');
+  }
+  if (opts.project) {
+    return buildProjectDetail(canopy, opts.project);
+  }
 
   // Multi-file mode: agent passes several paths from grep results
   if (opts.files && opts.files.length > 0) {
@@ -359,7 +391,7 @@ export function buildContext(canopy: Canopy, opts: ContextOptions): string {
     return lines.join('\n');
   }
 
-  return 'Usage: canopytag context <file> or canopytag context --feature <name>';
+  return 'Usage: canopytag context <file>, --feature <name>, or --project <id>';
 }
 
 export function parseContextArgs(args: string[]) {
@@ -368,6 +400,7 @@ export function parseContextArgs(args: string[]) {
     options: {
       ...CORE_OPTIONS,
       feature:    { type: 'string', short: 'f' },
+      project:    { type: 'string', short: 'p' },
       depth:      { type: 'string', short: 'd' },
       surprising: { type: 'boolean' },
     },
@@ -394,6 +427,7 @@ Usage:
   canopytag context <file>                    # single file context
   canopytag context <file1> <file2> ...       # multi-file lookup (after grep)
   canopytag context --feature <name>          # feature context (all files)
+  canopytag context --project <id>            # multi-file project context
   canopytag context <file> --depth 3          # include wider relations
 
 Surfaces: summary, active or invalid lifecycle warnings, dimension warnings,
@@ -405,6 +439,7 @@ Unannotated files are reported as "not annotated" rather than silently skipped.
 Options:
   -r, --repo <path>        Repo root (default: cwd)
   -f, --feature <name>     Feature ID to summarize
+  -p, --project <id>       Project ID or name to summarize
   -d, --depth <1-5>        Relation closeness threshold (default: 4)
       --surprising         Only files tagged 'surprising' or with finding comments
   -h, --help               Show this help`);
@@ -416,21 +451,27 @@ Options:
   const canopy = readCanopy(canopyPath);
 
   const feature = values.feature as string | undefined;
+  const project = values.project as string | undefined;
   const depth = parseInt(values.depth as string, 10) || undefined;
   const surprising = (values.surprising as boolean | undefined) ?? false;
 
-  if (positionals.length === 0 && !feature) {
-    console.error('Usage: canopytag context <file> [<file2> ...] or canopytag context --feature <name>');
+  if (positionals.length === 0 && !feature && !project) {
+    console.error('Usage: canopytag context <file> [<file2> ...], --feature <name>, or --project <id>');
     process.exit(1);
   }
 
   let output: string;
-  if (positionals.length > 1) {
-    output = buildContext(canopy, { files: positionals, depth, surprising, repoRoot });
-  } else if (positionals.length === 1) {
-    output = buildContext(canopy, { file: positionals[0], feature, depth, surprising, repoRoot });
-  } else {
-    output = buildContext(canopy, { feature, depth, surprising, repoRoot });
+  try {
+    if (positionals.length > 1) {
+      output = buildContext(canopy, { files: positionals, depth, surprising, repoRoot });
+    } else if (positionals.length === 1) {
+      output = buildContext(canopy, { file: positionals[0], feature, depth, surprising, repoRoot });
+    } else {
+      output = buildContext(canopy, { feature, project, depth, surprising, repoRoot });
+    }
+  } catch (error: any) {
+    console.error(error.message);
+    process.exit(1);
   }
 
   if (positionals.length > 0) {

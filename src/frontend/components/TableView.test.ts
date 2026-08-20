@@ -42,6 +42,16 @@ describe('TableView manifest helpers', () => {
     expect(row.kinds).toContain('Review Drift');
   });
 
+  it('renders a project subject without fabricating a file path', () => {
+    const row = toManifestRow(entry({
+      file: undefined,
+      projectId: 'PRJ-001',
+      kind: 'project-update',
+    }));
+    expect(row.file).toBe('project:PRJ-001');
+    expect(row.entry.file).toBeUndefined();
+  });
+
   it('filters manifest rows by recency window', () => {
     const recent = toManifestRow(entry({ id: 'AM-001', createdAt: '2026-04-21T12:00:00.000Z' }));
     const older = toManifestRow(entry({ id: 'AM-002', createdAt: '2026-03-10T12:00:00.000Z' }));
