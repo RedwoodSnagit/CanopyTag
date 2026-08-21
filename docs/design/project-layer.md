@@ -1,9 +1,11 @@
 # Project Layer
 
 **Date:** 2026-08-17
-**Status:** CLI/MCP core implemented 2026-08-20; UI deferred
-**Scope:** an additive project umbrella that links features, TODOs, and files,
-plus the agent attribution fix it depends on
+**Status:** thin CLI/MCP V1 implemented 2026-08-20; expanded control-plane
+target and handoff accepted 2026-08-20; UI/API work pending
+**Scope:** preserve the small implemented project umbrella while growing it
+into a human- and agent-usable project context graph: tasks, dependencies,
+milestones, resources, documentation, tools, attribution, and evidence
 
 ## Summary
 
@@ -20,20 +22,49 @@ record of a multi-file change across paths with nothing tying it together.
 The implemented core adds `Project` as a top-level record that **links** to
 features and files and may own TODOs whose natural scope is the multi-file body
 of work. It does not take ownership of linked feature or file records and does
-not move existing file TODOs. Projects are a queryable layer and a link to
-follow, not a task tracker.
+not move existing file TODOs.
 
-## Non-Goals
+That thin layer is a safe V1, not the final product boundary. Real dogfooding on
+BikeCRT showed that a project must eventually connect its objective to the
+ordered work, dependencies, milestones, tools, documentation, data/resources,
+owners, agents, review, and completion evidence needed to carry it out. A fresh
+agent should be able to open one project packet, know what is ready, and produce
+an accountable handoff without reconstructing the surrounding conversation.
 
-CanopyTag is annotation and context for agents at the level of the file and the
-file tree. This proposal does not turn it into an issue tracker.
+CanopyTag should provide that authored context and accountability spine. It
+does not need to become a monolithic scheduler, execute agents, replace Git, or
+copy every generated code edge into authored metadata. External task engines
+and structural mappers may be adapters or overlays when they earn their place.
 
-Specifically out of scope: sprints, assignees beyond the existing `Author`
-model, due dates, burndown, boards, workflow states beyond a coarse project
-status, notifications, and dependency graphs between tasks.
+## Product boundary
 
-Also explicitly not done here: promoting `Todo` to its own top-level collection.
-See "Deferred decisions".
+The goal is **not** feature parity with Jira, Linear, Plane, or an autonomous
+agent factory. It is enough project structure to preserve why work exists, how
+it can proceed, and what evidence makes it complete.
+
+In scope for the target layer:
+
+- projects with explicit outcomes and accepted scope;
+- tasks with stable IDs, status, ownership/claims, acceptance evidence, and
+  typed dependency edges;
+- milestones or timeline anchors when they convey a real constraint;
+- typed resources: files, documentation, tools/procedures, data/artifacts,
+  validation commands, and expected outputs;
+- attribution and accountability from actor through action, review, and receipt;
+- project, dependency, production-surface, and focused structural views for
+  humans and compact context packets for agents;
+- optional adapters to task systems and generated structural providers.
+
+Still out of scope by default:
+
+- payroll, capacity planning, notifications, chat, or enterprise permissions;
+- treating estimates and due dates as mandatory fields;
+- silently scheduling or dispatching agents;
+- treating popularity, heat, or generated topology as authored product truth;
+- ingesting every repository file into the rich annotation catalogue.
+
+The existing project schema remains backward compatible while this target is
+designed and implemented in bounded slices.
 
 ## Ontology
 
@@ -56,6 +87,72 @@ dimension in the schema.
 A project is not a feature and does not nest under one. A project **advances**
 features, possibly several, and may also carry work (API, connectivity,
 infrastructure) that maps to no feature at all.
+
+## Target project packet
+
+The durable handoff unit is a project packet, not an isolated description or a
+pile of file TODOs.
+
+```text
+Product surface / objective
+            |
+         Project
+       /     |       \
+    Tasks  Milestones  Resources
+      |        |       |- files and components
+      |- blocks        |- canonical documentation
+      |- depends_on    |- tools and procedures
+      |- assigned_to   |- data and artifact keys
+      |- acceptance    |- validation commands
+      |                `- expected outputs
+      `- actions and evidence
+         |- actor/model/session
+         |- claim and owned paths
+         |- commit/change record
+         |- tests, receipts, plots, or review
+         `- accepted/fixed/rejected judgment
+```
+
+The minimum target entities are `Project`, `Task`, `ResourceRef`, `Milestone`,
+and `ActionReceipt`; existing `Feature`, file records, `Author`, and manifest
+actions remain reusable nodes. Prefer typed references and edges over adding
+dozens of nullable properties to every record.
+
+### Task readiness and timeline
+
+Task dependencies should support at least `blocks`, `depends_on`,
+`parent_child`, and `related`. Readiness is computed: a task is ready when its
+required predecessors and decisions are satisfied and it is not actively
+claimed elsewhere. A timeline is a view over dependency order, milestones,
+optional estimates/dates, and actual actions. It must not require invented due
+dates merely to draw a chart.
+
+Each task should be self-contained enough for a fresh agent to execute or to
+identify the exact missing decision. Required semantics are:
+
+- objective and why now;
+- status and priority;
+- acceptance evidence;
+- dependencies and blockers;
+- owned paths and intentional exclusions when code work is involved;
+- relevant resources and tools;
+- accountable owner, current claimant, and reviewer where applicable;
+- action/commit/test receipts and residual risk at completion.
+
+### Resources are first-class references
+
+A project should not rely on prose to hide the materials needed to perform it.
+Resource references need a type and role, for example:
+
+- `documentation` / `governs`;
+- `file` or `component` / `implements`;
+- `tool` or `procedure` / `use_for`;
+- `dataset` or `artifact` / `input`;
+- `command` or `test` / `validates`;
+- `output` / `must_produce`.
+
+Private or machine-local resources use logical keys and storage roles, never
+committed workstation paths or copied sensitive bytes.
 
 ## Schema
 
@@ -140,6 +237,37 @@ Tree badge counts continue to reflect only file-owned TODOs. Rolling inherited
 TODOs into badge counts would make a single project TODO inflate the count of
 every file it implicates, which is misleading. Revisit only if it proves wanted
 in practice.
+
+## Production surfaces and meaningful coverage
+
+Whole-repository rich-annotation percentage is not a product-quality score.
+Large repositories contain generated files, caches, vendored dependencies,
+experiments, fixtures, compatibility shims, archives, and ordinary helpers that
+do not all deserve authored cards.
+
+CanopyTag needs named, reviewable scope sets such as:
+
+- `production_candidate`;
+- `alpha_critical`;
+- `supported_research`;
+- `experimental_inventory`.
+
+A scope set identifies the components, entrypoints, canonical documents, tests,
+and resources whose routing context should be complete for that purpose.
+Coverage is then reported per scope, with whole-repo annotation only as a
+neutral inventory statistic. A production report should be able to say, for
+example, `92/104 production-candidate targets annotated`, not imply that
+unannotated caches or ordinary helpers are debt.
+
+Generated providers may propose membership. A Cartographer adapter can start
+from trusted UI/API/engine entrypoints and discover structural dependencies;
+exact-symbol tools can explain a focused path. Human review promotes the useful
+candidate set into authored scope. Generated membership must carry provider,
+artifact fingerprint, and freshness and cannot silently redefine the set.
+
+Directory cards that intentionally summarize a production surface are not
+orphans merely because their key is not a regular file. Coverage and doctor
+must distinguish supported directory subjects from missing paths.
 
 ## Query and Navigation
 
@@ -240,21 +368,53 @@ Accountability, not just attribution: the manifest already models
 "which model produced work I later had to fix" is only answerable once the name
 is real.
 
-## Deferred UI Surface
+## Required HTTP API and human surface
 
-Minimum viable, consistent with the existing app:
+The CLI/MCP-only implementation is insufficient for a system intended to align
+humans and agents. The frontend HTTP client and workspace store do not currently
+load projects, so the UI cannot show project TODOs or context even though the
+CLI can. API parity is the first implementation gate.
 
-- **Projects as a lane in the Table view**, alongside Files / Scores / TODOs /
-  Activity. Columns: name, status, feature links, file count, open TODO count,
-  owners, last activity.
-- **Project detail panel** reusing the `FileDetail` layout conventions:
-  description, open questions, linked features, linked files (each a link to
-  follow into the tree), project TODOs, and recent actions.
-- **File detail panel** gains an "Implicated in" section listing projects, and
-  the read-only inherited TODOs described above.
+Minimum coherent human surface:
 
-Deliberately not proposed: a project-centric top-level view replacing the tree.
-The tree stays the primary navigation surface.
+- **Projects lane** alongside Files / Scores / TODOs / Activity, with status,
+  readiness, blocked/ready counts, milestones, owners/claimants, and recent
+  evidence.
+- **Project detail** for outcome, questions/decisions, tasks, dependency flow,
+  milestones, resources, files/features, activity, and completion evidence.
+- **Task detail or drawer** with bounded text, acceptance criteria, dependencies,
+  resources, actor/reviewer, and receipts. Large task descriptions must not
+  expand every table row to full length.
+- **File detail `Implicated in` section** with linked projects and inherited
+  read-only project tasks, including when the file has no rich file annotation.
+- **Count and filter parity** across CLI, MCP, HTTP API, and UI. Project tasks
+  cannot disappear from a human TODO count.
+- **Safe mutation** with visible save state and confirmation or recoverable undo
+  for deletion and relationship changes.
+
+The file tree remains useful for known-path navigation, but a project-centric
+view is now required rather than forbidden. Humans should not need to start from
+a filename when the question is "what work is ready and why?"
+
+## Visualization and structural overlays
+
+One force-directed graph cannot simultaneously explain projects, dependencies,
+product architecture, files, exact symbols, and activity. CanopyTag should offer
+purposeful saved views with explicit layers:
+
+1. **Work graph:** projects, tasks, milestones, dependencies, readiness.
+2. **Product graph:** production scopes, features, components, UI/API/engine
+   boundaries, and canonical documents.
+3. **Resource graph:** tasks to files, tools, procedures, data, tests, outputs.
+4. **Structural overlay:** provenance-bearing Cartographer or exact-symbol edges.
+5. **Accountability overlay:** claims, actors, actions, reviews, and receipts.
+
+Use human-preserved spatial layouts, directed dependency flow, cards, groups,
+and labeled edges where they improve comprehension. Obsidian-style canvases are
+a useful interaction reference; dependency-aware agent trackers, software
+catalogues, and human PM systems are reference patterns rather than automatic
+dependencies. Every generated edge needs an explanation and provenance, and
+every saved view needs a bounded question it answers.
 
 ## Validation and Doctor Checks
 
@@ -275,38 +435,34 @@ None required. The change is purely additive: `projects` is optional, and a
 canopy file without it is valid and behaves exactly as today. Existing
 file-bound TODOs are not touched, moved, or rewritten.
 
-## Deferred Decisions
+## Migration and open design decisions
 
-**Promoting `Todo` to a top-level collection.** The clean end state is arguably
-one `todos: Record<string, Todo>` with both files and projects referencing ids.
-Deferred because `Todo` already carries stable ids, which makes that migration
-cheap whenever it is wanted. Doing it now would be speculative restructuring
-ahead of evidence that file-owned and project-owned TODOs actually diverge.
+**Task storage.** The target requirements now justify evaluating a top-level
+task collection referenced by projects and optional file/resource subjects.
+Do not migrate existing TODOs until round-trip compatibility, stable IDs,
+archive behavior, and guarded manifest undo are designed. File TODOs may remain
+a lightweight annotation subtype if forcing every note into the project graph
+would add friction.
 
-**Task as an entity distinct from TODO.** Currently treated as the same thing:
-a task is a unit of work, and a TODO is that unit before it is done. `Todo`
-already has `status`, so the distinction is a state, not a type. Revisit if
-projects grow a need for tasks that are neither open work nor completed work.
+**Project relations.** Typed project-to-project relations are useful for
+`blocks`, `supports`, and `part_of`; unrestricted hierarchy is not required.
+Task dependency graphs carry the operational ordering. Avoid deep nesting whose
+only purpose is to mimic an enterprise tracker.
 
-**Rolling inherited TODOs into tree badge counts.** Excluded above; noted here
-so the reasoning is not relitigated silently.
+**History.** Completed projects, tasks, actions, and evidence are valuable
+accountability records. Prefer retained, filterable history to destructive
+sweeping. Any archive must use a real project/task subject rather than a fake
+file path such as `project:PRJ-001`.
 
-**Archiving completed project TODOs.** The existing archive record requires a
-file path, so the shipped sweep leaves project-owned completed TODOs in the
-project. A future archive change needs an explicit project subject; it must not
-write a fake file path such as `project:PRJ-001` into `filePath`.
+**External task engine.** Beads-like local dependency engines and Plane-like
+human PM systems are candidates for adapters or comparative spikes. No external
+system becomes authoritative merely because it has a mature UI. Require stable
+export, local/private operation, API access, backups, actor attribution, and an
+honest mapping to CanopyTag project/task/resource IDs.
 
-## Open Questions
-
-1. Should a project be able to link another project (parent/child), or is one
-   flat layer sufficient? Flat is proposed. Nesting invites the Jira drift this
-   spec is trying to avoid.
-2. Should `status: done` archive a project into `canopy_archive.json` the way
-   completed TODOs are swept, or should projects remain visible indefinitely as
-   history? Sweeping is consistent with existing behaviour; retention is more
-   useful for the "why" record.
-3. Should project detail get its own top-level view eventually, or is the Table
-   lane the permanent home?
+**Canvas persistence.** Decide whether saved human layouts are CanopyTag-owned
+views or interoperable JSON Canvas-style artifacts. Layout is a view; it must
+not become a second source of project truth.
 
 ## Implementation Phases
 
@@ -321,8 +477,45 @@ write a fake file path such as `project:PRJ-001` into `filePath`.
    manifest subjects, guarded undo. General TODO status mutation remains
    deferred rather than being hidden inside whole-project replacement.
 5. **Doctor checks — implemented for deterministic integrity.**
-6. **UI — deferred.** A project lane/detail panel should follow only after the
-   agent-facing shape is dogfooded and shown not to overload file navigation.
+6. **V1 UI — missing and now required.** Add HTTP API/store parity, project
+   lane/detail, file backlinks, inherited project tasks, and count parity.
+7. **Production scopes.** Define generic scope-set schema and coverage behavior;
+   dogfood a reviewed production-candidate manifest in a large downstream repo.
+8. **Task/dependency/resource design.** Freeze a minimal target schema with
+   backward-compatible migration and deterministic readiness/doctor checks.
+9. **Project execution UI.** Add task/resource/evidence views and one directed
+   dependency/timeline view with saved human layout.
+10. **Structural overlays.** Prototype one provenance-bearing generated overlay
+    without copying structural truth into authored metadata.
+11. **Comparative spike.** Reproduce one project in selected external reference
+    tools and record what should be adopted, adapted, or rejected before adding
+    broader PM machinery.
 
-The shipped core is useful without UI: agents can author, review, query, and
-follow a project while the existing tree remains the primary human surface.
+The shipped V1 remains useful for agent routing, but it is not a complete human
+handoff surface and must not be described as the final project boundary.
+
+## Fresh-agent handoff
+
+Start here and run `canopytag projects PRJ-001` before editing. Preserve the
+implemented V1 and advance one bounded slice; do not attempt the entire control
+plane in one change.
+
+Recommended next packet:
+
+- **Objective:** make the existing project records visible and truthful in the
+  HTTP API and UI before expanding the persisted schema.
+- **Owned paths:** project HTTP routes, frontend API/store, Table project lane,
+  project detail, file project backlinks, focused tests, and this design doc.
+- **Intentional exclusions:** no agent dispatch, no external PM installation,
+  no structural-graph ingestion, no deletion or migration of file TODOs, and no
+  downstream product-source edits.
+- **Acceptance:** all project files remain visible even without rich file cards;
+  CLI/MCP/API/UI project and open-task counts agree; a human can open a project,
+  follow every file, read its question/task, and see project context from a
+  linked file; deletion remains recoverable or explicitly confirmed.
+- **Downstream dogfood:** use a large repo with declared project records to
+  verify scale, but keep downstream-specific taxonomy outside generic code.
+
+The following packet should define production scope sets and meaningful
+coverage. Task/dependency schema work follows after those two V1 usability gaps
+are evidenced, so the existing tool remains usable throughout the migration.

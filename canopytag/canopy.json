@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo_root": "",
-  "last_modified_at": "2026-08-02T08:40:00.000Z",
+  "last_modified_at": "2026-08-21T00:51:04.382Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -1069,13 +1069,13 @@
     },
     "docs/roadmap.md": {
       "title": "Public Roadmap",
-      "summary": "Curated public roadmap covering prerelease status, release blockers, active-work dogfooding, agent navigation, analytics and benchmarking, multi-repo ideas, structural-data/cartography boundaries, and design principles to preserve.",
+      "summary": "Curated public roadmap covering prerelease status, project HTTP/UI parity, production-scope coverage, task/dependency/resource context, agent navigation, analytics, graph views, structural overlays, and release boundaries.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
       "stability": 2,
       "scores_reviewed": false,
-      "last_reviewed": "2026-08-02",
+      "last_reviewed": "2026-08-20",
       "authority_level": "guideline",
       "status": "active",
       "tags": ["docs", "strategy", "design"],
@@ -1092,9 +1092,9 @@
       ]
     },
     "docs/design/project-layer.md": {
-      "title": "Thin Project Context Layer",
-      "summary": "Implemented CLI/MCP contract for flat multi-file project umbrellas linking intent, features, files, open questions, project-owned TODOs, and review activity. It explicitly excludes boards, sprints, due dates, nested projects, and task dependency graphs; UI remains deferred pending dogfood evidence.",
-      "tags": ["design", "project-context", "schema", "agent-interface"],
+      "title": "Project Context And Control Plane",
+      "summary": "Canonical project-layer design: documents the implemented thin CLI/MCP V1 and the accepted target for human/agent task dependencies, milestones, resources, tools, attribution, evidence, production-scope coverage, purposeful graph views, API/UI parity, and a bounded fresh-agent implementation handoff.",
+      "tags": ["design", "project-context", "project-management", "production-scope", "visualization", "schema", "agent-interface"],
       "feature_id": "docs",
       "authority_level": "specification",
       "status": "active",
@@ -1774,8 +1774,8 @@
   "projects": {
     "PRJ-001": {
       "id": "PRJ-001",
-      "name": "Thin project context layer",
-      "description": "Make multi-file agent work traversable by connecting why, features, implicated files, open questions, and honestly scoped TODOs without turning CanopyTag into Jira.",
+      "name": "Project context and accountability control plane",
+      "description": "Evolve the implemented thin project umbrella into a usable human/agent context spine connecting objectives, tasks, dependencies, milestones, resources, tools, documentation, production scopes, attribution, actions, review, and evidence without becoming a monolithic scheduler or copying generated topology into authored truth.",
       "status": "active",
       "owners": [{"role": "human", "name": "jeff"}],
       "feature_ids": ["annotation-engine", "cli-tools", "mcp-server", "activity-review", "docs"],
@@ -1791,7 +1791,13 @@
         "src/cli/doctor.ts",
         "src/mcp/tools/reads.ts",
         "src/mcp/tools/writes.ts",
-        "src/mcp/tools/writes-registration.ts"
+        "src/mcp/tools/writes-registration.ts",
+        "src/backend/server.ts",
+        "src/frontend/lib/api.ts",
+        "src/frontend/stores/workspace.ts",
+        "src/frontend/components/TableView.tsx",
+        "src/frontend/components/FileDetail.tsx",
+        "docs/roadmap.md"
       ],
       "todos": [
         {
@@ -1799,15 +1805,67 @@
           "text": "Dogfood the agent-facing project core before deciding whether a bounded project lane and detail panel earn UI space.",
           "priority": 3,
           "difficulty": 2,
-          "status": "open",
+          "status": "done",
           "tags": ["project-context", "ui", "dogfood"],
           "created_at": "2026-08-20T22:45:00Z",
+          "completed_at": "2026-08-21T00:45:00Z",
           "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "project-layer-2026-08-20"}
+        },
+        {
+          "id": "RT-013",
+          "text": "Implement project HTTP API and human UI parity before expanding the persisted schema: project lane/detail, file backlinks including unannotated linked files, inherited project tasks, bounded task presentation, safe mutation, and matching CLI/MCP/API/UI counts.",
+          "priority": 1,
+          "difficulty": 4,
+          "status": "open",
+          "tags": ["project-context", "api", "ui", "parity", "human-review"],
+          "created_at": "2026-08-21T00:45:00Z",
+          "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "canopytag-control-plane-handoff-2026-08-20"}
+        },
+        {
+          "id": "RT-014",
+          "text": "Design named authored scope sets such as production_candidate, alpha_critical, and supported_research; report meaningful coverage per scope, accept provenance-bearing generated membership proposals, and treat supported directory subjects separately from missing files.",
+          "priority": 1,
+          "difficulty": 4,
+          "status": "open",
+          "tags": ["production-scope", "coverage", "cartography", "doctor"],
+          "created_at": "2026-08-21T00:45:00Z",
+          "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "canopytag-control-plane-handoff-2026-08-20"}
+        },
+        {
+          "id": "RT-015",
+          "text": "Specify the smallest backward-compatible Task, dependency, milestone, ResourceRef, and ActionReceipt contract needed for fresh-agent handoffs, computed readiness, owned paths/exclusions, tools, documents, inputs/outputs, validation, attribution, and retained completion evidence.",
+          "priority": 2,
+          "difficulty": 5,
+          "status": "open",
+          "tags": ["project-management", "task-graph", "dependencies", "resources", "accountability"],
+          "created_at": "2026-08-21T00:45:00Z",
+          "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "canopytag-control-plane-handoff-2026-08-20"}
+        },
+        {
+          "id": "RT-016",
+          "text": "Replace the one-force-graph assumption with one bounded prototype view: directed project/task dependency flow with readable cards, groups, labeled edges, saved human layout, resources/evidence, and provenance-bearing structural overlays kept visually distinct.",
+          "priority": 2,
+          "difficulty": 4,
+          "status": "open",
+          "tags": ["visualization", "graph", "dependency-flow", "canvas", "provenance"],
+          "created_at": "2026-08-21T00:45:00Z",
+          "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "canopytag-control-plane-handoff-2026-08-20"}
+        },
+        {
+          "id": "RT-017",
+          "text": "Run a bounded comparison of one representative project against agent-native dependency tracking, human PM, software-catalog, and canvas patterns; record what to adopt, adapt, or reject without installing a new authority into a downstream repo.",
+          "priority": 3,
+          "difficulty": 3,
+          "status": "open",
+          "tags": ["benchmark", "project-management", "agent-tools", "human-ui"],
+          "created_at": "2026-08-21T00:45:00Z",
+          "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "canopytag-control-plane-handoff-2026-08-20"}
         }
       ],
       "open_questions": [
-        "Does repeated real use justify a project lane in the existing UI without overloading file navigation?",
-        "Should completed projects and project-owned TODOs remain visible history or gain an explicit project-aware archive subject?"
+        "Which task and resource fields are necessary for a fresh agent to execute safely without recreating an enterprise tracker?",
+        "Should saved human graph layouts use a CanopyTag view record or an interoperable JSON Canvas-style artifact?",
+        "Which external task or PM systems earn adapter status after a bounded comparison, and which concepts should be implemented directly?"
       ],
       "created_at": "2026-08-20T22:45:00Z",
       "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "project-layer-2026-08-20"}

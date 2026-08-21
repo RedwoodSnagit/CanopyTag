@@ -17,8 +17,9 @@ Working now:
   boosts, prefix matching, conservative typo tolerance, composable filters, and
   visible match evidence in CLI/MCP query results
 - MCP read/write tools for agent integration
-- Thin project context linking intent, features, files, project-owned TODOs,
-  and reviewable activity without adding board/sprint machinery
+- Thin V1 project context linking intent, features, files, project-owned TODOs,
+  and reviewable activity; the accepted target now includes bounded task,
+  dependency, milestone, resource, and accountability context
 - Agent activity/review feed in `agent_manifest.json`
 - Read-only `doctor` checks for objective maintenance hazards, with bounded
   text/JSON output and optional strict exit behavior
@@ -51,6 +52,18 @@ Working now:
 
 ## Near-Term Product Work
 
+- Implement project HTTP API and human UI parity: project lane/detail, file
+  backlinks, inherited project tasks, unannotated linked-file visibility, and
+  matching CLI/MCP/API/UI counts. This is now required dogfood, not a speculative
+  lane competing with file navigation.
+- Add named authored scope sets such as `production_candidate`,
+  `alpha_critical`, and `supported_research`. Report annotation/routing coverage
+  against those sets; keep whole-repo percentage informational and do not label
+  intentional directory subjects as missing files.
+- Design the smallest backward-compatible task/dependency/resource model needed
+  for fresh-agent handoffs, computed readiness, milestones/timeline, tools,
+  documents, inputs/outputs, and action/test/review receipts. Do not migrate
+  existing file TODOs until guarded round-trip behavior is specified.
 - Dogfood active-work claims in real concurrent sessions. Keep them separate
   from heat and persistent TODO state; add Beads/task-system adapters only if a
   repeated durable coordination workflow justifies them.
@@ -62,12 +75,14 @@ Working now:
 - Complete the staged [document lifecycle marks](./design/document-lifecycle-marks.md)
   workflow with filters, reviewed writes/promotion, and UI support. The first
   read-only warning slice is implemented.
-- Continue graph hardening on larger real repos: dense labels, edge priority,
-  cluster heuristics, and saved graph presets only if repeated workflows emerge.
+- Replace the one-graph-fits-all assumption with bounded views: project
+  dependency flow, production surface, task resources/evidence, focused
+  structural overlay, and accountability. Learn from card/group/canvas tools,
+  dependency-aware agent trackers, human PM systems, and software catalogues
+  without making any one of them an automatic dependency.
 - Improve Activity review ergonomics for high-speed human review of agent writes.
-- Dogfood the project CLI/MCP core before deciding whether a bounded project
-  lane/detail panel earns UI space. Keep inherited project TODOs out of file
-  badge counts and keep completed project archival deferred until usage is clear.
+- Retain completed project/task history as filterable accountability evidence;
+  any archive must use real project/task subjects rather than fabricated paths.
 - If agents need to complete or revise TODOs through MCP, add one reviewed,
   scope-aware update contract for both file and project TODOs; do not hide TODO
   lifecycle mutation inside whole-project array replacement.
