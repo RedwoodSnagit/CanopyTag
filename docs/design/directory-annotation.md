@@ -132,7 +132,7 @@ A TODO hangs on **exactly one** of `file`, `directory`, or `project`.
 |---|---|---|
 | `file` | Work on this specific thing | "This function needs a null guard" |
 | `directory` | Work on this area as a unit | "Nothing in here has tests" |
-| `project` | Work defined by intent, spanning locations | "Integrate RPE V5 into Ride Analysis" |
+| `project` | Work defined by intent, spanning locations | "Integrate Ranking Model V5 into Search Ranking" |
 
 File and directory are both *where*, at different granularity. Project is
 *intent* — a set defined by what the work is for rather than where it lives.
@@ -217,7 +217,7 @@ unchanged on-disk key and all-optional new fields. Existing `directories`
 entries load and save unchanged. The `assessment` comment type is additive to a
 union.
 
-Note that the BikeCRT working repo currently has **zero** directory entries
+Note that the working repo currently has **zero** directory entries
 despite 209 annotated files, so there is no meaningful legacy data to preserve —
 this is close to a greenfield surface in practice.
 

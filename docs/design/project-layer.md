@@ -16,8 +16,8 @@ and tags were all keyed by a file path. That remains the right primary key for
 navigation and most annotations.
 
 Before this layer, work that spanned files had nowhere honest to live.
-`canopytag_add_todo` required `file`, so a TODO like "integrate Ride Parameter
-Estimator V5 into Ride Analysis" had to be parked on an arbitrary pipeline file
+`canopytag_add_todo` required `file`, so a TODO like "integrate Ranking Model
+V5 into Search Ranking" had to be parked on an arbitrary pipeline file
 or omitted. `AgentManifestEntry.file` had the same constraint, scattering the
 record of a multi-file change across paths with nothing tying it together.
 
@@ -26,10 +26,11 @@ features and files and may own TODOs whose natural scope is the multi-file body
 of work. It does not take ownership of linked feature or file records and does
 not move existing file TODOs.
 
-That thin layer is a safe V1, not the final product boundary. Real dogfooding on
-BikeCRT showed that a project must eventually connect its objective to the
-ordered work, dependencies, milestones, tools, documentation, data/resources,
-owners, agents, review, and completion evidence needed to carry it out. A fresh
+That thin layer is a safe V1, not the final product boundary. Real dogfooding
+on a private working repo showed that a project must eventually connect its
+objective to the ordered work, dependencies, milestones, tools,
+documentation, data/resources, owners, agents, review, and completion
+evidence needed to carry it out. A fresh
 agent should be able to open one project packet, know what is ready, and produce
 an accountable handoff without reconstructing the surrounding conversation.
 
@@ -75,11 +76,11 @@ conflated in earlier drafts.
 
 | Concept | Meaning | Example | Status |
 |---|---|---|---|
-| **Feature** | A user-facing capability of the product | "Ride Analysis" | Exists, unchanged |
-| **Project** | A body of work advancing one or more features | "Integrate Ride Parameter Estimator V5" | **New** |
-| **Task / TODO** | A unit of work, future-focused | "Elliptical wind direction estimator passes a synthetic test" | Exists as `Todo`, gains a second home |
+| **Feature** | A user-facing capability of the product | "Search Ranking" | Exists, unchanged |
+| **Project** | A body of work advancing one or more features | "Integrate Ranking Model V5" | **New** |
+| **Task / TODO** | A unit of work, future-focused | "Tie-break scorer passes a synthetic test" | Exists as `Todo`, gains a second home |
 | **Action** | A record of what happened | `AgentManifestEntry` | Exists, gains an optional project link |
-| **File** | The *where* — a location work touches | `bikecrt_core/physics/…` | Exists, unchanged |
+| **File** | The *where* — a location work touches | `core/ranking/…` | Exists, unchanged |
 
 `Feature.description` answers *what the user gets*. `Project.description`
 answers *why we are doing this work*. These are different questions that
@@ -473,7 +474,7 @@ Project records are worthless if every `createdBy` reads `"agent"`.
 in order: the `agent_name` tool argument, `CANOPYTAG_AGENT_NAME`,
 `MCP_CLIENT_NAME`, then the literal fallback `'agent'`. The `AuthorSignature`
 type already carries `{ role, name, session }`. The mechanism is sound; nothing
-populates it. All 32 manifest entries in the BikeCRT working repo fell through
+populates it. All 32 manifest entries in the working repo fell through
 to `'agent'`.
 
 **Status: implemented 2026-08-17.** What shipped:
@@ -497,7 +498,7 @@ to `'agent'`.
    repo rather than one finding per record — hundreds of identical findings
    would crowd out every other check.
 
-Measured against the BikeCRT working repo on implementation: **34 agent-authored
+Measured against the working repo on implementation: **34 agent-authored
 records across 24 files** carry no model identity, against 20 that do
 (`claude-opus`, `claude-opus-5`, `codex`, `gpt-5-codex`). The aggregate finding
 sorts below per-file `review-drift` warnings and is therefore hidden at the
@@ -509,8 +510,8 @@ change. This is specifically an agent-side gap.
 
 Accountability, not just attribution: the manifest already models
 `status: pending → agreed | fixed | rejected` with `reviewer`, `reviewedAt`, and
-`reviewNote`. That loop is built and entirely unused — every BikeCRT entry is
-`pending`. Model identity is what makes the loop worth running, because
+`reviewNote`. That loop is built and entirely unused — every entry in that
+repo is `pending`. Model identity is what makes the loop worth running, because
 "which model produced work I later had to fix" is only answerable once the name
 is real.
 
