@@ -17,7 +17,8 @@ CanopyTag gives your repo that missing map.
 
 It stores structured, repo-local context next to your code: file summaries,
 authority levels, quality scores, file/project TODOs, comments, related files,
-hot spots, tags, feature clusters, thin multi-file projects, and agent activity.
+hot spots, tags, feature clusters, multi-file project execution packets, and
+agent activity.
 Humans can browse and maintain the file map in the web UI. Agents can query the
 full context through the CLI or MCP before they burn tokens guessing which
 files matter.
@@ -29,11 +30,11 @@ should I read next?
 
 ## What It Gives You
 
-- A web UI with Explorer, Table, Graph, Analytics, and Activity views
+- A web UI with Explorer, sortable Tables, Projects, Graph, Analytics, and Activity views
 - A CLI for orientation, search-result enrichment, TODOs, health and maintenance checks, and analytics
 - An MCP server so agents can read and write repo context directly
 - File relationships and feature clustering so agents can follow meaning, not just folders
-- Thin projects that connect multi-file intent, open questions, and TODOs without a board
+- Project packets that connect multi-file intent, computed task readiness, typed dependencies/resources, milestones, retained evidence, linked files, and file backlinks without becoming a board
 - Authority, quality, freshness, lifecycle, and attention signals so agents know what to trust
 - Hot spots from recent reads, writes, and searches
 - Local, expiring work claims so concurrent agents can see current editing intent
@@ -260,7 +261,7 @@ canopytag context --feature auth         # feature context
 canopytag context --project PRJ-001      # multi-file project context
 
 canopytag projects                       # active project contexts
-canopytag projects PRJ-001               # one project's why/files/questions/TODOs
+canopytag projects PRJ-001               # intent/readiness/dependencies/resources/receipts
 canopytag query --project PRJ-001 --detail 3
 
 canopytag compare docs/spec.md src/api.ts # authority, quality, review, trust order
@@ -279,12 +280,48 @@ canopytag work claim --path src/auth --summary "Repair token refresh" --owner co
 canopytag work renew AW-... --ttl 2h --owner codex --session thread-123
 canopytag work release AW-... --note "Tests passing; ready for review" --owner codex --session thread-123
 canopytag analytics                      # recent agent/search heat
-canopytag coverage                       # annotation coverage report
+canopytag coverage                       # authored scopes + neutral repo inventory
+canopytag coverage --scope production_candidate  # one scope's gaps/proposals
 canopytag mcp --repo /path/to/repo       # write project-local MCP config
 canopytag hook install                   # install Claude Code analytics hook
 ```
 
 Every command accepts `--help`. Most commands accept `--repo <path>`.
+
+### Meaningful Coverage
+
+Whole-repository annotation percentage is an inventory statistic, not a product
+quality score. Repositories can declare small, authored `scope_sets` in
+`canopytag/canopy.json` for purposes such as `production_candidate`,
+`alpha_critical`, or `supported_research`:
+
+```json
+{
+  "scope_sets": {
+    "production_candidate": {
+      "name": "Production candidate",
+      "description": "Release-facing routes and canonical guidance",
+      "members": [
+        { "path": "src/server.ts", "kind": "file", "role": "entrypoint" },
+        { "path": "docs", "kind": "directory", "role": "canonical_document" }
+      ]
+    }
+  }
+}
+```
+
+File members are covered by `files` cards; directory members are covered by
+`directories` cards. Missing or wrong-kind subjects are reported separately
+instead of calling an intentional directory a missing file. Supported member
+roles are `component`, `entrypoint`, `canonical_document`, `test`, and
+`resource`.
+
+Optional generated candidates live outside authored truth in
+`canopytag/generated/scope-membership.json`. The sidecar requires a provider,
+artifact fingerprint, generation time, freshness deadline, and explicit
+proposals. `coverage` and `canopytag_coverage` display fresh or stale proposals
+but never add them to the authored denominator or promote them into
+`canopy.json`.
 
 ## MCP Setup
 
@@ -353,15 +390,15 @@ or to a client settings file that supports `mcpServers`:
 | `canopytag_context` | Compact context for files, features, or projects |
 | `canopytag_compare` | Compare exact files by authority, quality, review, and trust order |
 | `canopytag_todos` | Canopy-native file/project TODOs with explicit scope |
-| `canopytag_projects` | List thin multi-file project contexts |
-| `canopytag_project` | Inspect one project's why, files, questions, TODOs, and activity |
+| `canopytag_projects` | List project contexts with ready/blocked/claimed task counts |
+| `canopytag_project` | Inspect one project's tasks, dependencies, milestones, resources, receipts, files, and activity |
 | `canopytag_health` | Authority/quality mismatches and lifecycle attention |
 | `canopytag_doctor` | Broken paths, ID collisions, review drift, orphans, portability, and pending review |
 | `canopytag_tags` | Browse tag usage and run soft tag hygiene checks |
 | `canopytag_manifest` | Inspect the agent activity/review feed |
 | `canopytag_fan_in` | Reverse relationship graph |
 | `canopytag_fan_out` | Forward relationship graph |
-| `canopytag_coverage` | Annotation coverage and orphaned-card report |
+| `canopytag_coverage` | Authored scope coverage, generated non-counting proposals, neutral repo inventory, and orphans |
 | `canopytag_annotate` | Update file metadata |
 | `canopytag_add_comment` | Add observations, even on locked files |
 | `canopytag_add_todo` | Log work items |
@@ -532,7 +569,8 @@ is revisited, corrected, and connected over time.
   relationships, hot spots, and feature clusters.
 - CanopyTag does not show or edit source code; it is the map beside the code.
 - Projects and TODOs are repo context, not a full project-management system:
-  no boards, sprints, due dates, notifications, or task dependency graph.
+  typed dependency readiness is supported, but there are no boards, sprints,
+  required due dates, notifications, scheduling, or autonomous dispatch.
 - Graph views visualize CanopyTag relationships, not language import graphs.
 - Annotations travel with the repo; local-only files should stay uncommitted or
   be explicitly reviewed before sharing.

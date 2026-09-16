@@ -165,6 +165,15 @@ describe('readCanopy validation', () => {
     expect(() => readCanopy(TEST_CANOPY)).toThrow(/projects/);
   });
 
+  it('defaults scope sets to {} and rejects a malformed scope collection', () => {
+    fs.writeFileSync(TEST_CANOPY, JSON.stringify({ version: 1, files: {}, features: {} }));
+    expect(readCanopy(TEST_CANOPY).scopeSets).toEqual({});
+    fs.writeFileSync(TEST_CANOPY, JSON.stringify({
+      version: 1, files: {}, features: {}, scope_sets: [],
+    }));
+    expect(() => readCanopy(TEST_CANOPY)).toThrow(/scope_sets/);
+  });
+
   it('allows extra unknown top-level keys', () => {
     fs.writeFileSync(TEST_CANOPY, JSON.stringify({
       version: 1, files: {}, features: {}, custom_field: 'hello'
@@ -237,6 +246,34 @@ describe('writeCanopy', () => {
     expect(raw.projects['PRJ-001'].featureIds).toBeUndefined();
     expect(readCanopy(TEST_CANOPY).projects?.['PRJ-001'].todos?.[0].createdAt)
       .toBe('2026-08-20T00:00:00Z');
+  });
+
+  it('round-trips authored scope IDs and member roles through snake_case', () => {
+    writeCanopy(TEST_CANOPY, {
+      version: 1,
+      repoRoot: '',
+      lastModifiedAt: '',
+      files: {},
+      features: {},
+      scopeSets: {
+        production_candidate: {
+          name: 'Production candidate',
+          description: 'Release-facing routes',
+          members: [
+            { path: 'src/app.ts', kind: 'file', role: 'entrypoint' },
+            { path: 'docs', kind: 'directory', role: 'canonical_document' },
+          ],
+        },
+      },
+    });
+
+    const raw = JSON.parse(fs.readFileSync(TEST_CANOPY, 'utf-8'));
+    expect(raw.scope_sets.production_candidate.members).toEqual([
+      { path: 'src/app.ts', kind: 'file', role: 'entrypoint' },
+      { path: 'docs', kind: 'directory', role: 'canonical_document' },
+    ]);
+    expect(readCanopy(TEST_CANOPY).scopeSets?.production_candidate.name)
+      .toBe('Production candidate');
   });
 });
 

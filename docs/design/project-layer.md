@@ -1,8 +1,10 @@
 # Project Layer
 
 **Date:** 2026-08-17
-**Status:** thin CLI/MCP V1 implemented 2026-08-20; expanded control-plane
-target and handoff accepted 2026-08-20; UI/API work pending
+**Status:** thin CLI/MCP V1 implemented 2026-08-20; HTTP/UI parity, authored
+production scopes, and the backward-compatible task execution packet implemented
+2026-08-21; bounded directed project visualization and the external-pattern
+comparison implemented 2026-08-25
 **Scope:** preserve the small implemented project umbrella while growing it
 into a human- and agent-usable project context graph: tasks, dependencies,
 milestones, resources, documentation, tools, attribution, and evidence
@@ -169,13 +171,116 @@ export interface Project {
   owners?: Author[];
   featureIds?: string[];      // features this project advances
   files?: string[];           // repo-relative paths this project implicates
-  todos?: Todo[];             // project-level TODOs with no natural file home
+  todos?: Task[];             // project TODOs; rich execution fields are additive
+  milestones?: Milestone[];   // optional real timeline anchors, never required dates
   openQuestions?: string[];
   createdAt: string;          // ISO-8601 UTC
   createdBy: Author;
   completedAt?: string;       // set when status → done
 }
 ```
+
+### RT-015: project-only task execution packet
+
+RT-015 keeps the existing storage and count contract: `Project.todos` remains
+the single project-owned work collection, but its element type is now `Task`, a
+strictly additive subtype of `Todo`. Every legacy project TODO is therefore a
+valid task, every file-owned TODO remains the lightweight `Todo` type, and no
+record is moved or duplicated.
+
+Three storage shapes were evaluated:
+
+1. adding execution fields to every `Todo`, rejected because ordinary file
+   notes would inherit project workflow machinery and ambiguous archive rules;
+2. a top-level normalized task graph, deferred because it requires two-record
+   transactions, orphan handling, guarded undo, and a migration before one
+   project has demonstrated the need;
+3. the accepted project-only subtype, which preserves current CLI/MCP/API/UI
+   counts and writes while giving project handoffs a typed execution packet.
+
+The accepted camelCase TypeScript contract is below. Disk keys remain
+snake_case and enum values remain unchanged.
+
+```ts
+type TaskDependencyType = 'blocks' | 'depends_on' | 'parent_child' | 'related';
+
+interface TaskDependency {
+  type: TaskDependencyType;
+  taskId: string;
+  reason?: string;
+}
+
+type ResourceKind =
+  | 'file' | 'component' | 'documentation'
+  | 'tool' | 'procedure'
+  | 'dataset' | 'artifact'
+  | 'command' | 'test' | 'output';
+
+type ResourceRole =
+  | 'implements' | 'governs' | 'use_for'
+  | 'input' | 'validates' | 'must_produce' | 'reference';
+
+interface ResourceRef {
+  kind: ResourceKind;
+  role: ResourceRole;
+  ref: string;       // repo-relative path, command, tool name, or logical key
+  label?: string;
+}
+
+interface ActionReceipt {
+  id: string;
+  kind: 'change' | 'commit' | 'validation' | 'output' | 'review' | 'decision';
+  outcome: 'recorded' | 'passed' | 'failed' | 'accepted' | 'rejected';
+  summary: string;
+  actor: Author;
+  recordedAt: string;
+  resources?: ResourceRef[];
+  residualRisk?: string;
+}
+
+interface Task extends Todo {
+  whyNow?: string;
+  acceptance?: string[];          // expected evidence, not a boolean checkbox
+  dependencies?: TaskDependency[];
+  milestoneId?: string;
+  owners?: Author[];
+  reviewers?: Author[];
+  openQuestions?: string[];       // unresolved required decisions
+  ownedPaths?: string[];          // repo-relative edit responsibility
+  excludedPaths?: string[];       // intentional non-goals for safe handoff
+  resources?: ResourceRef[];
+  receipts?: ActionReceipt[];     // retained actual evidence
+  residualRisks?: string[];
+}
+
+interface Milestone {
+  id: string;
+  name: string;
+  description?: string;
+  targetAt?: string;              // optional; never invented to draw a chart
+  completedAt?: string;
+}
+```
+
+Dependency direction is explicit. `A depends_on B` means B must be done before
+A is ready. `A blocks B` expresses the same prerequisite from A's side.
+`parent_child` and `related` add structure without changing readiness. Missing
+references, self-edges, and cycles in the blocking subgraph are deterministic
+doctor errors.
+
+Readiness is a projection, never persisted state:
+
+- authored `done`, `deferred`, and `in_progress` remain those states;
+- an open task with an unsatisfied `depends_on`/incoming `blocks` edge, required
+  decision, invalid reference, or blocking cycle is `blocked`;
+- otherwise, an open task whose `ownedPaths` overlap a live local active-work
+  claim is `claimed` and names the claimant/expiry;
+- every other open task is `ready`.
+
+This keeps durable intent in `canopy.json`, expiring coordination in
+`.active_work.json`, and actual completion evidence in task receipts. Resource
+refs use logical keys for private or machine-local material; they never make
+absolute workstation paths portable metadata.
 
 ### Changed: `Canopy`
 
@@ -188,7 +293,8 @@ export interface Canopy {
   files: Record<string, FileCanopy>;
   directories?: Record<string, DirectorySummary>;
   features: Record<string, Feature>;
-  projects?: Record<string, Project>;   // NEW — keyed by project id
+  projects?: Record<string, Project>;   // keyed by project id
+  scopeSets?: Record<string, ScopeSet>; // authored purpose-specific coverage
 }
 ```
 
@@ -268,6 +374,46 @@ artifact fingerprint, and freshness and cannot silently redefine the set.
 Directory cards that intentionally summarize a production surface are not
 orphans merely because their key is not a regular file. Coverage and doctor
 must distinguish supported directory subjects from missing paths.
+
+RT-014 implements that boundary with this additive schema (snake_case on disk):
+
+```ts
+type ScopeSubjectKind = 'file' | 'directory';
+type ScopeMemberRole =
+  | 'component'
+  | 'entrypoint'
+  | 'canonical_document'
+  | 'test'
+  | 'resource';
+
+interface ScopeSetMember {
+  path: string;
+  kind: ScopeSubjectKind; // explicit so directories are never inferred as files
+  role?: ScopeMemberRole;
+}
+
+interface ScopeSet {
+  name: string;
+  description?: string;
+  members: ScopeSetMember[]; // authored denominator
+}
+```
+
+`canopytag coverage` lists all authored scope sets before the neutral repository
+inventory. `canopytag coverage --scope <id>` and the MCP tool's `scope` argument
+show the selected scope's file/directory counts, unannotated subjects, and
+missing or wrong-kind subjects. A member counts as annotated only when the
+subject exists with its declared kind and the corresponding `files` or
+`directories` card exists.
+
+Generated provider candidates use a separate optional
+`canopytag/generated/scope-membership.json` artifact rather than a field inside
+`canopy.json`. Version 1 requires `provider`, `artifact_fingerprint`,
+`generated_at`, `fresh_until`, and explicit proposals containing
+`scope_set_id`, path, and kind. Coverage labels each source fresh or stale,
+shows its candidates separately, and never includes them in the authored
+denominator. Promotion remains a future explicit review action; merely reading
+a provider artifact cannot mutate the scope.
 
 ## Query and Navigation
 
@@ -370,16 +516,27 @@ is real.
 
 ## Required HTTP API and human surface
 
-The CLI/MCP-only implementation is insufficient for a system intended to align
-humans and agents. The frontend HTTP client and workspace store do not currently
-load projects, so the UI cannot show project TODOs or context even though the
-CLI can. API parity is the first implementation gate.
+The CLI/MCP-only implementation was insufficient for a system intended to align
+humans and agents. **RT-013 implemented the first parity gate on 2026-08-21:**
+the HTTP API and workspace store load count-bearing projects and complete detail
+packets; the Table view has a Projects lane; project TODOs participate in the
+aggregate TODO count; every linked path is visible even without a rich card;
+and file detail resolves project backlinks and inherited read-only tasks.
+
+Human project edits cover the existing thin card fields. Relationship removal
+requires confirmation and sends the originally loaded file/feature lists as a
+stale-write guard; deletion is deliberately not exposed. Project TODO lifecycle
+remains read-only until one reviewed scope-aware mutation contract exists for
+both file and project TODOs. RT-015 now projects computed readiness and compact,
+expandable dependency/resource/evidence packets in the existing Projects tab;
+task mutation and directed dependency visualization remain separate work.
 
 Minimum coherent human surface:
 
-- **Projects lane** alongside Files / Scores / TODOs / Activity, with status,
-  readiness, blocked/ready counts, milestones, owners/claimants, and recent
-  evidence.
+- **Projects** remains a first-level global destination and a lane alongside
+  Files / Scores / TODOs / Activity, with status, readiness, blocked/ready
+  counts, milestones, owners/claimants, and recent evidence. Both entry points
+  open the same project surface.
 - **Project detail** for outcome, questions/decisions, tasks, dependency flow,
   milestones, resources, files/features, activity, and completion evidence.
 - **Task detail or drawer** with bounded text, acceptance criteria, dependencies,
@@ -416,6 +573,23 @@ catalogues, and human PM systems are reference patterns rather than automatic
 dependencies. Every generated edge needs an explanation and provenance, and
 every saved view needs a bounded question it answers.
 
+### RT-016: bounded directed project execution view
+
+The existing Graph surface now has a **Project** mode for one project packet at
+a time. It renders task cards in milestone swimlanes, places blocking
+`depends_on` and `blocks` relationships as directed, labeled arrows, and keeps
+non-blocking parent/related context visually subdued. Selecting a task expands
+only that task's resources and retained receipts into a dedicated context lane,
+so evidence remains inspectable without turning the surface into a generic
+canvas or a task board.
+
+Card positions save only in browser-local storage, keyed by repository and
+project. They never write to `canopy.json` and therefore cannot become a second
+project truth. Provider-backed structural edges have a separate long-dash style
+and must include a provider name plus artifact fingerprint; no such artifact is
+currently available, so the UI says so and draws no synthetic structural edge.
+Task mutation and external-tool comparison remain outside this slice.
+
 ## Validation and Doctor Checks
 
 - `readCanopy()` validates `projects` shape as it does other top-level keys.
@@ -425,24 +599,27 @@ every saved view needs a bounded question it answers.
 - `doctor` flags malformed projects, key/ID mismatches, missing file/feature
   references, duplicate IDs across file/project TODO scopes, empty umbrellas,
   completion timestamp inconsistencies, and unattributed agent records.
+- Rich project tasks add deterministic checks for task/milestone identity,
+  dependency references and cycles, safe owned/excluded paths, typed resources,
+  receipt shape/attribution, and retained evidence on completed rich tasks.
 - Inactivity is not inferred yet. A deterministic "no activity in N days"
   check needs an explicit activity contract instead of guessing from unrelated
   file timestamps.
 
 ## Migration
 
-None required. The change is purely additive: `projects` is optional, and a
-canopy file without it is valid and behaves exactly as today. Existing
-file-bound TODOs are not touched, moved, or rewritten.
+None required. The change is purely additive: `projects` is optional, every
+existing project TODO satisfies `Task`, and a canopy file without rich fields
+behaves exactly as today. Existing file-bound TODOs are not touched, moved, or
+rewritten.
 
 ## Migration and open design decisions
 
-**Task storage.** The target requirements now justify evaluating a top-level
-task collection referenced by projects and optional file/resource subjects.
-Do not migrate existing TODOs until round-trip compatibility, stable IDs,
-archive behavior, and guarded manifest undo are designed. File TODOs may remain
-a lightweight annotation subtype if forcing every note into the project graph
-would add friction.
+**Task storage.** RT-015 deliberately keeps rich tasks inside `Project.todos`
+as an additive `Task extends Todo` subtype. A top-level task collection remains
+a future option only if cross-project tasks or adapters prove that two-record
+transactions, orphan handling, stable global IDs, archive behavior, and guarded
+undo are worth their cost. File TODOs remain the lightweight annotation type.
 
 **Project relations.** Typed project-to-project relations are useful for
 `blocks`, `supports`, and `part_of`; unrestricted hierarchy is not required.
@@ -459,6 +636,18 @@ human PM systems are candidates for adapters or comparative spikes. No external
 system becomes authoritative merely because it has a mature UI. Require stable
 export, local/private operation, API access, backups, actor attribution, and an
 honest mapping to CanopyTag project/task/resource IDs.
+
+### RT-017: bounded external-pattern comparison
+
+RT-017 completed one evidence-led comparison of `PRJ-001` against Beads,
+Plane, Backstage, and JSON Canvas. The result is intentionally a boundary
+decision, not an integration: retain CanopyTag's authored packet as truth;
+adopt typed ready-work and authored-versus-derived patterns; adapt only a future
+one-way JSON Canvas projection if real shared-layout use earns it; and reject
+automatic foreign installs, task-engine replacement, bidirectional sync, and
+external view state as project truth. The full evidence matrix, including
+export, privacy, API, backup, and attribution gates, is in
+[Project pattern comparison](./project-pattern-comparison.md).
 
 **Canvas persistence.** Decide whether saved human layouts are CanopyTag-owned
 views or interoperable JSON Canvas-style artifacts. Layout is a view; it must
@@ -477,22 +666,34 @@ not become a second source of project truth.
    manifest subjects, guarded undo. General TODO status mutation remains
    deferred rather than being hidden inside whole-project replacement.
 5. **Doctor checks — implemented for deterministic integrity.**
-6. **V1 UI — missing and now required.** Add HTTP API/store parity, project
-   lane/detail, file backlinks, inherited project tasks, and count parity.
-7. **Production scopes.** Define generic scope-set schema and coverage behavior;
-   dogfood a reviewed production-candidate manifest in a large downstream repo.
-8. **Task/dependency/resource design.** Freeze a minimal target schema with
-   backward-compatible migration and deterministic readiness/doctor checks.
-9. **Project execution UI.** Add task/resource/evidence views and one directed
-   dependency/timeline view with saved human layout.
-10. **Structural overlays.** Prototype one provenance-bearing generated overlay
-    without copying structural truth into authored metadata.
-11. **Comparative spike.** Reproduce one project in selected external reference
-    tools and record what should be adopted, adapted, or rejected before adding
-    broader PM machinery.
+6. **V1 UI — implemented.** HTTP API/store parity, project lane/detail, file
+   backlinks, inherited project tasks, unannotated linked-file visibility,
+   guarded relationship edits, and count parity shipped in RT-013.
+7. **Production scopes — implemented in RT-014.** Generic authored scope sets,
+   file/directory-aware coverage, deterministic doctor checks, CLI/MCP reads,
+   non-counting provenance-bearing generated proposals, and a reviewed
+   CanopyTag `production_candidate` manifest are shipped. Large downstream
+   dogfooding remains optional and should not displace higher-priority repo work.
+8. **Task/dependency/resource design — implemented in RT-015.** Additive rich
+   project tasks, typed edges/resources/receipts, milestones, computed readiness
+   with local claim context, deterministic doctor checks, CLI/MCP/API parity,
+   and compact read-only packets in the existing Projects tab are shipped.
+9. **Directed project execution UI — implemented in RT-016.** The existing
+   Graph surface now provides a packet-scoped milestone flow with directed task
+   arrows, selected-task resources/evidence, browser-local layouts, and an
+   explicit no-provider structural-overlay state. A guarded task mutation
+   surface remains a separate decision.
+10. **Structural overlays.** Accept one provenance-bearing generated edge
+    artifact without copying structural truth into authored metadata or
+    substituting authored relationships for generated evidence.
+11. **Comparative spike — implemented in RT-017.** The documented comparison
+    confirms the native project packet and records export/privacy/API/backup/
+    attribution gates for any future adapter. No external dependency or source
+    of truth was introduced.
 
-The shipped V1 remains useful for agent routing, but it is not a complete human
-handoff surface and must not be described as the final project boundary.
+The shipped project packet is useful for human and agent routing and bounded
+execution handoffs. It intentionally remains short of scheduling, task-board,
+and autonomous dispatch machinery.
 
 ## Fresh-agent handoff
 
@@ -500,22 +701,11 @@ Start here and run `canopytag projects PRJ-001` before editing. Preserve the
 implemented V1 and advance one bounded slice; do not attempt the entire control
 plane in one change.
 
-Recommended next packet:
+RT-017 is implemented. Before any future external adapter or shared-layout
+export, start a new bounded packet and satisfy the comparison's mapping,
+privacy, restore, API, attribution, review, and undo gates.
 
-- **Objective:** make the existing project records visible and truthful in the
-  HTTP API and UI before expanding the persisted schema.
-- **Owned paths:** project HTTP routes, frontend API/store, Table project lane,
-  project detail, file project backlinks, focused tests, and this design doc.
-- **Intentional exclusions:** no agent dispatch, no external PM installation,
-  no structural-graph ingestion, no deletion or migration of file TODOs, and no
-  downstream product-source edits.
-- **Acceptance:** all project files remain visible even without rich file cards;
-  CLI/MCP/API/UI project and open-task counts agree; a human can open a project,
-  follow every file, read its question/task, and see project context from a
-  linked file; deletion remains recoverable or explicitly confirmed.
-- **Downstream dogfood:** use a large repo with declared project records to
-  verify scale, but keep downstream-specific taxonomy outside generic code.
-
-The following packet should define production scope sets and meaningful
-coverage. Task/dependency schema work follows after those two V1 usability gaps
-are evidenced, so the existing tool remains usable throughout the migration.
+The Projects detail includes a direct handoff to the selected packet's Project
+graph. When an active project has retained tasks but no open task, it reports
+that all recorded work is complete and it is awaiting the next human decision;
+this is deliberately not an automatic project-status mutation.

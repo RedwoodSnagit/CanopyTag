@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { MergedFileRecord } from '../../shared/types';
+import type { MergedFileRecord, ProjectDetail, Task } from '../../shared/types';
 import {
   applyNodePositionOverrides,
+  buildProjectExecutionGraph,
   clampGraphScale,
   fitViewportToNodes,
   focusNeighborhoodFromEdges,
   mergeFocusEdges,
   orderByWeightedConnections,
+  projectLayoutStorageKey,
+  readProjectLayout,
   resolveFocusCenterFile,
   shouldShowFocusRelationLabel,
   zoomViewportAtPoint,
@@ -21,6 +24,61 @@ function buildFile(path: string): MergedFileRecord {
     comments: [],
     relatedFiles: [],
     openTodoCount: 0,
+    projects: [],
+  };
+}
+
+function executionDetail(): ProjectDetail {
+  const task = (id: string, status: Task['status']): Task => ({
+    id,
+    text: `${id} execution task`,
+    priority: 2,
+    status,
+    createdAt: '2026-08-25T00:00:00Z',
+    createdBy: { role: 'human', name: 'Owner' },
+  });
+  const prerequisite = { ...task('RT-001', 'done'), milestoneId: 'MS-001' };
+  const dependent = {
+    ...task('RT-002', 'open'),
+    dependencies: [{ type: 'depends_on' as const, taskId: 'RT-001', reason: 'Contract is complete.' }],
+    milestoneId: 'MS-002',
+    resources: [{ kind: 'documentation' as const, role: 'governs' as const, ref: 'docs/execution.md' }],
+    receipts: [{
+      id: 'AR-001',
+      kind: 'validation' as const,
+      outcome: 'passed' as const,
+      summary: 'Focused verification passed.',
+      actor: { role: 'agent' as const, name: 'Test Agent' },
+      recordedAt: '2026-08-25T00:00:00Z',
+    }],
+  };
+  const blocked = {
+    ...task('RT-003', 'open'),
+    dependencies: [{ type: 'blocks' as const, taskId: 'RT-002', reason: 'Keep the rollout ordered.' }],
+    milestoneId: 'MS-002',
+  };
+  return {
+    project: {
+      id: 'PRJ-001',
+      name: 'Execution view',
+      status: 'active',
+      todos: [prerequisite, dependent, blocked],
+      milestones: [
+        { id: 'MS-001', name: 'Contract' },
+        { id: 'MS-002', name: 'Rollout' },
+      ],
+      createdAt: '2026-08-25T00:00:00Z',
+      createdBy: { role: 'human', name: 'Owner' },
+    },
+    files: [],
+    features: [],
+    recentActivity: [],
+    openTodoCount: 2,
+    taskReadiness: [
+      { taskId: 'RT-001', state: 'done', blockers: [], claims: [] },
+      { taskId: 'RT-002', state: 'ready', blockers: [], claims: [] },
+      { taskId: 'RT-003', state: 'blocked', blockers: [{ kind: 'dependency', ref: 'RT-002', message: 'Blocked by RT-002.' }], claims: [] },
+    ],
   };
 }
 
@@ -122,6 +180,62 @@ describe('applyNodePositionOverrides', () => {
 
     expect(updated[0]).toBe(nodes[0]);
     expect(updated[1]).toEqual({ id: 'b', path: 'src/b.ts', x: 300, y: 400 });
+  });
+});
+
+describe('project execution graph', () => {
+  it('turns authored dependency semantics into directed task order and selected-task attachments', () => {
+    const graph = buildProjectExecutionGraph(executionDetail(), 'RT-002', {
+      'RT-002': { x: 640, y: 220 },
+    });
+
+    expect(graph.groups.map(group => group.label)).toEqual([
+      'MS-001 · Contract',
+      'MS-002 · Rollout',
+      'RT-002 context · resources and evidence',
+    ]);
+    expect(graph.taskNodes.find(node => node.id === 'RT-002')).toMatchObject({ x: 640, y: 220, readiness: { state: 'ready' } });
+    expect(graph.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: 'RT-001', target: 'RT-002', kind: 'dependency', label: 'required · Contract is complete.' }),
+      expect.objectContaining({ source: 'RT-003', target: 'RT-002', kind: 'dependency', label: 'blocks · Keep the rollout ordered.' }),
+      expect.objectContaining({ source: 'resource:RT-002:0', target: 'RT-002', kind: 'resource' }),
+      expect.objectContaining({ source: 'RT-002', target: 'receipt:RT-002:0', kind: 'evidence' }),
+    ]));
+  });
+
+  it('keeps a provider-backed structural edge explicitly separate from authored execution edges', () => {
+    const graph = buildProjectExecutionGraph(executionDetail(), 'RT-002', {}, [{
+      id: 'import-001',
+      sourceTaskId: 'RT-001',
+      targetTaskId: 'RT-003',
+      label: 'import path',
+      provider: 'Cartographer',
+      fingerprint: 'sha256:abc',
+    }]);
+
+    expect(graph.edges).toContainEqual(expect.objectContaining({
+      id: 'structural:import-001',
+      kind: 'structural',
+      provider: 'Cartographer',
+      fingerprint: 'sha256:abc',
+    }));
+  });
+});
+
+describe('project layout persistence helpers', () => {
+  it('uses a per-repository project key and ignores malformed positions', () => {
+    const key = projectLayoutStorageKey('C:/repo one', 'PRJ-001');
+    expect(key).toContain('C%3A%2Frepo%20one');
+
+    const storage = {
+      getItem: () => JSON.stringify({
+        positions: {
+          'RT-001': { x: 120, y: 240 },
+          'RT-002': { x: 'bad', y: 0 },
+        },
+      }),
+    };
+    expect(readProjectLayout(storage, key)).toEqual({ positions: { 'RT-001': { x: 120, y: 240 } } });
   });
 });
 

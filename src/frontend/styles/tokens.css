@@ -25,6 +25,9 @@
   --color-text-muted: oklch(0.62 0.06 145);
   --color-accent: oklch(0.62 0.10 145);
   --color-accent-hover: oklch(0.68 0.12 145);
+  /* The transparent logo source is rendered as a mask, so its value can stay
+     legible on the dark canvas without changing the forest-green identity. */
+  --color-logo: oklch(0.80 0.10 145);
   /* Foreground for content on top of --color-accent. Near-white in both themes
      because --color-accent is mid-to-dark green in both. */
   --color-text-on-accent: oklch(0.97 0.01 145);
@@ -104,6 +107,7 @@
   --color-text-muted: oklch(0.42 0.10 145);
   --color-accent: oklch(0.40 0.12 145);
   --color-accent-hover: oklch(0.35 0.14 145);
+  --color-logo: oklch(0.42 0.12 145);
   --color-text-on-accent: oklch(0.97 0.01 145);
 
   /* Status colors — light mode */

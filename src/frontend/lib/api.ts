@@ -7,15 +7,28 @@ import type {
   Comment,
   Feature,
   MergedFileRecord,
+  ProjectDetail,
+  ProjectStatus,
+  ProjectSummary,
   Todo,
   TreeNode,
 } from '../../shared/types';
 
 const BASE = '/api';
 
+async function apiError(res: Response): Promise<Error> {
+  try {
+    const body = await res.json() as { error?: string };
+    if (body.error) return new Error(body.error);
+  } catch {
+    // Fall back to the HTTP status when a route did not return structured JSON.
+  }
+  return new Error(`API error: ${res.status} ${res.statusText}`);
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`);
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  if (!res.ok) throw await apiError(res);
   return res.json();
 }
 
@@ -25,7 +38,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  if (!res.ok) throw await apiError(res);
   return res.json();
 }
 
@@ -35,7 +48,7 @@ async function del<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  if (!res.ok) throw await apiError(res);
   return res.json();
 }
 
@@ -45,6 +58,20 @@ export const api = {
   fetchIndex: () => get<MergedFileRecord[]>('/index'),
   fetchTags: () => get<string[]>('/tags'),
   fetchFeatures: () => get<Record<string, Feature>>('/features'),
+  fetchProjects: () => get<ProjectSummary[]>('/projects'),
+  fetchProject: (project: string) =>
+    get<ProjectDetail>(`/project?project=${encodeURIComponent(project)}`),
+
+  updateProject: (project: string, data: Partial<{
+    name: string;
+    description: string;
+    status: ProjectStatus;
+    featureIds: string[];
+    files: string[];
+    openQuestions: string[];
+    expectedFiles: string[];
+    expectedFeatureIds: string[];
+  }>) => post<ProjectDetail>('/project', { project, ...data }),
 
   updateFileMeta: (path: string, data: Partial<{
     title: string;

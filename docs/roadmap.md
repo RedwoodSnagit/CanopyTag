@@ -9,7 +9,7 @@ CanopyTag is prerelease but usable from source.
 
 Working now:
 
-- Web UI with Explorer, Table, Graph, Analytics, and Activity views
+- Web UI with Explorer, Table, Projects, Graph, Analytics, and Activity views
 - Visible per-repo `canopytag/` metadata folder
 - CLI: `init`, `stats`, `ls`, `query`, `context`, `compare`, `projects`, `todos`,
   `health`, `doctor`, `work`, `analytics`, `coverage`, `mcp`, and `hook`
@@ -17,9 +17,21 @@ Working now:
   boosts, prefix matching, conservative typo tolerance, composable filters, and
   visible match evidence in CLI/MCP query results
 - MCP read/write tools for agent integration
-- Thin V1 project context linking intent, features, files, project-owned TODOs,
-  and reviewable activity; the accepted target now includes bounded task,
-  dependency, milestone, resource, and accountability context
+- Backward-compatible project execution packets: existing project TODOs may add
+  typed dependencies/resources, real milestones, owned/excluded paths,
+  acceptance criteria, attribution, and retained action receipts
+- Deterministic ready/blocked/claimed task projection across CLI, MCP, HTTP, and
+  the Projects tab; active claims remain local and expiring, task packets remain
+  read-only in the UI, and linked/unannotated files plus backlinks retain parity
+- Bounded Project graph mode with milestone swimlanes, directed task ordering,
+  selected-task resources/evidence, browser-local saved card positions, and an
+  explicit no-provider structural-overlay state
+- Evidence-led RT-017 comparison of agent-native, PM, catalogue, and canvas
+  patterns: the native packet remains authoritative; external adapters require
+  separate export, privacy, API, backup, attribution, review, and undo evidence
+- Named authored scope sets with file/directory-aware CLI/MCP coverage,
+  non-counting provenance-bearing generated proposals, neutral whole-repository
+  inventory, and deterministic scope-member doctor checks
 - Agent activity/review feed in `agent_manifest.json`
 - Read-only `doctor` checks for objective maintenance hazards, with bounded
   text/JSON output and optional strict exit behavior
@@ -52,18 +64,14 @@ Working now:
 
 ## Near-Term Product Work
 
-- Implement project HTTP API and human UI parity: project lane/detail, file
-  backlinks, inherited project tasks, unannotated linked-file visibility, and
-  matching CLI/MCP/API/UI counts. This is now required dogfood, not a speculative
-  lane competing with file navigation.
-- Add named authored scope sets such as `production_candidate`,
-  `alpha_critical`, and `supported_research`. Report annotation/routing coverage
-  against those sets; keep whole-repo percentage informational and do not label
-  intentional directory subjects as missing files.
-- Design the smallest backward-compatible task/dependency/resource model needed
-  for fresh-agent handoffs, computed readiness, milestones/timeline, tools,
-  documents, inputs/outputs, and action/test/review receipts. Do not migrate
-  existing file TODOs until guarded round-trip behavior is specified.
+- Dogfood authored production scopes in larger downstream repositories only
+  when that work is already in scope; CanopyTag's self-hosted
+  `production_candidate` manifest is the reference contract.
+- Treat the completed [project-pattern comparison](./design/project-pattern-comparison.md)
+  as a gate: do not add a task-system, PM, catalogue, or canvas adapter until a
+  separate packet proves its one-way mapping, export/restore path, privacy/API
+  boundary, attribution, review, and undo behavior. Keep task mutation out
+  until one guarded file/project contract is reviewed.
 - Dogfood active-work claims in real concurrent sessions. Keep them separate
   from heat and persistent TODO state; add Beads/task-system adapters only if a
   repeated durable coordination workflow justifies them.

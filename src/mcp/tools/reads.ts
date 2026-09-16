@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { readActiveWork, resolveActiveWorkPath } from '../../backend/lib/active-work.js';
 import { readAgentManifest, resolveAgentManifestPath } from '../../backend/lib/agent-manifest.js';
 import { readCanopy } from '../../backend/lib/canopy.js';
 import {
@@ -20,7 +21,11 @@ import { buildTags, buildTagHealth, readTagVocabularyForCanopy } from './tags.js
 import { walkGraph, renderGraphTree } from '../../cli/graph.js';
 import { readAnalytics, writeAnalytics, incrementFile, resolveAnalyticsPath } from '../../backend/lib/analytics.js';
 import path from 'node:path';
-import { discoverRepoFiles, buildCoverage } from '../../cli/coverage.js';
+import { discoverRepoFiles, buildCoverage, resolveRepoPathKind } from '../../cli/coverage.js';
+import {
+  readScopeMembershipProposalArtifact,
+  resolveScopeMembershipProposalPath,
+} from '../../backend/lib/scope-proposals.js';
 import { buildDoctorFromRepo, renderDoctorText } from '../../cli/doctor.js';
 
 const DETAIL_ALIASES: Record<string, number> = {
@@ -400,10 +405,11 @@ export function registerReadTools(server: McpServer): void {
   // 12. canopytag_coverage
   server.tool(
     'canopytag_coverage',
-    'Annotation coverage report: what is annotated, what is not, and what is orphaned.',
+    'Authored scope coverage plus neutral whole-repository inventory and orphan detection. Generated scope proposals remain provenance-bearing and never affect authored counts.',
     {
       kind: z.string().optional().describe('Filter by file kind: module, doc, test, config, asset, data'),
       detail: z.boolean().optional().describe('Show per-file field completeness'),
+      scope: z.string().optional().describe('Authored scope set ID, such as production_candidate'),
     },
     async (params) => {
       try {
@@ -412,7 +418,16 @@ export function registerReadTools(server: McpServer): void {
         const canopyDir = path.dirname(canopyPath);
         const canopy = readCanopy(canopyPath);
         const repoFiles = discoverRepoFiles(repoRoot, canopyDir);
-        const { text } = buildCoverage(canopy, repoFiles, params.kind, params.detail);
+        const proposal = readScopeMembershipProposalArtifact(
+          resolveScopeMembershipProposalPath(canopyPath),
+        );
+        const { text } = buildCoverage(canopy, repoFiles, {
+          kind: params.kind,
+          detail: params.detail,
+          scope: params.scope,
+          pathKind: relativePath => resolveRepoPathKind(repoRoot, relativePath),
+          proposalArtifacts: proposal ? [proposal] : [],
+        });
         return { content: [{ type: 'text' as const, text }] };
       } catch (e: any) {
         return { content: [{ type: 'text' as const, text: e.message }], isError: true };
@@ -442,7 +457,7 @@ export function registerReadTools(server: McpServer): void {
   // 14. canopytag_projects
   server.tool(
     'canopytag_projects',
-    'List thin multi-file project contexts. Completed projects are hidden by default.',
+    'List multi-file project contexts with computed ready, blocked, and claimed task counts. Completed projects are hidden by default.',
     {
       status: z.enum(['active', 'paused', 'done']).optional(),
       all: z.boolean().optional().describe('Include completed projects'),
@@ -450,8 +465,10 @@ export function registerReadTools(server: McpServer): void {
     },
     async (params) => {
       try {
+        const repoRoot = resolveRepoRoot();
         const canopy = readCanopy(resolveCanopyPath());
-        return { content: [{ type: 'text' as const, text: buildProjects(canopy, params) }] };
+        const claims = readActiveWork(resolveActiveWorkPath(repoRoot)).claims;
+        return { content: [{ type: 'text' as const, text: buildProjects(canopy, params, claims) }] };
       } catch (e: any) {
         return { content: [{ type: 'text' as const, text: e.message }], isError: true };
       }
@@ -461,13 +478,15 @@ export function registerReadTools(server: McpServer): void {
   // 15. canopytag_project
   server.tool(
     'canopytag_project',
-    'Inspect one project: why it exists, implicated features/files, open questions, project-owned TODOs, and recent reviewed activity.',
+    'Inspect one project packet: intent, tasks, computed readiness, dependencies, milestones, resources, receipts, files, and recent reviewed activity.',
     { project: z.string().describe('Project ID, exact name, or unique name substring') },
     async (params) => {
       try {
+        const repoRoot = resolveRepoRoot();
         const canopy = readCanopy(resolveCanopyPath());
         const manifest = readAgentManifest(resolveAgentManifestPath());
-        return { content: [{ type: 'text' as const, text: buildProjectDetail(canopy, params.project, manifest) }] };
+        const claims = readActiveWork(resolveActiveWorkPath(repoRoot)).claims;
+        return { content: [{ type: 'text' as const, text: buildProjectDetail(canopy, params.project, manifest, claims) }] };
       } catch (e: any) {
         return { content: [{ type: 'text' as const, text: e.message }], isError: true };
       }

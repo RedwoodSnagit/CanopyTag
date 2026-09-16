@@ -69,7 +69,7 @@ Commands:
   health      Authority vs quality mismatch detection
   doctor      Deterministic metadata and maintenance checks
   work        Claim, query, renew, and release local active work
-  coverage    Annotation coverage report with orphan detection
+  coverage    Authored scope coverage, neutral repo inventory, and orphans
   analytics   Inspect agent activity heatmap
   mcp         Write or preview a project-local .mcp.json entry
   serve       Start the backend JSON API (does not serve the web UI)

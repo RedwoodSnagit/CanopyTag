@@ -160,6 +160,106 @@ export interface Todo {
   createdBy: Author;
 }
 
+// Project-owned TODOs may opt into this richer execution packet. File TODOs
+// remain the lightweight Todo contract, and every existing project TODO is a
+// valid Task because all project-only fields are additive.
+export type TaskDependencyType = 'blocks' | 'depends_on' | 'parent_child' | 'related';
+
+export interface TaskDependency {
+  type: TaskDependencyType;
+  taskId: string;
+  reason?: string;
+}
+
+export type ResourceKind =
+  | 'file'
+  | 'component'
+  | 'documentation'
+  | 'tool'
+  | 'procedure'
+  | 'dataset'
+  | 'artifact'
+  | 'command'
+  | 'test'
+  | 'output';
+
+export type ResourceRole =
+  | 'implements'
+  | 'governs'
+  | 'use_for'
+  | 'input'
+  | 'validates'
+  | 'must_produce'
+  | 'reference';
+
+export interface ResourceRef {
+  kind: ResourceKind;
+  role: ResourceRole;
+  ref: string;
+  label?: string;
+}
+
+export type ActionReceiptKind = 'change' | 'commit' | 'validation' | 'output' | 'review' | 'decision';
+export type ActionReceiptOutcome = 'recorded' | 'passed' | 'failed' | 'accepted' | 'rejected';
+
+export interface ActionReceipt {
+  id: string;
+  kind: ActionReceiptKind;
+  outcome: ActionReceiptOutcome;
+  summary: string;
+  actor: Author;
+  recordedAt: string;
+  resources?: ResourceRef[];
+  residualRisk?: string;
+}
+
+export interface Task extends Todo {
+  whyNow?: string;
+  acceptance?: string[];
+  dependencies?: TaskDependency[];
+  milestoneId?: string;
+  owners?: Author[];
+  reviewers?: Author[];
+  openQuestions?: string[];
+  ownedPaths?: string[];
+  excludedPaths?: string[];
+  resources?: ResourceRef[];
+  receipts?: ActionReceipt[];
+  residualRisks?: string[];
+}
+
+export interface Milestone {
+  id: string;
+  name: string;
+  description?: string;
+  targetAt?: string;
+  completedAt?: string;
+}
+
+export type TaskReadinessState = 'ready' | 'blocked' | 'claimed' | 'in_progress' | 'done' | 'deferred';
+export type TaskReadinessBlockerKind = 'dependency' | 'decision' | 'claim' | 'invalid';
+
+export interface TaskReadinessBlocker {
+  kind: TaskReadinessBlockerKind;
+  message: string;
+  ref?: string;
+}
+
+export interface TaskClaimSummary {
+  id: string;
+  owner: string;
+  session?: string;
+  summary: string;
+  expiresAt: string;
+}
+
+export interface TaskReadiness {
+  taskId: string;
+  state: TaskReadinessState;
+  blockers: TaskReadinessBlocker[];
+  claims: TaskClaimSummary[];
+}
+
 export interface Comment {
   id?: string;                   // Optional for backward compat with legacy data
   text: string;
@@ -277,11 +377,34 @@ export interface Project {
   owners?: Author[];
   featureIds?: string[];
   files?: string[];
-  todos?: Todo[];
+  todos?: Task[];
+  milestones?: Milestone[];
   openQuestions?: string[];
   createdAt: string;
   createdBy: Author;
   completedAt?: string;
+}
+
+/** Compact project context inherited by a linked file at read time. */
+export interface ProjectFileContext {
+  id: string;
+  name: string;
+  description?: string;
+  status: ProjectStatus;
+  openQuestions?: string[];
+  todos: Task[];
+}
+
+/** Count-bearing project list record shared by the HTTP API and UI. */
+export interface ProjectSummary {
+  project: Project;
+  fileCount: number;
+  todoCount: number;
+  openTodoCount: number;
+  readyTaskCount: number;
+  blockedTaskCount: number;
+  claimedTaskCount: number;
+  milestoneCount: number;
 }
 
 export interface AgentNote {
@@ -295,6 +418,49 @@ export interface DirectorySummary {
   summary?: string;
 }
 
+// Authored scope sets identify the small repository surfaces whose routing
+// context should be complete for a named purpose. Generated candidates use the
+// separate ScopeMembershipProposalArtifact contract below and never become
+// members merely because a provider emitted them.
+export type ScopeSubjectKind = 'file' | 'directory';
+export type ScopeMemberRole =
+  | 'component'
+  | 'entrypoint'
+  | 'canonical_document'
+  | 'test'
+  | 'resource';
+
+export interface ScopeSetMember {
+  path: string;
+  kind: ScopeSubjectKind;
+  role?: ScopeMemberRole;
+}
+
+export interface ScopeSet {
+  name: string;
+  description?: string;
+  members: ScopeSetMember[];
+}
+
+export interface ScopeMembershipProposal {
+  scopeSetId: string;
+  path: string;
+  kind: ScopeSubjectKind;
+  role?: ScopeMemberRole;
+  rationale?: string;
+  evidence?: string[];
+}
+
+/** Provider-owned generated sidecar; proposals never affect authored coverage. */
+export interface ScopeMembershipProposalArtifact {
+  version: 1;
+  provider: string;
+  artifactFingerprint: string;
+  generatedAt: string;
+  freshUntil: string;
+  proposals: ScopeMembershipProposal[];
+}
+
 export interface Canopy {
   version: number;
   repoRoot: string;
@@ -304,6 +470,7 @@ export interface Canopy {
   directories?: Record<string, DirectorySummary>;  // human-facing context only
   features: Record<string, Feature>;
   projects?: Record<string, Project>;
+  scopeSets?: Record<string, ScopeSet>;
 }
 
 // ---- Settings and archive ----
@@ -461,6 +628,28 @@ export interface MergedFileRecord {
   openTodoCount: number;
   authorityHealth?: AuthorityHealth;
   highestPriority?: Priority;
+  /** Project backlinks and inherited read-only tasks, resolved at read time. */
+  projects: ProjectFileContext[];
+}
+
+export interface ProjectLinkedFile {
+  path: string;
+  annotated: boolean;
+  record: MergedFileRecord;
+}
+
+export interface ProjectFeatureContext {
+  id: string;
+  feature?: Feature;
+}
+
+export interface ProjectDetail {
+  project: Project;
+  files: ProjectLinkedFile[];
+  features: ProjectFeatureContext[];
+  recentActivity: AgentManifestEntry[];
+  openTodoCount: number;
+  taskReadiness: TaskReadiness[];
 }
 
 // Operational freshness states surfaced today in UI/CLI/MCP.
@@ -626,7 +815,7 @@ export interface TreeNode {
   children?: TreeNode[];
 }
 
-export type ViewMode = 'explorer' | 'table' | 'analytics' | 'graph';
+export type ViewMode = 'explorer' | 'table' | 'projects' | 'analytics' | 'graph';
 
 // File kind auto-detection from extension
 export type FileKind = 'module' | 'doc' | 'config' | 'test' | 'asset' | 'data' | 'unknown';

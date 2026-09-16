@@ -25,6 +25,7 @@ import { configRoutes } from './routes/config';
 import { analyticsRoutes } from './routes/analytics.js';
 import { manifestRoutes } from './routes/manifest.js';
 import { profileRoutes } from './routes/profile.js';
+import { projectsRoutes } from './routes/projects.js';
 
 // ---- Type augmentation for Fastify decorator ----
 
@@ -199,6 +200,7 @@ await app.register(configRoutes);
 await app.register(analyticsRoutes);
 await app.register(manifestRoutes);
 await app.register(profileRoutes);
+await app.register(projectsRoutes);
 
 // ---- Startup archive sweep ----
 

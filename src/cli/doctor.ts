@@ -13,7 +13,22 @@ import { parseArgs } from 'node:util';
 import { readAgentManifest, resolveAgentManifestPathFromCanopyPath } from '../backend/lib/agent-manifest.js';
 import { readCanopy } from '../backend/lib/canopy.js';
 import { getLastModifiedBatch } from '../backend/lib/git-info.js';
-import type { Canopy, FileCanopy, FileRelation, Project, RelatedFileEntry } from '../shared/types.js';
+import { findProjectTaskDependencyCycles } from '../shared/project-tasks.js';
+import type {
+  ActionReceiptKind,
+  ActionReceiptOutcome,
+  Canopy,
+  FileCanopy,
+  FileRelation,
+  Project,
+  RelatedFileEntry,
+  ResourceKind,
+  ResourceRole,
+  ScopeMemberRole,
+  ScopeSubjectKind,
+  Task,
+  TaskDependencyType,
+} from '../shared/types.js';
 import { checkFreshness, isUnattributedAgent, normalizeRelation } from '../shared/types.js';
 import { discoverTrackedFiles } from './coverage.js';
 import {
@@ -53,6 +68,7 @@ export interface DoctorReport {
     annotations: number;
     features: number;
     projects: number;
+    scopes: number;
     trackedFiles: number;
   };
   issues: DoctorIssue[];
@@ -72,6 +88,24 @@ export interface DoctorEvidence {
 const DEFAULT_ISSUE_LIMIT = 50;
 const MAX_ISSUE_LIMIT = 500;
 const SEVERITY_ORDER: Record<DoctorSeverity, number> = { error: 0, warning: 1, info: 2 };
+const SCOPE_SUBJECT_KINDS = new Set<ScopeSubjectKind>(['file', 'directory']);
+const SCOPE_MEMBER_ROLES = new Set<ScopeMemberRole>([
+  'component', 'entrypoint', 'canonical_document', 'test', 'resource',
+]);
+const TASK_STATUSES = new Set(['open', 'in_progress', 'done', 'deferred']);
+const TASK_DEPENDENCY_TYPES = new Set<TaskDependencyType>(['blocks', 'depends_on', 'parent_child', 'related']);
+const RESOURCE_KINDS = new Set<ResourceKind>([
+  'file', 'component', 'documentation', 'tool', 'procedure', 'dataset', 'artifact', 'command', 'test', 'output',
+]);
+const RESOURCE_ROLES = new Set<ResourceRole>([
+  'implements', 'governs', 'use_for', 'input', 'validates', 'must_produce', 'reference',
+]);
+const RECEIPT_KINDS = new Set<ActionReceiptKind>(['change', 'commit', 'validation', 'output', 'review', 'decision']);
+const RECEIPT_OUTCOMES = new Set<ActionReceiptOutcome>(['recorded', 'passed', 'failed', 'accepted', 'rejected']);
+const RICH_TASK_FIELDS = [
+  'whyNow', 'acceptance', 'dependencies', 'milestoneId', 'owners', 'reviewers', 'openQuestions',
+  'ownedPaths', 'excludedPaths', 'resources', 'receipts', 'residualRisks',
+] as const;
 
 function normalizeRepoPath(value: string): string {
   return value.replace(/\\/g, '/');
@@ -98,6 +132,11 @@ function clampIssueLimit(value?: number): number {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isRichProjectTask(value: object): boolean {
+  const record = value as Record<string, unknown>;
+  return RICH_TASK_FIELDS.some(field => record[field] !== undefined);
 }
 
 function validRelations(card: Record<string, unknown>): FileRelation[] {
@@ -162,6 +201,46 @@ export function inspectCanopyDoctor(canopy: Canopy, evidence: DoctorEvidence): D
   const allIssues: DoctorIssue[] = [];
   const exists = evidence.pathExists ?? ((relativePath: string) => evidence.repoFiles.has(relativePath));
   const add = (issue: DoctorIssue) => allIssues.push(issue);
+  const validateResourceRefs = (value: unknown, issuePath: string, context: string) => {
+    if (value === undefined) return;
+    if (!Array.isArray(value)) {
+      add({ severity: 'error', code: 'invalid-task-resources', path: issuePath, message: `${context} resources must be an array.` });
+      return;
+    }
+    for (const resource of value) {
+      if (!isRecord(resource)
+        || !RESOURCE_KINDS.has(resource.kind as ResourceKind)
+        || !RESOURCE_ROLES.has(resource.role as ResourceRole)
+        || typeof resource.ref !== 'string'
+        || resource.ref.trim().length === 0) {
+        add({
+          severity: 'error',
+          code: 'invalid-task-resource',
+          path: issuePath,
+          message: `${context} contains a resource without a valid kind, role, and non-empty ref.`,
+        });
+        continue;
+      }
+      if (!['file', 'component', 'documentation'].includes(resource.kind as string)) continue;
+      const problem = unsafePathReason(resource.ref);
+      if (problem) {
+        add({
+          severity: 'error',
+          code: 'unsafe-task-resource-path',
+          path: issuePath,
+          message: `${context} resource "${resource.ref}" uses an unsafe ${problem}.`,
+        });
+      } else if (resource.role !== 'must_produce' && !exists(normalizeRepoPath(resource.ref))) {
+        add({
+          severity: 'warning',
+          code: 'missing-task-resource',
+          path: issuePath,
+          message: `${context} resource "${resource.ref}" does not exist.`,
+          suggestion: 'Correct the reference or retain a logical non-path resource kind.',
+        });
+      }
+    }
+  };
 
   if (canopy.repoRoot != null && typeof canopy.repoRoot !== 'string') {
     add({
@@ -362,6 +441,123 @@ export function inspectCanopyDoctor(canopy: Canopy, evidence: DoctorEvidence): D
     }
   }
 
+  for (const [scopeId, rawScope] of Object.entries(canopy.scopeSets ?? {})) {
+    if (!isRecord(rawScope)) {
+      add({
+        severity: 'error',
+        code: 'invalid-scope-set',
+        path: scopeId,
+        message: 'Scope-set metadata must be an object.',
+        suggestion: 'Restore the authored scope card or remove it intentionally.',
+      });
+      continue;
+    }
+    if (scopeId.trim().length === 0) {
+      add({
+        severity: 'error', code: 'invalid-scope-id',
+        message: 'Scope set ID must be a non-empty authored identifier.',
+      });
+    }
+    if (typeof rawScope.name !== 'string' || rawScope.name.trim().length === 0) {
+      add({
+        severity: 'error', code: 'invalid-scope-name', path: scopeId,
+        message: 'Scope set name must be a non-empty string.',
+      });
+    }
+    if (rawScope.description !== undefined && typeof rawScope.description !== 'string') {
+      add({
+        severity: 'error', code: 'invalid-scope-description', path: scopeId,
+        message: 'Scope set description must be a string.',
+      });
+    }
+    if (!Array.isArray(rawScope.members)) {
+      add({
+        severity: 'error', code: 'invalid-scope-members', path: scopeId,
+        message: 'Scope set members must be an array.',
+        suggestion: 'List explicit file or directory subjects; generated candidates belong in the generated sidecar.',
+      });
+      continue;
+    }
+    if (rawScope.members.length === 0) {
+      add({
+        severity: 'info', code: 'empty-scope-set', path: scopeId,
+        message: 'Scope set has no authored members.',
+        suggestion: 'Add reviewed subjects or remove the placeholder scope.',
+      });
+    }
+
+    const seen = new Set<string>();
+    for (const [index, rawMember] of rawScope.members.entries()) {
+      if (!isRecord(rawMember)) {
+        add({
+          severity: 'error', code: 'invalid-scope-member', path: scopeId,
+          message: `Scope member ${index} must be an object.`,
+        });
+        continue;
+      }
+      if (typeof rawMember.path !== 'string' || rawMember.path.length === 0) {
+        add({
+          severity: 'error', code: 'invalid-scope-member-path', path: scopeId,
+          message: `Scope member ${index} must have a non-empty path.`,
+        });
+        continue;
+      }
+      if (typeof rawMember.kind !== 'string' ||
+          !SCOPE_SUBJECT_KINDS.has(rawMember.kind as ScopeSubjectKind)) {
+        add({
+          severity: 'error', code: 'invalid-scope-member-kind', path: scopeId,
+          message: `Scope member "${rawMember.path}" kind must be file or directory.`,
+        });
+        continue;
+      }
+      if (rawMember.role !== undefined &&
+          (typeof rawMember.role !== 'string' ||
+           !SCOPE_MEMBER_ROLES.has(rawMember.role as ScopeMemberRole))) {
+        add({
+          severity: 'error', code: 'invalid-scope-member-role', path: scopeId,
+          message: `Scope member "${rawMember.path}" has an unsupported role.`,
+        });
+      }
+
+      const normalized = normalizeRepoPath(rawMember.path);
+      const memberProblem = unsafePathReason(rawMember.path);
+      if (memberProblem) {
+        add({
+          severity: 'error', code: 'unsafe-scope-member', path: scopeId,
+          message: `Scope member "${rawMember.path}" uses an unsafe ${memberProblem}.`,
+          suggestion: 'Use a repository-relative file or directory path.',
+        });
+        continue;
+      }
+      const identity = normalized;
+      if (seen.has(identity)) {
+        add({
+          severity: 'warning', code: 'duplicate-scope-member', path: scopeId,
+          message: `Scope member "${normalized}" is listed more than once.`,
+          suggestion: 'Keep one authored membership so the coverage denominator is reviewable.',
+        });
+        continue;
+      }
+      seen.add(identity);
+
+      const actualKind = evidence.pathKind?.(normalized)
+        ?? (evidence.repoFiles.has(normalized) ? 'file' : undefined);
+      if (actualKind === undefined) {
+        add({
+          severity: 'warning', code: 'missing-scope-member', path: scopeId,
+          message: `Scope ${rawMember.kind} "${normalized}" does not exist.`,
+          suggestion: 'Correct or remove the stale authored member; generated proposals do not repair authored scope automatically.',
+        });
+      } else if (actualKind !== rawMember.kind) {
+        add({
+          severity: 'warning', code: 'scope-member-kind-mismatch', path: scopeId,
+          message: `Scope member "${normalized}" is declared ${rawMember.kind} but is a ${actualKind}.`,
+          suggestion: 'Correct the explicit kind so directory subjects are not treated as missing files.',
+        });
+      }
+    }
+  }
+
   for (const [projectKey, rawProject] of Object.entries(canopy.projects ?? {})) {
     if (!isRecord(rawProject)) {
       add({
@@ -410,7 +606,7 @@ export function inspectCanopyDoctor(canopy: Canopy, evidence: DoctorEvidence): D
       });
     }
 
-    for (const field of ['owners', 'featureIds', 'files', 'todos', 'openQuestions'] as const) {
+    for (const field of ['owners', 'featureIds', 'files', 'todos', 'milestones', 'openQuestions'] as const) {
       if (rawProject[field] !== undefined && !Array.isArray(rawProject[field])) {
         add({
           severity: 'error',
@@ -419,6 +615,215 @@ export function inspectCanopyDoctor(canopy: Canopy, evidence: DoctorEvidence): D
           message: `Project ${field} must be an array.`,
         });
       }
+    }
+
+    const milestoneIds = new Set<string>();
+    if (Array.isArray(rawProject.milestones)) {
+      for (const milestone of rawProject.milestones) {
+        if (!isRecord(milestone)
+          || typeof milestone.id !== 'string'
+          || milestone.id.trim().length === 0
+          || typeof milestone.name !== 'string'
+          || milestone.name.trim().length === 0) {
+          add({
+            severity: 'error', code: 'invalid-project-milestone', path: projectKey,
+            message: 'Each project milestone must have a non-empty id and name.',
+          });
+          continue;
+        }
+        if (milestoneIds.has(milestone.id)) {
+          add({
+            severity: 'error', code: 'duplicate-project-milestone-id', path: projectKey,
+            message: `Milestone ID ${milestone.id} is repeated in project ${projectKey}.`,
+          });
+        }
+        milestoneIds.add(milestone.id);
+        for (const field of ['targetAt', 'completedAt'] as const) {
+          if (milestone[field] !== undefined && typeof milestone[field] !== 'string') {
+            add({
+              severity: 'error', code: 'invalid-project-milestone-date', path: projectKey,
+              message: `Milestone ${milestone.id} ${field} must be an ISO date string.`,
+            });
+          }
+        }
+      }
+    }
+
+    const taskRecords = Array.isArray(rawProject.todos)
+      ? rawProject.todos.filter(isRecord)
+      : [];
+    if (Array.isArray(rawProject.todos)) {
+      for (const task of rawProject.todos) {
+        if (!isRecord(task)) {
+          add({ severity: 'error', code: 'invalid-project-task', path: projectKey, message: 'Each project task must be an object.' });
+        }
+      }
+    }
+    const taskIds = new Set<string>();
+    for (const task of taskRecords) {
+      const taskLabel = typeof task.id === 'string' && task.id ? task.id : '(missing id)';
+      if (typeof task.id !== 'string' || task.id.trim().length === 0
+        || typeof task.text !== 'string' || task.text.trim().length === 0
+        || typeof task.priority !== 'number' || ![1, 2, 3, 4, 5].includes(task.priority)
+        || !TASK_STATUSES.has(String(task.status))
+        || typeof task.createdAt !== 'string'
+        || (typeof task.createdBy !== 'string' && !isRecord(task.createdBy))) {
+        add({
+          severity: 'error', code: 'invalid-project-task', path: projectKey,
+          message: `Project task ${taskLabel} is missing a valid id, text, priority, status, created_at, or created_by.`,
+        });
+      }
+      if (typeof task.id === 'string') {
+        if (taskIds.has(task.id)) {
+          add({
+            severity: 'error', code: 'duplicate-project-task-id', path: projectKey,
+            message: `Task ID ${task.id} is repeated in project ${projectKey}.`,
+          });
+        }
+        taskIds.add(task.id);
+      }
+      if (task.status === 'done' && typeof task.completedAt !== 'string') {
+        add({
+          severity: 'warning', code: 'missing-task-completed-at', path: projectKey,
+          message: `Completed task ${taskLabel} has no completed_at timestamp.`,
+        });
+      } else if (task.status !== 'done' && task.completedAt !== undefined) {
+        add({
+          severity: 'warning', code: 'unexpected-task-completed-at', path: projectKey,
+          message: `Non-completed task ${taskLabel} still has a completed_at timestamp.`,
+        });
+      }
+
+      for (const field of ['acceptance', 'dependencies', 'owners', 'reviewers', 'openQuestions', 'ownedPaths', 'excludedPaths', 'resources', 'receipts', 'residualRisks'] as const) {
+        if (task[field] !== undefined && !Array.isArray(task[field])) {
+          add({
+            severity: 'error', code: 'invalid-project-task-field', path: projectKey,
+            message: `Task ${taskLabel} ${field} must be an array.`,
+          });
+        }
+      }
+      for (const field of ['acceptance', 'openQuestions', 'residualRisks'] as const) {
+        if (Array.isArray(task[field]) && task[field].some(value => typeof value !== 'string' || value.trim().length === 0)) {
+          add({
+            severity: 'error', code: 'invalid-project-task-text-list', path: projectKey,
+            message: `Task ${taskLabel} ${field} must contain non-empty strings.`,
+          });
+        }
+      }
+      for (const field of ['ownedPaths', 'excludedPaths'] as const) {
+        if (!Array.isArray(task[field])) continue;
+        for (const candidate of task[field]) {
+          if (typeof candidate !== 'string' || unsafePathReason(candidate)) {
+            add({
+              severity: 'error', code: 'unsafe-task-path', path: projectKey,
+              message: `Task ${taskLabel} ${field} contains an unsafe or non-string path.`,
+            });
+          } else if (field === 'ownedPaths' && !exists(normalizeRepoPath(candidate.replace(/[\\/]$/, '')))) {
+            add({
+              severity: 'warning', code: 'missing-task-owned-path', path: projectKey,
+              message: `Task ${taskLabel} owned path "${candidate}" does not exist.`,
+            });
+          }
+        }
+      }
+      if (task.milestoneId !== undefined
+        && (typeof task.milestoneId !== 'string' || !milestoneIds.has(task.milestoneId))) {
+        add({
+          severity: 'error', code: 'missing-task-milestone', path: projectKey,
+          message: `Task ${taskLabel} references undefined milestone "${String(task.milestoneId)}".`,
+        });
+      }
+      validateResourceRefs(task.resources, projectKey, `Task ${taskLabel}`);
+
+      if (Array.isArray(task.dependencies)) {
+        const seenEdges = new Set<string>();
+        for (const dependency of task.dependencies) {
+          if (!isRecord(dependency)
+            || !TASK_DEPENDENCY_TYPES.has(dependency.type as TaskDependencyType)
+            || typeof dependency.taskId !== 'string'
+            || dependency.taskId.trim().length === 0) {
+            add({
+              severity: 'error', code: 'invalid-task-dependency', path: projectKey,
+              message: `Task ${taskLabel} contains a dependency without a valid type and task_id.`,
+            });
+            continue;
+          }
+          const edgeKey = `${dependency.type}\u0000${dependency.taskId}`;
+          if (seenEdges.has(edgeKey)) {
+            add({
+              severity: 'error', code: 'duplicate-task-dependency', path: projectKey,
+              message: `Task ${taskLabel} repeats ${dependency.type} ${dependency.taskId}.`,
+            });
+          }
+          seenEdges.add(edgeKey);
+          if (dependency.taskId === task.id) {
+            add({
+              severity: 'error', code: 'self-task-dependency', path: projectKey,
+              message: `Task ${taskLabel} references itself.`,
+            });
+          } else if (!taskRecords.some(candidate => candidate.id === dependency.taskId)) {
+            add({
+              severity: 'error', code: 'missing-task-dependency', path: projectKey,
+              message: `Task ${taskLabel} references undefined task ${dependency.taskId}.`,
+            });
+          }
+        }
+      }
+
+      if (Array.isArray(task.receipts)) {
+        const receiptIds = new Set<string>();
+        for (const receipt of task.receipts) {
+          if (!isRecord(receipt)
+            || typeof receipt.id !== 'string'
+            || receipt.id.trim().length === 0
+            || !RECEIPT_KINDS.has(receipt.kind as ActionReceiptKind)
+            || !RECEIPT_OUTCOMES.has(receipt.outcome as ActionReceiptOutcome)
+            || typeof receipt.summary !== 'string'
+            || receipt.summary.trim().length === 0
+            || typeof receipt.recordedAt !== 'string'
+            || (typeof receipt.actor !== 'string' && !isRecord(receipt.actor))) {
+            add({
+              severity: 'error', code: 'invalid-action-receipt', path: projectKey,
+              message: `Task ${taskLabel} contains a receipt without valid identity, outcome, summary, actor, or recorded_at.`,
+            });
+            continue;
+          }
+          if (receiptIds.has(receipt.id)) {
+            add({
+              severity: 'error', code: 'duplicate-action-receipt-id', path: projectKey,
+              message: `Task ${taskLabel} repeats receipt ID ${receipt.id}.`,
+            });
+          }
+          receiptIds.add(receipt.id);
+          validateResourceRefs(receipt.resources, projectKey, `Receipt ${receipt.id}`);
+        }
+      }
+      if (task.status === 'done' && isRichProjectTask(task)
+        && (!Array.isArray(task.receipts) || task.receipts.length === 0)) {
+        add({
+          severity: 'warning', code: 'missing-task-completion-receipt', path: projectKey,
+          message: `Rich completed task ${taskLabel} retains no completion receipt.`,
+          suggestion: 'Record the action, validation, output, or review evidence that closed the task.',
+        });
+      }
+    }
+
+    const cycleTasks = taskRecords.map(task => ({
+      ...task,
+      dependencies: Array.isArray(task.dependencies)
+        ? task.dependencies.filter(dependency => (
+          isRecord(dependency)
+          && TASK_DEPENDENCY_TYPES.has(dependency.type as TaskDependencyType)
+          && typeof dependency.taskId === 'string'
+        ))
+        : undefined,
+    })) as unknown as Task[];
+    for (const cycle of findProjectTaskDependencyCycles(cycleTasks)) {
+      add({
+        severity: 'error', code: 'task-dependency-cycle', path: projectKey,
+        message: `Blocking task dependency cycle: ${[...cycle, cycle[0]].join(' -> ')}.`,
+        suggestion: 'Remove or retype one blocking edge; parent_child and related edges do not affect readiness.',
+      });
     }
 
     if (Array.isArray(rawProject.files)) {
@@ -557,7 +962,15 @@ export function inspectCanopyDoctor(canopy: Canopy, evidence: DoctorEvidence): D
     noteGap(rawProject.createdBy);
     if (Array.isArray(rawProject.owners)) for (const owner of rawProject.owners) noteGap(owner);
     if (Array.isArray(rawProject.todos)) {
-      for (const todo of rawProject.todos) if (isRecord(todo)) noteGap(todo.createdBy);
+      for (const todo of rawProject.todos) {
+        if (!isRecord(todo)) continue;
+        noteGap(todo.createdBy);
+        if (Array.isArray(todo.owners)) for (const owner of todo.owners) noteGap(owner);
+        if (Array.isArray(todo.reviewers)) for (const reviewer of todo.reviewers) noteGap(reviewer);
+        if (Array.isArray(todo.receipts)) {
+          for (const receipt of todo.receipts) if (isRecord(receipt)) noteGap(receipt.actor);
+        }
+      }
     }
     if (projectHasGap) unattributedPaths.push(`project:${projectId}`);
   }
@@ -603,6 +1016,7 @@ export function inspectCanopyDoctor(canopy: Canopy, evidence: DoctorEvidence): D
       annotations: Object.keys(canopy.files).length,
       features: Object.keys(canopy.features).length,
       projects: Object.keys(canopy.projects ?? {}).length,
+      scopes: Object.keys(canopy.scopeSets ?? {}).length,
       trackedFiles: evidence.repoFiles.size,
     },
     issues: selectRepresentativeIssues(allIssues, issueLimit),
@@ -686,7 +1100,7 @@ export function buildDoctorFromRepo(
 export function renderDoctorText(report: DoctorReport): string {
   const lines = [
     `CanopyTag doctor: ${report.counts.errors} errors, ${report.counts.warnings} warnings, ${report.counts.info} info`,
-    `Checked ${report.checked.annotations} annotations, ${report.checked.features} features, ${report.checked.projects} projects, ${report.checked.trackedFiles} tracked files.`,
+    `Checked ${report.checked.annotations} annotations, ${report.checked.features} features, ${report.checked.projects} projects, ${report.checked.scopes} scope sets, ${report.checked.trackedFiles} tracked files.`,
   ];
 
   if (report.issues.length === 0) {

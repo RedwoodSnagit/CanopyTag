@@ -62,17 +62,17 @@ export function App() {
             </span>
           )}
           <DemoOrientation isDemo={repoConfig?.isDemo === true} />
-          <Settings />
           <ViewToggle />
+          <Settings />
         </div>
       </header>
 
       {loading && <p className="text-text-muted text-sm p-3">Loading...</p>}
       {error && <p className="text-error text-sm p-3">Error: {error}</p>}
 
-      {viewMode === 'table' ? (
+      {viewMode === 'table' || viewMode === 'projects' ? (
         <main className="flex-1 p-3 overflow-hidden">
-          <TableView />
+          <TableView initialMode={viewMode === 'projects' ? 'projects' : 'files'} />
         </main>
       ) : viewMode === 'graph' ? (
         <GraphView />

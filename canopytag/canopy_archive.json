@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "archived_at": "2026-08-25T03:31:07.007Z",
+      "file_path": "src/shared/types.ts",
+      "kind": "todo",
+      "item": {
+        "id": "RT-001",
+        "text": "EXTENSION_KIND_MAP is incomplete — no .go, .rs, .c, .cpp, .java, .rb, .php, .swift, .kt extensions. Any non-JS/TS/Python repo will show all files as 'unknown' kind in stats output.",
+        "priority": 3,
+        "difficulty": 1,
+        "status": "done",
+        "completed_at": "2026-03-27T12:00:00-06:00",
+        "tags": [
+          "completeness",
+          "onboarding"
+        ],
+        "created_at": "2026-03-27T12:00:00-06:00",
+        "created_by": {
+          "role": "agent",
+          "name": "claude-opus"
+        }
+      }
+    },
+    {
+      "archived_at": "2026-08-25T03:31:07.008Z",
+      "file_path": "src/backend/lib/canopy.ts",
+      "kind": "todo",
+      "item": {
+        "id": "RT-002",
+        "text": "writeCanopy uses fs.writeFileSync with no error handling or atomic write (write to temp + rename). A crash mid-write could corrupt canopy.json.",
+        "priority": 2,
+        "difficulty": 3,
+        "status": "done",
+        "completed_at": "2026-03-27T12:00:00-06:00",
+        "tags": [
+          "reliability",
+          "data-safety"
+        ],
+        "created_at": "2026-03-27T12:00:00-06:00",
+        "created_by": {
+          "role": "agent",
+          "name": "claude-opus"
+        }
+      }
+    },
+    {
+      "archived_at": "2026-08-25T03:31:07.008Z",
+      "file_path": "src/cli/query.ts",
+      "kind": "todo",
+      "item": {
+        "id": "RT-004",
+        "text": "Connection walk is single-hop only — follows relatedFiles from direct matches but doesn't transitively follow connections-of-connections. For feature graphs deeper than 2 levels, agents miss files that are reachable but not directly linked from the top-authority file.",
+        "priority": 3,
+        "difficulty": 4,
+        "status": "done",
+        "tags": [
+          "graph-traversal",
+          "feature-gap"
+        ],
+        "created_at": "2026-03-27T12:00:00-06:00",
+        "completed_at": "2026-04-24T19:15:00.000Z",
+        "created_by": {
+          "role": "agent",
+          "name": "claude-opus"
+        }
+      }
+    },
+    {
+      "archived_at": "2026-08-25T03:31:07.008Z",
+      "file_path": "README.md",
+      "kind": "todo",
+      "item": {
+        "id": "RT-006",
+        "text": "README previously referenced legacy/internal metadata paths; public guidance now points to canopytag/canopy.json.",
+        "priority": 2,
+        "difficulty": 1,
+        "status": "done",
+        "completed_at": "2026-03-27T12:00:00-06:00",
+        "tags": [
+          "docs",
+          "release-blocker"
+        ],
+        "created_at": "2026-03-27T12:00:00-06:00",
+        "created_by": {
+          "role": "agent",
+          "name": "claude-opus"
+        }
+      }
+    },
+    {
+      "archived_at": "2026-08-25T03:31:07.008Z",
+      "file_path": "README.md",
+      "kind": "todo",
+      "item": {
+        "id": "RT-007",
+        "text": "No mention of CLI tools (stats, ls, query, health) in README. These are the primary agent interface and should be prominently documented.",
+        "priority": 2,
+        "difficulty": 2,
+        "status": "done",
+        "completed_at": "2026-03-27T12:00:00-06:00",
+        "tags": [
+          "docs",
+          "cli"
+        ],
+        "created_at": "2026-03-27T12:00:00-06:00",
+        "created_by": {
+          "role": "agent",
+          "name": "claude-opus"
+        }
+      }
+    },
+    {
+      "archived_at": "2026-08-25T03:31:07.008Z",
+      "file_path": "src/mcp/tools/writes.ts",
+      "kind": "todo",
+      "item": {
+        "id": "RT-009",
+        "text": "AGENT_AUTHOR is hardcoded to { role: 'agent', name: 'claude' }. Should be dynamic to support non-Claude agents writing annotations.",
+        "priority": 3,
+        "difficulty": 2,
+        "status": "done",
+        "tags": [
+          "extensibility"
+        ],
+        "created_at": "2026-04-07T00:00:00-06:00",
+        "completed_at": "2026-04-24T19:15:00.000Z",
+        "created_by": {
+          "role": "agent",
+          "name": "claude-opus"
+        }
+      }
+    }
+  ]
+}

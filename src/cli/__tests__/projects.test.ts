@@ -24,11 +24,30 @@ const canopy: Canopy = {
       featureIds: ['core'],
       files: ['src/a.ts'],
       openQuestions: ['Should completed projects stay visible by default?'],
+      milestones: [{ id: 'MS-001', name: 'Agent-readable packet' }],
       todos: [{
+        id: 'RT-009',
+        text: 'Establish the thin project layer',
+        priority: 2,
+        status: 'done',
+        receipts: [{
+          id: 'AR-001', kind: 'validation', outcome: 'passed', summary: 'Thin project tests passed.',
+          actor: { role: 'agent', name: 'ChatGPT 5.6 Sol' }, recordedAt: '2026-08-20T01:00:00Z',
+        }],
+        createdAt: '2026-08-19T00:00:00Z',
+        completedAt: '2026-08-20T01:00:00Z',
+        createdBy: { role: 'agent', name: 'ChatGPT 5.6 Sol' },
+      }, {
         id: 'RT-010',
         text: 'Validate project-scoped retrieval',
         priority: 2,
         status: 'open',
+        whyNow: 'Fresh agents need deterministic readiness.',
+        milestoneId: 'MS-001',
+        dependencies: [{ type: 'depends_on', taskId: 'RT-009' }],
+        ownedPaths: ['src/a.ts'],
+        resources: [{ kind: 'documentation', role: 'governs', ref: 'docs/design/project-layer.md' }],
+        acceptance: ['The project packet reports one ready task.'],
         createdAt: '2026-08-20T00:00:00Z',
         createdBy: { role: 'agent', name: 'ChatGPT 5.6 Sol' },
       }],
@@ -54,12 +73,17 @@ describe('project reads', () => {
     expect(findProject(canopy, 'context')[1].id).toBe('PRJ-001');
   });
 
-  it('renders why, files, questions, and project-owned TODOs', () => {
+  it('renders why, files, questions, and rich project tasks', () => {
     const output = buildProjectDetail(canopy, 'PRJ-001');
     expect(output).toContain('Make multi-file work traversable');
     expect(output).toContain('src/a.ts');
     expect(output).toContain('Should completed projects');
     expect(output).toContain('RT-010');
+    expect(output).toContain('Readiness: 1 ready, 0 blocked, 0 claimed');
+    expect(output).toContain('depends_on RT-009');
+    expect(output).toContain('governs documentation: docs/design/project-layer.md');
+    expect(output).toContain('AR-001 validation/passed');
+    expect(output).toContain('MS-001');
   });
 
   it('shows project context and inherited project TODOs from an implicated file', () => {

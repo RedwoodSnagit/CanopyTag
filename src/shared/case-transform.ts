@@ -15,7 +15,7 @@ function isOpaqueMapKey(key: string): boolean {
 // Values of these schema fields are authored identifier maps. Their child
 // keys are data (`ride_analysis`, `PRJ-001`, a path), while the fields inside
 // each child card are schema and still need conversion.
-const IDENTIFIER_MAP_FIELDS = new Set(['files', 'features', 'directories', 'projects']);
+const IDENTIFIER_MAP_FIELDS = new Set(['files', 'features', 'directories', 'projects', 'scopeSets']);
 
 type AnyObject = Record<string, unknown>;
 

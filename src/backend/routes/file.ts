@@ -19,7 +19,7 @@ export async function fileRoutes(app: FastifyInstance) {
 
     // Return a merged record for any file — even if not in repo_index or canopy.
     // This allows clicking any file in the tree to show its (empty) detail panel.
-    const merged = mergeFileRecord(filePath, repoItem, canopyItem);
+    const merged = mergeFileRecord(filePath, repoItem, canopyItem, canopy.projects);
     merged.lastModified = getLastModified(app.serverState.repoRoot, filePath);
     return merged;
   });
@@ -80,7 +80,7 @@ export async function fileRoutes(app: FastifyInstance) {
     writeCanopy(canopyPath, canopy);
 
     const repoItem = repoIndex.get(filePath);
-    const merged = mergeFileRecord(filePath, repoItem, canopy.files[filePath]);
+    const merged = mergeFileRecord(filePath, repoItem, canopy.files[filePath], canopy.projects);
     return merged;
   });
 }

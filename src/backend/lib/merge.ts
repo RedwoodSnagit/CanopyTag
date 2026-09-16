@@ -1,5 +1,12 @@
 import path from 'path';
-import type { MergedFileRecord, RepoIndexItem, FileCanopy, Priority } from '../../shared/types';
+import type {
+  FileCanopy,
+  MergedFileRecord,
+  Priority,
+  Project,
+  ProjectFileContext,
+  RepoIndexItem,
+} from '../../shared/types';
 import { EXTENSION_KIND_MAP, normalizeRelation, checkAuthorityHealth } from '../../shared/types';
 
 function detectKind(filePath: string, repoKind?: string): string | undefined {
@@ -22,11 +29,23 @@ export function mergeFileRecord(
   filePath: string,
   repoItem: Partial<RepoIndexItem> | undefined,
   canopy: FileCanopy | undefined,
+  projectRecords: Record<string, Project> = {},
 ): MergedFileRecord {
   const todos = canopy?.todos ?? [];
   const openTodos = todos.filter(t => t.status === 'open' || t.status === 'in_progress');
   const priorities = openTodos.map(t => t.priority).filter(Boolean);
   const ext = path.extname(filePath).toLowerCase();
+  const projects: ProjectFileContext[] = Object.values(projectRecords)
+    .filter(project => project.files?.includes(filePath))
+    .map(project => ({
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      status: project.status,
+      openQuestions: project.openQuestions,
+      todos: project.todos ?? [],
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
 
   return {
     path: filePath,
@@ -60,5 +79,6 @@ export function mergeFileRecord(
     openTodoCount: openTodos.length,
     highestPriority: priorities.length > 0 ? Math.min(...priorities) as Priority : undefined,
     authorityHealth: canopy ? (checkAuthorityHealth(canopy) ?? undefined) : undefined,
+    projects,
   };
 }

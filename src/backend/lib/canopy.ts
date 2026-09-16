@@ -24,6 +24,7 @@ const EMPTY_CANOPY: Canopy = {
   files: {},
   features: {},
   projects: {},
+  scopeSets: {},
 };
 
 export function parseJsonFile(filePath: string): unknown {
@@ -56,7 +57,16 @@ function validateCanopyShape(obj: unknown): Canopy {
     const got = Array.isArray(obj.projects) ? 'array' : obj.projects === null ? 'null' : typeof obj.projects;
     throw new Error(`Invalid canopy.json: 'projects' must be an object (got ${got})`);
   }
-  return { ...obj, features: obj.features ?? {}, projects: obj.projects ?? {} } as Canopy;
+  if (obj.scopeSets !== undefined && !isPlainObject(obj.scopeSets)) {
+    const got = Array.isArray(obj.scopeSets) ? 'array' : obj.scopeSets === null ? 'null' : typeof obj.scopeSets;
+    throw new Error(`Invalid canopy.json: 'scope_sets' must be an object (got ${got})`);
+  }
+  return {
+    ...obj,
+    features: obj.features ?? {},
+    projects: obj.projects ?? {},
+    scopeSets: obj.scopeSets ?? {},
+  } as Canopy;
 }
 
 export function readCanopy(filePath: string): Canopy {

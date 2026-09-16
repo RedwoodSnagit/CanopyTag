@@ -141,7 +141,7 @@ describe('buildCoverage', () => {
       'gone.md': { summary: 'orphan doc' },
     });
     const repoFiles = new Set(['src/a.ts', 'src/b.ts', 'README.md']);
-    const { result } = buildCoverage(canopy, repoFiles, 'module');
+    const { result } = buildCoverage(canopy, repoFiles, { kind: 'module' });
 
     // Only modules counted
     expect(result.total).toBe(2);     // src/a.ts, src/b.ts
@@ -181,7 +181,7 @@ describe('buildCoverage', () => {
       'src/empty.ts': {},
     });
     const repoFiles = new Set(['src/full.ts', 'src/partial.ts', 'src/empty.ts']);
-    const { result } = buildCoverage(canopy, repoFiles, undefined, true);
+    const { result } = buildCoverage(canopy, repoFiles, { detail: true });
 
     expect(result.fieldCoverage).toBeDefined();
     expect(result.fieldCoverage!.length).toBe(3);
@@ -191,5 +191,127 @@ describe('buildCoverage', () => {
     // Most complete last
     expect(result.fieldCoverage![2].path).toBe('src/full.ts');
     expect(result.fieldCoverage![2].missing).toEqual([]);
+  });
+
+  it('reports authored file and directory targets without treating directories as missing files', () => {
+    const canopy = makeCanopy({
+      'src/app.ts': { summary: 'App' },
+    });
+    canopy.directories = { docs: { summary: 'Canonical documentation' } };
+    canopy.scopeSets = {
+      production_candidate: {
+        name: 'Production candidate',
+        description: 'Release-facing routes',
+        members: [
+          { path: 'src/app.ts', kind: 'file', role: 'entrypoint' },
+          { path: 'src/missing.ts', kind: 'file', role: 'component' },
+          { path: 'docs', kind: 'directory', role: 'canonical_document' },
+        ],
+      },
+    };
+    const repoFiles = new Set(['src/app.ts', 'src/missing.ts', 'docs/guide.md']);
+    const { text, result } = buildCoverage(canopy, repoFiles, {
+      scope: 'production_candidate',
+      pathKind: subject => subject === 'docs' ? 'directory' : repoFiles.has(subject) ? 'file' : undefined,
+      asOf: new Date('2026-08-21T00:00:00Z'),
+    });
+
+    const scope = result.scopeCoverage[0];
+    expect(scope).toMatchObject({
+      id: 'production_candidate',
+      total: 3,
+      annotated: 2,
+      unannotated: 1,
+      missing: 0,
+      files: { total: 2, annotated: 1, unannotated: 1, missing: 0 },
+      directories: { total: 1, annotated: 1, unannotated: 0, missing: 0 },
+    });
+    expect(text).toContain('2/3 authored targets annotated');
+    expect(text).toContain('Directories: 1/1 annotated');
+    expect(text).toContain('src/missing.ts');
+  });
+
+  it('keeps missing and wrong-kind targets out of the annotated count', () => {
+    const canopy = makeCanopy({
+      'src/deleted.ts': { summary: 'Stale card' },
+      docs: { summary: 'Compatibility card at the wrong subject kind' },
+    });
+    canopy.scopeSets = {
+      alpha_critical: {
+        name: 'Alpha critical',
+        members: [
+          { path: 'src/deleted.ts', kind: 'file' },
+          { path: 'docs', kind: 'directory' },
+        ],
+      },
+    };
+    const { result, text } = buildCoverage(canopy, new Set(), {
+      scope: 'alpha_critical',
+      pathKind: subject => subject === 'docs' ? 'file' : undefined,
+    });
+
+    expect(result.scopeCoverage[0]).toMatchObject({ total: 2, annotated: 0, missing: 2 });
+    expect(text).toContain('Missing or wrong-kind targets (2)');
+    expect(text).toContain('expected directory; found file');
+  });
+
+  it('surfaces fresh and stale generated proposals without changing authored coverage', () => {
+    const canopy = makeCanopy({ 'src/app.ts': { summary: 'App' } });
+    canopy.scopeSets = {
+      production_candidate: {
+        name: 'Production candidate',
+        members: [{ path: 'src/app.ts', kind: 'file' }],
+      },
+    };
+    const baseArtifact = {
+      version: 1 as const,
+      provider: 'cartographer',
+      artifactFingerprint: 'sha256:abc',
+      generatedAt: '2026-08-20T00:00:00Z',
+      freshUntil: '2026-08-22T00:00:00Z',
+      proposals: [{
+        scopeSetId: 'production_candidate',
+        path: 'src/discovered.ts',
+        kind: 'file' as const,
+        role: 'component' as const,
+        rationale: 'Reachable from app',
+      }],
+    };
+    const { result, text } = buildCoverage(canopy, new Set(['src/app.ts']), {
+      scope: 'production_candidate',
+      proposalArtifacts: [baseArtifact, {
+        ...baseArtifact,
+        provider: 'old-index',
+        artifactFingerprint: 'sha256:old',
+        freshUntil: '2026-08-20T12:00:00Z',
+        proposals: [{ ...baseArtifact.proposals[0], path: 'src/old.ts' }],
+      }],
+      asOf: new Date('2026-08-21T00:00:00Z'),
+    });
+
+    expect(result.scopeCoverage[0]).toMatchObject({
+      total: 1,
+      annotated: 1,
+      proposalCount: 2,
+    });
+    expect(result.scopeCoverage[0].proposalSources.map(source => source.freshness))
+      .toEqual(['fresh', 'stale']);
+    expect(text).toContain('Generated membership proposals (2; not counted)');
+    expect(text).toContain('Reachable from app');
+  });
+
+  it('lists all authored scopes by default and fails clearly for an unknown ID', () => {
+    const canopy = makeCanopy({});
+    canopy.scopeSets = {
+      production_candidate: { name: 'Production candidate', members: [] },
+      supported_research: { name: 'Supported research', members: [] },
+    };
+    const { text } = buildCoverage(canopy, new Set());
+    expect(text).toContain('Authored scope coverage:');
+    expect(text).toContain('production_candidate');
+    expect(text).toContain('supported_research');
+    expect(text).toContain('Whole-repo inventory (informational)');
+    expect(() => buildCoverage(canopy, new Set(), { scope: 'missing' }))
+      .toThrow(/Available: production_candidate, supported_research/);
   });
 });

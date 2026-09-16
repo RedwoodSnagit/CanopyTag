@@ -9,7 +9,7 @@ import { buildCompare } from '../../cli/compare.js';
 import { buildHealth } from '../../cli/health.js';
 import { buildTodos } from '../../cli/todos.js';
 import { buildTags } from '../tools/tags.js';
-import { discoverRepoFiles, buildCoverage } from '../../cli/coverage.js';
+import { discoverRepoFiles, buildCoverage, resolveRepoPathKind } from '../../cli/coverage.js';
 import { inspectCanopyDoctor, renderDoctorText } from '../../cli/doctor.js';
 import { resolveRepoRoot } from '../../cli/shared.js';
 import path from 'node:path';
@@ -80,8 +80,10 @@ describe('MCP read tool integration', () => {
     const canopyPath = resolveCanopyPath();
     const canopyDir = path.dirname(canopyPath);
     const repoFiles = discoverRepoFiles(repoRoot, canopyDir);
-    const { text, result } = buildCoverage(canopy, repoFiles);
-    expect(text).toContain('Coverage:');
+    const { text, result } = buildCoverage(canopy, repoFiles, {
+      pathKind: relativePath => resolveRepoPathKind(repoRoot, relativePath),
+    });
+    expect(text).toMatch(/Authored scope coverage:|Coverage:/);
     expect(text).toContain('annotated');
     expect(result.total).toBeGreaterThan(0);
     expect(result.annotated + result.unannotated).toBe(result.total);

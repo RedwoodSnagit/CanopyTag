@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo_root": "",
-  "last_modified_at": "2026-08-21T00:51:04.382Z",
+  "last_modified_at": "2026-08-25T03:31:07.008Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -17,9 +17,39 @@
     }
   ],
   "files": {
+    "package.json": {
+      "title": "Package And Development Contract",
+      "summary": "Declares the private prerelease package, CLI binary, local development/build/test commands, and runtime dependencies that make the source checkout usable.",
+      "tags": [
+        "packaging",
+        "onboarding"
+      ],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active"
+    },
+    "bin/canopytag.mjs": {
+      "title": "CanopyTag CLI Dispatcher",
+      "summary": "Cross-platform Node entrypoint that maps public command names to TypeScript handlers and forwards arguments through the local tsx runtime without shell interpolation.",
+      "tags": [
+        "cli",
+        "entrypoint",
+        "agent-interface"
+      ],
+      "feature_id": "cli-tools",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {
+          "path": "src/cli/shared.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        }
+      ]
+    },
     "src/shared/types.ts": {
       "title": "Canopy Schema & Authority Health",
-      "summary": "Single source of truth for shared and local types including file annotations, file/project TODOs, thin projects, comments, features, trust, lifecycle, relationships, analytics, agent review, and expiring active-work claims. All CLI tools, routes, frontend components, and MCP adapters import from here. On-disk format is snake_case; TypeScript is camelCase.",
+      "summary": "Single source of truth for shared and local types including file annotations, authored production scopes, project-only rich Task subtypes with dependencies/resources/milestones/receipts, project HTTP projections, trust, lifecycle, relationships, analytics, review, and active-work claims. All CLI, API, UI, and MCP surfaces import from here; disk keys are snake_case while TypeScript fields are camelCase.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -28,21 +58,12 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "standard",
       "status": "active",
-      "tags": ["schema", "trust"],
-      "feature_id": "annotation-engine",
-      "todos": [
-        {
-          "id": "RT-001",
-          "text": "EXTENSION_KIND_MAP is incomplete — no .go, .rs, .c, .cpp, .java, .rb, .php, .swift, .kt extensions. Any non-JS/TS/Python repo will show all files as 'unknown' kind in stats output.",
-          "priority": 3,
-          "difficulty": 1,
-          "status": "done",
-          "completed_at": "2026-03-27T12:00:00-06:00",
-          "tags": ["completeness", "onboarding"],
-          "created_at": "2026-03-27T12:00:00-06:00",
-          "created_by": {"role": "agent", "name": "claude-opus"}
-        }
+      "tags": [
+        "schema",
+        "trust"
       ],
+      "feature_id": "annotation-engine",
+      "todos": [],
       "comments": [
         {
           "id": "RC-001",
@@ -50,19 +71,85 @@
           "type": "finding",
           "confidence": 4,
           "created_at": "2026-03-27T12:00:00-06:00",
-          "author": {"role": "agent", "name": "claude-opus"}
+          "author": {
+            "role": "agent",
+            "name": "claude-opus"
+          }
         }
       ],
       "related_files": [
-        {"path": "src/backend/lib/canopy.ts", "closeness": 5},
-        {"path": "src/cli/health.ts", "closeness": 4},
-        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3}
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 5
+        },
+        {
+          "path": "src/cli/health.ts",
+          "closeness": 4
+        },
+        {
+          "path": "docs/canopytag-vs-ripgrep.md",
+          "closeness": 3
+        }
+      ]
+    },
+    "src/shared/project-tasks.ts": {
+      "title": "Pure Project Task Readiness Projection",
+      "summary": "Computes ready, blocked, claimed, in-progress, done, and deferred project task states from authored status, directed blocking edges, required decisions, dependency cycles, and optional live active-work path claims. It never persists derived readiness and exposes deterministic counts plus cycle discovery for CLI, API, UI, MCP, and doctor reuse.",
+      "tags": [
+        "schema",
+        "project-context",
+        "dependencies",
+        "coordination",
+        "agent-interface"
+      ],
+      "feature_id": "annotation-engine",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {
+          "path": "src/shared/types.ts",
+          "relation": "fed-by",
+          "closeness": 5
+        },
+        {
+          "path": "docs/design/project-layer.md",
+          "relation": "implements",
+          "closeness": 5
+        },
+        {
+          "path": "src/shared/project-tasks.test.ts",
+          "relation": "tested-by",
+          "closeness": 5
+        }
+      ]
+    },
+    "src/shared/project-tasks.test.ts": {
+      "title": "Project Task Readiness Contracts",
+      "summary": "Protects depends_on and blocks direction, non-blocking relational edges, required-decision blockers, active-claim derivation without persisted state, invalid references, cycle detection, and deterministic ready/blocked/claimed counts.",
+      "tags": [
+        "tests",
+        "project-context",
+        "dependencies",
+        "coordination"
+      ],
+      "feature_id": "annotation-engine",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {
+          "path": "src/shared/project-tasks.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/shared/case-transform.ts": {
       "title": "Snake/Case Metadata Boundary",
-      "summary": "Recursively converts committed snake_case schema fields to runtime camelCase and back while preserving authored keys inside files, features, directories, and projects maps. Cards nested under those identifiers still convert normally, preventing paths, underscore feature IDs, or project IDs from being silently rewritten.",
-      "tags": ["schema", "persistence"],
+      "summary": "Recursively converts committed snake_case schema fields to runtime camelCase and back while preserving authored keys inside files, features, directories, projects, and scope_sets maps. Nested card fields still convert normally, preventing paths or underscore-bearing IDs from being silently rewritten.",
+      "tags": [
+        "schema",
+        "persistence"
+      ],
       "feature_id": "annotation-engine",
       "authority_level": "specification",
       "status": "active"
@@ -70,12 +157,20 @@
     "src/shared/lifecycle.ts": {
       "title": "Lifecycle Mark Validator And Interpreter",
       "summary": "Validates untrusted lifecycle metadata without discarding malformed evidence, derives open, due, expired, and resolved states from an explicit date, and keeps event- or release-bound marks open until external resolution is recorded.",
-      "tags": ["schema", "lifecycle", "trust"],
+      "tags": [
+        "schema",
+        "lifecycle",
+        "trust"
+      ],
       "feature_id": "lifecycle-trust",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "docs/design/document-lifecycle-marks.md", "relation": "implements", "closeness": 5}
+        {
+          "path": "docs/design/document-lifecycle-marks.md",
+          "relation": "implements",
+          "closeness": 5
+        }
       ]
     },
     "src/shared/catalogue-search.ts": {
@@ -84,16 +179,27 @@
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["retrieval", "local-first", "trust"]
+      "tags": [
+        "retrieval",
+        "local-first",
+        "trust"
+      ]
     },
     "src/shared/catalogue-search.test.ts": {
       "summary": "Protects searchable-field inclusion and exclusion, title-over-comment ranking, conservative prefix and typo matching, visible match evidence, lifecycle-date handling, and the hard result ceiling for authored catalogue search.",
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["retrieval", "tests"],
+      "tags": [
+        "retrieval",
+        "tests"
+      ],
       "related_files": [
-        {"path": "src/shared/catalogue-search.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/shared/catalogue-search.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/cli/__tests__/query-cli.test.ts": {
@@ -101,14 +207,21 @@
       "feature_id": "cli-tools",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["cli", "retrieval"],
+      "tags": [
+        "cli",
+        "retrieval"
+      ],
       "related_files": [
-        {"path": "src/cli/query.ts", "relation": "test-of", "closeness": 4}
+        {
+          "path": "src/cli/query.ts",
+          "relation": "test-of",
+          "closeness": 4
+        }
       ]
     },
     "src/backend/lib/canopy.ts": {
       "title": "Canopy Read/Write & Archive Engine",
-      "summary": "All disk I/O for canopy.json, settings.json, and canopy_archive.json. Handles snake↔camel case transformation at the read/write boundary, auto-generates RT-NNN and RC-NNN IDs, and runs archive sweeps that move completed TODOs to the archive after the retention window. Every route that mutates annotation data calls through here.",
+      "summary": "All disk I/O for canopy.json, settings.json, and canopy_archive.json. Validates required top-level maps including projects and scope_sets, handles snake↔camel transformation, allocates IDs, and runs archive sweeps. Every route that mutates canonical annotations calls through here.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -117,29 +230,26 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["schema", "persistence"],
+      "tags": [
+        "schema",
+        "persistence"
+      ],
       "feature_id": "annotation-engine",
       "todos": [
-        {
-          "id": "RT-002",
-          "text": "writeCanopy uses fs.writeFileSync with no error handling or atomic write (write to temp + rename). A crash mid-write could corrupt canopy.json.",
-          "priority": 2,
-          "difficulty": 3,
-          "status": "done",
-          "completed_at": "2026-03-27T12:00:00-06:00",
-          "tags": ["reliability", "data-safety"],
-          "created_at": "2026-03-27T12:00:00-06:00",
-          "created_by": {"role": "agent", "name": "claude-opus"}
-        },
         {
           "id": "RT-003",
           "text": "runArchiveSweep iterates all files on every TODO mutation. Fine for small repos but O(files × todos) on each write. Consider lazy sweep (sweep on read, or on interval).",
           "priority": 4,
           "difficulty": 3,
           "status": "open",
-          "tags": ["performance"],
+          "tags": [
+            "performance"
+          ],
           "created_at": "2026-03-27T12:00:00-06:00",
-          "created_by": {"role": "agent", "name": "claude-opus"}
+          "created_by": {
+            "role": "agent",
+            "name": "claude-opus"
+          }
         },
         {
           "id": "RT-011",
@@ -147,31 +257,82 @@
           "priority": 2,
           "difficulty": 4,
           "status": "open",
-          "tags": ["schema", "persistence", "security"],
+          "tags": [
+            "schema",
+            "persistence",
+            "security"
+          ],
           "created_at": "2026-08-01T21:44:14.974Z",
-          "created_by": {"role": "agent", "name": "codex"}
+          "created_by": {
+            "role": "agent",
+            "name": "codex"
+          }
         }
       ],
       "comments": [],
       "related_files": [
-        {"path": "src/shared/types.ts", "closeness": 5, "relation": "implements"},
-        {"path": "src/backend/routes/todo.ts", "closeness": 4},
-        {"path": "src/backend/routes/comment.ts", "closeness": 4},
-        {"path": "src/backend/routes/file.ts", "closeness": 4}
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 5,
+          "relation": "implements"
+        },
+        {
+          "path": "src/backend/routes/todo.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/backend/routes/comment.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/backend/routes/file.ts",
+          "closeness": 4
+        }
+      ]
+    },
+    "src/backend/lib/scope-proposals.ts": {
+      "title": "Generated Scope Membership Proposal Boundary",
+      "summary": "Reads and validates the optional generated scope-membership sidecar. It requires provider identity, artifact fingerprint, generation and freshness dates, safe repository-relative subjects, known kinds and roles, and exposes deterministic fresh/stale labeling without mutating authored scope sets.",
+      "tags": [
+        "schema",
+        "coverage",
+        "provenance",
+        "local-first"
+      ],
+      "feature_id": "annotation-engine",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 5,
+          "relation": "implements"
+        },
+        {
+          "path": "src/cli/coverage.ts",
+          "closeness": 5
+        }
       ]
     },
     "src/backend/lib/agent-manifest.ts": {
       "title": "Agent Review Manifest And Undo Engine",
       "summary": "Persists the agent activity/review feed, normalizes legacy statuses, assigns manifest IDs, and applies agree, fix, or reject decisions for file- or project-scoped writes. Project rejection restores recorded fields only when later changes do not conflict; suggestions remain unapplied.",
-      "tags": ["review-feed", "governance"],
+      "tags": [
+        "review-feed",
+        "governance"
+      ],
       "feature_id": "activity-review",
       "authority_level": "specification",
       "status": "active"
     },
     "src/backend/lib/merge.ts": {
       "title": "Authored And Generated Metadata Projection",
-      "summary": "Builds the UI read model by merging optional repo-index enrichment with authored Canopy metadata, with authored values winning shared fields. It also normalizes relations and derives open-TODO pressure and authority-health signals.",
-      "tags": ["api", "retrieval", "trust"],
+      "summary": "Builds the UI read model by merging optional repo-index enrichment with authored Canopy metadata, with authored values winning shared fields. It normalizes relations, derives TODO and authority-health signals, and resolves project backlinks plus inherited read-only project tasks at render time.",
+      "tags": [
+        "api",
+        "retrieval",
+        "trust"
+      ],
       "feature_id": "web-ui",
       "authority_level": "specification",
       "status": "active"
@@ -179,38 +340,79 @@
     "src/backend/lib/profile.ts": {
       "title": "Local Human Attribution Profile",
       "summary": "Resolves human attribution from explicit environment values, Git configuration, or OS identity, sanitizes it, and stores the profile in ignored profile.local.json. It also provides the reusable safe-ignore helper for other local CanopyTag sidecars. Local state stays uncommitted while selected author signatures may be copied into shared review attribution.",
-      "tags": ["governance", "privacy"],
+      "tags": [
+        "governance",
+        "privacy"
+      ],
       "feature_id": "annotation-engine",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "docs/repo-local-data.md", "relation": "implements", "closeness": 5}
+        {
+          "path": "docs/repo-local-data.md",
+          "relation": "implements",
+          "closeness": 5
+        }
       ]
     },
     "src/backend/lib/active-work.ts": {
       "title": "Local Expiring Work-Claim Engine",
       "summary": "Persists advisory file and directory claims in an ignored sidecar with atomic writes, owned locking, platform-aware overlap detection, exclusive or shared modes, expiry, owner/session checks, TODO links, renewal, release, and bounded seven-day local history. Expired work must be claimed again. It does not enforce Git writes, mutate canonical annotations, or own durable task dependencies.",
-      "tags": ["coordination", "local-first", "persistence", "agent-interface"],
+      "tags": [
+        "coordination",
+        "local-first",
+        "persistence",
+        "agent-interface"
+      ],
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/cli/work.ts", "relation": "fed-by", "closeness": 5},
-        {"path": "src/mcp/tools/active-work.ts", "relation": "fed-by", "closeness": 5},
-        {"path": "src/shared/types.ts", "relation": "fed-by", "closeness": 5},
-        {"path": "docs/repo-local-data.md", "relation": "implements", "closeness": 5}
+        {
+          "path": "src/cli/work.ts",
+          "relation": "fed-by",
+          "closeness": 5
+        },
+        {
+          "path": "src/mcp/tools/active-work.ts",
+          "relation": "fed-by",
+          "closeness": 5
+        },
+        {
+          "path": "src/shared/types.ts",
+          "relation": "fed-by",
+          "closeness": 5
+        },
+        {
+          "path": "docs/repo-local-data.md",
+          "relation": "implements",
+          "closeness": 5
+        }
       ]
     },
     "src/cli/work.ts": {
       "title": "canopytag work — Advisory Check-In And Check-Out",
       "summary": "Agent-facing CLI for checking path claims, creating expiring exclusive or shared claims, linking a unique CanopyTag TODO, renewing owned work, and releasing with a handoff note. JSON output supports harness integration; conflicts return a distinct exit code and claims never complete TODOs.",
-      "tags": ["cli", "coordination", "agent-interface", "local-first"],
+      "tags": [
+        "cli",
+        "coordination",
+        "agent-interface",
+        "local-first"
+      ],
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/backend/lib/active-work.ts", "relation": "fed-by", "closeness": 5},
-        {"path": "docs/cli-cheatsheet.md", "relation": "doc-for", "closeness": 5}
+        {
+          "path": "src/backend/lib/active-work.ts",
+          "relation": "fed-by",
+          "closeness": 5
+        },
+        {
+          "path": "docs/cli-cheatsheet.md",
+          "relation": "doc-for",
+          "closeness": 5
+        }
       ]
     },
     "src/cli/stats.ts": {
@@ -224,15 +426,32 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["cli", "agent-interface"],
+      "tags": [
+        "cli",
+        "agent-interface"
+      ],
       "feature_id": "cli-tools",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "src/cli/ls.ts", "closeness": 4},
-        {"path": "src/cli/query.ts", "closeness": 3},
-        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"}
+        {
+          "path": "src/cli/ls.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/cli/query.ts",
+          "closeness": 3
+        },
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        }
       ]
     },
     "src/cli/ls.ts": {
@@ -246,14 +465,27 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["cli", "agent-interface"],
+      "tags": [
+        "cli",
+        "agent-interface"
+      ],
       "feature_id": "cli-tools",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "src/cli/stats.ts", "closeness": 4},
-        {"path": "src/cli/query.ts", "closeness": 4},
-        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"}
+        {
+          "path": "src/cli/stats.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/cli/query.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        }
       ]
     },
     "src/cli/query.ts": {
@@ -267,21 +499,14 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["cli", "agent-interface", "retrieval", "graph-traversal"],
-      "feature_id": "cli-tools",
-      "todos": [
-        {
-          "id": "RT-004",
-          "text": "Connection walk is single-hop only — follows relatedFiles from direct matches but doesn't transitively follow connections-of-connections. For feature graphs deeper than 2 levels, agents miss files that are reachable but not directly linked from the top-authority file.",
-          "priority": 3,
-          "difficulty": 4,
-          "status": "done",
-          "tags": ["graph-traversal", "feature-gap"],
-          "created_at": "2026-03-27T12:00:00-06:00",
-          "completed_at": "2026-04-24T19:15:00.000Z",
-          "created_by": {"role": "agent", "name": "claude-opus"}
-        }
+      "tags": [
+        "cli",
+        "agent-interface",
+        "retrieval",
+        "graph-traversal"
       ],
+      "feature_id": "cli-tools",
+      "todos": [],
       "comments": [
         {
           "id": "RC-002",
@@ -289,25 +514,49 @@
           "type": "note",
           "confidence": 3,
           "created_at": "2026-03-27T12:00:00-06:00",
-          "author": {"role": "agent", "name": "claude-opus"}
+          "author": {
+            "role": "agent",
+            "name": "claude-opus"
+          }
         }
       ],
       "related_files": [
-        {"path": "src/shared/types.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/cli/ls.ts", "closeness": 4},
-        {"path": "src/cli/stats.ts", "closeness": 3},
-        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3}
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/cli/ls.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/cli/stats.ts",
+          "closeness": 3
+        },
+        {
+          "path": "docs/canopytag-vs-ripgrep.md",
+          "closeness": 3
+        }
       ]
     },
     "src/cli/__tests__/query.test.ts": {
       "title": "Progressive Search And Relation Bounds",
       "summary": "Protects query presentation, authored-field search integration, filter composition, result limits, and progressive relationship expansion whose hop and relation filters constrain graph noise. Search ranking details are tested in the shared catalogue-search suite.",
-      "tags": ["cli", "retrieval", "graph-traversal"],
+      "tags": [
+        "cli",
+        "retrieval",
+        "graph-traversal"
+      ],
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/cli/query.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/cli/query.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/cli/health.ts": {
@@ -321,13 +570,25 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["cli", "agent-interface", "quality"],
+      "tags": [
+        "cli",
+        "agent-interface",
+        "quality"
+      ],
       "feature_id": "cli-tools",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "src/shared/types.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"}
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        }
       ]
     },
     "src/cli/todos.ts": {
@@ -341,44 +602,90 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["cli", "agent-interface"],
+      "tags": [
+        "cli",
+        "agent-interface"
+      ],
       "feature_id": "cli-tools",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "src/cli/ls.ts", "closeness": 4},
-        {"path": "src/cli/stats.ts", "closeness": 3},
-        {"path": "src/cli/query.ts", "closeness": 3},
-        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"}
+        {
+          "path": "src/cli/ls.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/cli/stats.ts",
+          "closeness": 3
+        },
+        {
+          "path": "src/cli/query.ts",
+          "closeness": 3
+        },
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        }
       ]
     },
     "src/cli/projects.ts": {
-      "title": "canopytag projects — Thin Multi-File Context",
-      "summary": "Lists active project umbrellas and renders one project's why, owners, features, implicated files, open questions, project-owned TODOs, and optional recent review activity. Resolution accepts exact IDs/names or one unambiguous substring; projects remain flat and deliberately omit board machinery.",
-      "tags": ["cli", "agent-interface", "project-context"],
+      "title": "canopytag projects — Agent Execution Packet",
+      "summary": "Lists active project contexts with computed ready/blocked task counts and renders one project's intent, milestones, typed dependencies, owned paths/exclusions, resources, acceptance criteria, blockers, retained receipts, linked files, and recent activity. Resolution accepts exact IDs/names or one unambiguous substring; projects remain flat and omit board machinery.",
+      "tags": [
+        "cli",
+        "agent-interface",
+        "project-context"
+      ],
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "docs/design/project-layer.md", "relation": "implements", "closeness": 5},
-        {"path": "src/shared/types.ts", "relation": "fed-by", "closeness": 5},
-        {"path": "src/cli/context.ts", "closeness": 4},
-        {"path": "src/cli/query.ts", "closeness": 4},
-        {"path": "src/cli/todos.ts", "closeness": 4}
+        {
+          "path": "docs/design/project-layer.md",
+          "relation": "implements",
+          "closeness": 5
+        },
+        {
+          "path": "src/shared/types.ts",
+          "relation": "fed-by",
+          "closeness": 5
+        },
+        {
+          "path": "src/cli/context.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/cli/query.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/cli/todos.ts",
+          "closeness": 4
+        }
       ]
     },
     "src/backend/routes/config.ts": {
       "title": "Active Repository Switch And Browse API",
       "summary": "Switches the server's active repository, creates its Canopy directory, loads metadata, local identity, optional legacy index and tags, runs archive cleanup, then replaces shared server state. Its folder browser exposes host directory structure to the unauthenticated local API.",
-      "tags": ["api", "security", "local-first", "onboarding"],
+      "tags": [
+        "api",
+        "security",
+        "local-first",
+        "onboarding"
+      ],
       "feature_id": "web-ui",
       "authority_level": "specification",
       "status": "active"
     },
     "src/backend/routes/index.ts": {
       "title": "Merged Repository Index API",
-      "summary": "Returns one record for the union of generated repo-index paths and authored Canopy paths. Each record uses authored-over-generated precedence and derived TODO and authority-health signals from the merge projection.",
-      "tags": ["api", "retrieval", "trust"],
+      "summary": "Returns one record for the union of generated repo-index paths and authored Canopy paths. Each record uses authored-over-generated precedence and includes derived TODO, authority-health, and project-backlink context from the merge projection.",
+      "tags": [
+        "api",
+        "retrieval",
+        "trust"
+      ],
       "feature_id": "web-ui",
       "authority_level": "specification",
       "status": "active"
@@ -386,7 +693,12 @@
     "src/backend/routes/manifest.ts": {
       "title": "Agent Activity Review API",
       "summary": "Lists the agent manifest through manifest and activity aliases, then applies agree, fix, or reject decisions using the local human profile for attribution. Reject can invoke recorded undo behavior on already-applied changes.",
-      "tags": ["api", "review-feed", "governance", "editing"],
+      "tags": [
+        "api",
+        "review-feed",
+        "governance",
+        "editing"
+      ],
       "feature_id": "activity-review",
       "authority_level": "specification",
       "status": "active"
@@ -394,14 +706,18 @@
     "src/backend/routes/rescan.ts": {
       "title": "Legacy Repo-Index Reload API",
       "summary": "Reloads only the optional docs/_meta/repo_index.json compatibility index into server state. It does not rescan source files, reload Canopy metadata, refresh tags, or rebuild structural maps despite returning a generic rescan-complete message.",
-      "tags": ["api", "integration", "persistence"],
+      "tags": [
+        "api",
+        "integration",
+        "persistence"
+      ],
       "feature_id": "web-ui",
       "authority_level": "specification",
       "status": "active"
     },
     "src/backend/routes/file.ts": {
       "title": "File Metadata API",
-      "summary": "Primary per-file read and write API. Reads merge authored metadata with optional generated index and Git date; writes update selected annotation fields and stamp the current local human as reviewer, but authority and status values currently lack runtime enum validation.",
+      "summary": "Primary per-file read and write API. Reads merge authored metadata with optional generated index, Git date, and derived project backlinks/inherited tasks; writes update selected annotation fields and stamp the current local human as reviewer, but authority and status values currently lack runtime enum validation.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -410,7 +726,12 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["api", "persistence", "editing", "trust"],
+      "tags": [
+        "api",
+        "persistence",
+        "editing",
+        "trust"
+      ],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [
@@ -420,13 +741,57 @@
           "type": "finding",
           "confidence": 5,
           "created_at": "2026-03-27T12:00:00-06:00",
-          "author": {"role": "agent", "name": "claude-opus"}
+          "author": {
+            "role": "agent",
+            "name": "claude-opus"
+          }
         }
       ],
       "related_files": [
-        {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/frontend/components/FileDetail.tsx", "closeness": 4},
-        {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"}
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/frontend/components/FileDetail.tsx",
+          "closeness": 4
+        },
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        }
+      ]
+    },
+    "src/backend/routes/projects.ts": {
+      "title": "Project HTTP List, Detail, And Guarded Update API",
+      "summary": "Exposes project summaries with ready/blocked/claimed task and milestone counts plus full detail packets containing computed task readiness, live claim context, features, every linked path, annotation presence, recent activity, and merged file records. Bounded card updates preserve rich tasks, milestones, and provenance; guarded link replacement rejects stale writes.",
+      "tags": [
+        "api",
+        "project-context",
+        "editing",
+        "data-safety"
+      ],
+      "feature_id": "web-ui",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {
+          "path": "src/frontend/components/ProjectLane.tsx",
+          "relation": "fed-by",
+          "closeness": 5
+        },
+        {
+          "path": "src/backend/__tests__/projects-routes.test.ts",
+          "relation": "tested-by",
+          "closeness": 5
+        },
+        {
+          "path": "src/shared/types.ts",
+          "relation": "fed-by",
+          "closeness": 4
+        }
       ]
     },
     "src/backend/routes/todo.ts": {
@@ -440,13 +805,23 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["api", "persistence"],
+      "tags": [
+        "api",
+        "persistence"
+      ],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/backend/routes/comment.ts", "closeness": 3}
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/backend/routes/comment.ts",
+          "closeness": 3
+        }
       ]
     },
     "src/backend/routes/comment.ts": {
@@ -460,13 +835,23 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["api", "persistence"],
+      "tags": [
+        "api",
+        "persistence"
+      ],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/backend/routes/todo.ts", "closeness": 3}
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/backend/routes/todo.ts",
+          "closeness": 3
+        }
       ]
     },
     "src/backend/routes/tree.ts": {
@@ -480,12 +865,19 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["api", "retrieval", "local-first"],
+      "tags": [
+        "api",
+        "retrieval",
+        "local-first"
+      ],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "src/frontend/App.tsx", "closeness": 3}
+        {
+          "path": "src/frontend/App.tsx",
+          "closeness": 3
+        }
       ]
     },
     "src/backend/routes/directory.ts": {
@@ -499,12 +891,20 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["api", "editing", "retrieval"],
+      "tags": [
+        "api",
+        "editing",
+        "retrieval"
+      ],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"}
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        }
       ]
     },
     "src/backend/routes/features.ts": {
@@ -518,48 +918,111 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["api", "editing", "schema", "retrieval"],
+      "tags": [
+        "api",
+        "editing",
+        "schema",
+        "retrieval"
+      ],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/shared/types.ts", "closeness": 3, "relation": "fed-by"}
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 3,
+          "relation": "fed-by"
+        }
       ]
     },
     "src/frontend/components/AnalyticsView.tsx": {
       "title": "Local Agent Activity Dashboard",
       "summary": "Human view of local agent activity: hot files, search trends, daily counts, and heat-enabled tree navigation. It duplicates engagement calculations from the backend, so scoring changes must stay aligned; activity frequency is not semantic authority.",
-      "tags": ["frontend", "analytics", "privacy"],
+      "tags": [
+        "frontend",
+        "analytics",
+        "privacy"
+      ],
       "feature_id": "agent-analytics",
       "authority_level": "guideline",
       "status": "active",
       "related_files": [
-        {"path": "docs/design/agent-analytics.md", "relation": "implements", "closeness": 5}
+        {
+          "path": "docs/design/agent-analytics.md",
+          "relation": "implements",
+          "closeness": 5
+        }
       ]
     },
     "src/frontend/components/GraphView.tsx": {
       "title": "Authored Semantic Relationship Graph",
-      "summary": "Human visualization of authored CanopyTag feature clusters and related_files, with overview and focus modes, filtering, authority or activity coloring, and weighted layout. It does not derive import, call, or symbol topology; generated structure belongs to Cartographer.",
+      "summary": "Human visualization with overview and file-focus maps plus a bounded Project execution mode. Project mode reads one existing task packet into milestone swimlanes, directed readiness dependencies, selected-task resource/evidence context, and browser-local card positions; it does not persist a second task truth or invent generated structure without provenance.",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["frontend", "graph-traversal", "retrieval"],
+      "tags": [
+        "frontend",
+        "graph-traversal",
+        "retrieval"
+      ],
       "feature_id": "web-ui"
     },
     "src/frontend/components/TableView.tsx": {
-      "title": "Files, Scores, TODOs, And Activity Review Tables",
-      "summary": "Large multi-mode review surface for file inventory, quality scores, globally filterable TODOs, and attributed agent activity. It owns attention filters and agree, fix, or reject workflows, making it a human governance surface rather than a simple alternate list.",
+      "title": "Files, Scores, TODOs, Projects, And Activity Tables",
+      "summary": "Large multi-mode review surface for file inventory, quality scores, globally filterable file/project TODOs, the project lane, and attributed agent activity. Project-owned TODO rows retain a real project scope and open the project detail instead of fabricating a file path.",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["frontend", "quality", "review-feed", "editing"],
+      "tags": [
+        "frontend",
+        "quality",
+        "review-feed",
+        "editing"
+      ],
       "feature_id": "web-ui"
+    },
+    "src/frontend/components/ProjectLane.tsx": {
+      "title": "Project List, Detail, And Safe Card Editor",
+      "summary": "Two-pane human project surface with current/status filters, ready/blocked/claimed counts, milestones, bounded task cards, and expandable dependency/resource/evidence packets beside linked feature/file context and recent activity. It preserves unannotated paths, confirms relationship removal, guards stale list replacement, and leaves task lifecycle read-only.",
+      "tags": [
+        "frontend",
+        "project-context",
+        "editing",
+        "human-review"
+      ],
+      "feature_id": "web-ui",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {
+          "path": "src/backend/routes/projects.ts",
+          "relation": "fed-by",
+          "closeness": 5
+        },
+        {
+          "path": "src/frontend/components/FileDetail.tsx",
+          "closeness": 5
+        },
+        {
+          "path": "docs/design/project-layer.md",
+          "relation": "implements",
+          "closeness": 5
+        }
+      ]
     },
     "src/frontend/components/FileTree.tsx": {
       "title": "Explorer File Tree And Activity Heat",
       "summary": "Explorer navigation over discovered files and directories, enriched with TODO badges and optional seven-day activity heat. Search here filters the visible tree by path or name; it is not semantic or fuzzy catalogue retrieval.",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["frontend", "retrieval", "analytics"],
+      "tags": [
+        "frontend",
+        "retrieval",
+        "analytics"
+      ],
       "feature_id": "web-ui"
     },
     "src/frontend/components/Settings.tsx": {
@@ -567,7 +1030,12 @@
       "summary": "Combines browser-local display preferences with repository-local archive and analytics settings plus an ignored local author profile. The profile file remains local, while its chosen author signature is intentionally recorded on shared edits and reviews.",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["frontend", "privacy", "local-first", "governance"],
+      "tags": [
+        "frontend",
+        "privacy",
+        "local-first",
+        "governance"
+      ],
       "feature_id": "web-ui"
     },
     "src/frontend/components/WelcomeScreen.tsx": {
@@ -575,15 +1043,25 @@
       "summary": "Repository connection and bundled-demo entry surface. It can browse local directories and instruct the backend to switch repository roots, so its convenience depends on the unauthenticated backend remaining loopback-only unless explicitly exposed.",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["frontend", "onboarding", "security", "local-first"],
+      "tags": [
+        "frontend",
+        "onboarding",
+        "security",
+        "local-first"
+      ],
       "feature_id": "web-ui"
     },
     "src/frontend/lib/api.ts": {
       "title": "Frontend Local API Facade",
-      "summary": "Typed frontend facade over the local Fastify API for repository switching, merged records, annotations, TODOs, comments, features, settings, analytics, profiles, and activity review. It centralizes transport but performs little runtime response validation.",
+      "summary": "Typed frontend facade over the local Fastify API for repository switching, merged records, annotations, TODOs, comments, features, project list/detail/guarded updates, settings, analytics, profiles, and activity review. It centralizes transport but performs little runtime response validation.",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["frontend", "api", "editing", "review-feed"],
+      "tags": [
+        "frontend",
+        "api",
+        "editing",
+        "review-feed"
+      ],
       "feature_id": "web-ui"
     },
     "src/frontend/lib/authority.ts": {
@@ -591,7 +1069,11 @@
       "summary": "Canonical UI copy and display mapping for the five-level authority hierarchy. It keeps compact labels and explanatory text consistent across score and table views; authority means conflict precedence, not a substitute for quality or freshness.",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["frontend", "trust", "quality"],
+      "tags": [
+        "frontend",
+        "trust",
+        "quality"
+      ],
       "feature_id": "web-ui"
     },
     "src/frontend/App.tsx": {
@@ -605,19 +1087,32 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["frontend", "onboarding"],
+      "tags": [
+        "frontend",
+        "onboarding"
+      ],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "src/frontend/stores/workspace.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/frontend/components/FileDetail.tsx", "closeness": 4},
-        {"path": "src/frontend/components/ScoreDisplay.tsx", "closeness": 3}
+        {
+          "path": "src/frontend/stores/workspace.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/frontend/components/FileDetail.tsx",
+          "closeness": 4
+        },
+        {
+          "path": "src/frontend/components/ScoreDisplay.tsx",
+          "closeness": 3
+        }
       ]
     },
     "src/frontend/components/FileDetail.tsx": {
       "title": "File Annotation Editor",
-      "summary": "Primary per-file human editor for title, summary, tags, I/O notes, authored relationships, trust scores, TODOs, and comments. Mutations round-trip through the local API and refresh the merged record; it does not display or edit source code.",
+      "summary": "Primary per-file human editor for title, summary, tags, I/O notes, authored relationships, trust scores, TODOs, comments, and derived project backlinks with inherited read-only tasks. Mutations round-trip through the local API and refresh the merged record; it does not display or edit source code.",
       "validity": 4,
       "clarity": 4,
       "completeness": 4,
@@ -626,7 +1121,12 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["frontend", "editing", "trust", "graph-traversal"],
+      "tags": [
+        "frontend",
+        "editing",
+        "trust",
+        "graph-traversal"
+      ],
       "feature_id": "web-ui",
       "todos": [
         {
@@ -635,16 +1135,33 @@
           "priority": 4,
           "difficulty": 3,
           "status": "open",
-          "tags": ["ux", "performance"],
+          "tags": [
+            "ux",
+            "performance"
+          ],
           "created_at": "2026-03-27T12:00:00-06:00",
-          "created_by": {"role": "agent", "name": "claude-opus"}
+          "created_by": {
+            "role": "agent",
+            "name": "claude-opus"
+          }
         }
       ],
       "comments": [],
       "related_files": [
-        {"path": "src/frontend/components/ScoreDisplay.tsx", "closeness": 5},
-        {"path": "src/backend/routes/file.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/frontend/stores/workspace.ts", "closeness": 4, "relation": "fed-by"}
+        {
+          "path": "src/frontend/components/ScoreDisplay.tsx",
+          "closeness": 5
+        },
+        {
+          "path": "src/backend/routes/file.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/frontend/stores/workspace.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        }
       ]
     },
     "src/frontend/components/ScoreDisplay.tsx": {
@@ -658,18 +1175,30 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["frontend", "quality", "trust", "governance"],
+      "tags": [
+        "frontend",
+        "quality",
+        "trust",
+        "governance"
+      ],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "src/frontend/components/FileDetail.tsx", "closeness": 5},
-        {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"}
+        {
+          "path": "src/frontend/components/FileDetail.tsx",
+          "closeness": 5
+        },
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        }
       ]
     },
     "src/frontend/stores/workspace.ts": {
       "title": "Global UI State (Zustand)",
-      "summary": "Single Zustand coordination store for repository connection, tree and index, selection, features and tags, agent notes, analytics, profile, view mode, and save or error state. Initial load treats analytics as optional; file edits refresh the selected record and merged index.",
+      "summary": "Single Zustand coordination store for repository connection, tree and index, file/project selection, projects, features and tags, agent notes, analytics, profile, view mode, and save or error state. Initial load treats analytics as optional; project backlinks can open the Table project lane directly.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -678,7 +1207,11 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["frontend", "api", "local-first"],
+      "tags": [
+        "frontend",
+        "api",
+        "local-first"
+      ],
       "feature_id": "web-ui",
       "todos": [],
       "comments": [
@@ -688,162 +1221,295 @@
           "type": "improvement",
           "confidence": 3,
           "created_at": "2026-03-27T12:00:00-06:00",
-          "author": {"role": "agent", "name": "claude-opus"}
+          "author": {
+            "role": "agent",
+            "name": "claude-opus"
+          }
         }
       ],
       "related_files": [
-        {"path": "src/frontend/App.tsx", "closeness": 5},
-        {"path": "src/frontend/components/FileDetail.tsx", "closeness": 4},
-        {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"}
+        {
+          "path": "src/frontend/App.tsx",
+          "closeness": 5
+        },
+        {
+          "path": "src/frontend/components/FileDetail.tsx",
+          "closeness": 4
+        },
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        }
       ]
     },
     "src/backend/__tests__/canopy.test.ts": {
       "title": "Canopy Persistence Boundary Contracts",
-      "summary": "Protects BOM-tolerant reads, top-level shape rejection, snake_case writes, lifecycle round-tripping, preservation of malformed lifecycle evidence, successful atomic-write temp-file cleanup, and monotonic TODO identifiers across the canonical metadata store.",
-      "tags": ["schema", "persistence"],
+      "summary": "Protects BOM-tolerant reads, top-level map rejection/defaults including scope_sets, snake_case writes, project and authored-scope round trips, lifecycle evidence preservation, atomic-write cleanup, and monotonic identifiers across the canonical metadata store.",
+      "tags": [
+        "schema",
+        "persistence"
+      ],
       "feature_id": "annotation-engine",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/backend/lib/canopy.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
+      ]
+    },
+    "src/backend/__tests__/scope-proposals.test.ts": {
+      "title": "Generated Scope Proposal Provenance Contracts",
+      "summary": "Protects optional sidecar discovery, snake/camel parsing, required provider and fingerprint provenance, bounded freshness dates, safe subject paths, supported kinds, and deterministic fresh/stale labels.",
+      "tags": [
+        "schema",
+        "coverage",
+        "provenance",
+        "tests"
+      ],
+      "feature_id": "annotation-engine",
+      "authority_level": "specification",
+      "status": "active",
+      "related_files": [
+        {
+          "path": "src/backend/lib/scope-proposals.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/backend/__tests__/case-transform.test.ts": {
       "title": "Metadata Case-Conversion Invariants",
-      "summary": "Prevents recursive snake/camel conversion from rewriting file-path map keys while confirming nested objects and arrays transform normally. This protects dotted filenames and slash-delimited paths during metadata reads and writes.",
-      "tags": ["schema", "persistence"],
+      "summary": "Prevents recursive snake/camel conversion from rewriting file paths, underscore feature IDs, project IDs, or authored scope IDs while confirming fields inside their cards and ordinary nested arrays transform normally.",
+      "tags": [
+        "schema",
+        "persistence"
+      ],
       "feature_id": "annotation-engine",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/shared/case-transform.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/shared/case-transform.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/backend/__tests__/merge.test.ts": {
       "title": "Authored-Over-Generated Merge Precedence",
       "summary": "Locks the read-model rule that authored Canopy values override shared repo-index fields while generated enrichment remains available as fallback. It also protects lifecycle propagation and derived open-TODO and highest-priority signals.",
-      "tags": ["trust", "retrieval"],
+      "tags": [
+        "trust",
+        "retrieval"
+      ],
       "feature_id": "web-ui",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/backend/lib/merge.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/backend/lib/merge.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/backend/__tests__/agent-manifest.test.ts": {
       "title": "Manifest Review And Undo Contracts",
       "summary": "Protects the human review loop for agent activity: BOM-safe reads, rejection restoring prior annotations, fix decisions adding attributed improvement comments, and agreement changing review state without replaying the original write.",
-      "tags": ["review-feed", "governance"],
+      "tags": [
+        "review-feed",
+        "governance"
+      ],
       "feature_id": "activity-review",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/backend/lib/agent-manifest.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/backend/lib/agent-manifest.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/backend/__tests__/profile.test.ts": {
       "title": "Local Identity Privacy Contracts",
       "summary": "Protects human attribution fallback, snake_case local profile persistence, sanitization back to human roles, BOM-tolerant reads, and preference for .git/info/exclude so private identity needs no shared repository change.",
-      "tags": ["privacy", "governance"],
+      "tags": [
+        "privacy",
+        "governance"
+      ],
       "feature_id": "annotation-engine",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/backend/lib/profile.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/backend/lib/profile.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/shared/lifecycle.test.ts": {
       "title": "Lifecycle Date And Evidence Semantics",
       "summary": "Locks review-due and expiration boundaries, explicit-resolution precedence, local-calendar behavior, and refusal to infer event or release completion. Malformed marks must remain visible with evidence instead of being coerced or dropped.",
-      "tags": ["lifecycle", "trust"],
+      "tags": [
+        "lifecycle",
+        "trust"
+      ],
       "feature_id": "lifecycle-trust",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/shared/lifecycle.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/shared/lifecycle.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/cli/__tests__/context.test.ts": {
       "title": "Agent Context Trust Rendering Contracts",
       "summary": "Protects compact file and feature context: authority-sensitive warnings, relation drift, open-TODO selection, relation-closeness threshold filtering, lifecycle evidence, feature aggregates, and authority-ordered presentation.",
-      "tags": ["cli", "agent-interface", "trust"],
+      "tags": [
+        "cli",
+        "agent-interface",
+        "trust"
+      ],
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/cli/context.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/cli/context.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/cli/__tests__/compare.test.ts": {
       "title": "File Trust Comparison Invariants",
       "summary": "Protects authority-first trust ordering while surfacing quality, review drift, warnings, TODO pressure, partial scores, normalized Windows paths, and lifecycle state. Lifecycle problems must not silently reorder authority precedence.",
-      "tags": ["cli", "trust", "quality"],
+      "tags": [
+        "cli",
+        "trust",
+        "quality"
+      ],
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/cli/compare.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/cli/compare.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/cli/__tests__/coverage.test.ts": {
-      "title": "Tracked-File Coverage Accounting Contracts",
-      "summary": "Protects raw tracked-file discovery for maintenance checks plus Canopy-directory exclusion, .ctagignore filtering, path normalization, kind-scoped coverage counts, orphan detection, and completeness ordering for annotated files. It does not yet cover bounded unannotated-path output.",
-      "tags": ["cli", "retrieval"],
+      "title": "Purposeful Coverage Accounting Contracts",
+      "summary": "Protects tracked-file discovery, ignore behavior, neutral repository inventory, authored file/directory scope counts, missing and wrong-kind partitions, selected-scope detail, unknown IDs, generated proposal non-promotion, provenance freshness, orphan detection, and annotation-depth ordering.",
+      "tags": [
+        "cli",
+        "retrieval"
+      ],
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/cli/coverage.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/cli/coverage.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/cli/__tests__/doctor.test.ts": {
       "title": "Deterministic Maintenance Check Contracts",
-      "summary": "Protects clean reports, unsafe and missing path detection, directory-versus-untracked-versus-deleted annotation handling, malformed nested metadata reporting, duplicate TODO/comment IDs, Git-backed review drift, pending agent-review visibility, portable repo-root treatment, bounded findings, and stable text rendering.",
-      "tags": ["cli", "maintenance", "tests", "trust"],
+      "summary": "Protects clean reports, unsafe and missing paths, directory/untracked/deleted annotation handling, authored scope member kinds/roles/duplicates, supported directory subjects, malformed metadata, ID collisions, review drift, pending review, portable roots, bounded findings, and stable rendering.",
+      "tags": [
+        "cli",
+        "maintenance",
+        "tests",
+        "trust"
+      ],
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/cli/doctor.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/cli/doctor.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/backend/lib/__tests__/active-work.test.ts": {
       "title": "Active Work Persistence And Lease Contracts",
       "summary": "Protects snake-case persistence, file/directory conflicts, shared overlap, expiry, path filtering, retained history, owner/session enforcement, TODO links, and TTL validation for the local coordination engine.",
-      "tags": ["coordination", "tests", "local-first"],
+      "tags": [
+        "coordination",
+        "tests",
+        "local-first"
+      ],
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/backend/lib/active-work.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/backend/lib/active-work.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/cli/__tests__/work.test.ts": {
       "title": "Active Work CLI Workflow Contract",
       "summary": "Runs the real CLI through claim, parent-path query, overlap rejection, TODO linkage, ignored-sidecar setup, release, and history inspection.",
-      "tags": ["cli", "coordination", "tests"],
+      "tags": [
+        "cli",
+        "coordination",
+        "tests"
+      ],
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/cli/work.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/cli/work.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/cli/__tests__/graph.test.ts": {
       "title": "Semantic Fan-In And Fan-Out Traversal Contracts",
       "summary": "Protects reverse-index construction, normalized paths, bounded multi-hop traversal, closeness and relation filters, cycle and self-reference termination, prebuilt-index reuse, and directional text rendering.",
-      "tags": ["cli", "graph-traversal"],
+      "tags": [
+        "cli",
+        "graph-traversal"
+      ],
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/cli/graph.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/cli/graph.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/mcp/__tests__/reads.test.ts": {
       "title": "MCP Read-Builder Parity Contracts",
       "summary": "Exercises reusable read builders against the demo catalogue across stats, lists, queries, context, comparisons, health, TODOs, tags, coverage, and doctor rendering. It does not cover MCP transport or tool registration.",
-      "tags": ["mcp", "agent-interface"],
+      "tags": [
+        "mcp",
+        "agent-interface"
+      ],
       "feature_id": "mcp-server",
       "authority_level": "guideline",
       "status": "active"
@@ -851,125 +1517,219 @@
     "src/mcp/__tests__/writes.test.ts": {
       "title": "Agent Write Safety And Provenance Contracts",
       "summary": "Protects dynamic agent attribution, locked-file rules, score-review invalidation, TODO and comment IDs, tag rename and deduplication, manifest audit entries, staged suggestions, and rejection of incomplete staged TODO metadata.",
-      "tags": ["mcp", "editing", "review-feed"],
+      "tags": [
+        "mcp",
+        "editing",
+        "review-feed"
+      ],
       "feature_id": "mcp-server",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/mcp/tools/writes.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/mcp/tools/writes.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/mcp/__tests__/integration.test.ts": {
       "title": "Cross-Capability Metadata Workflow Contracts",
       "summary": "Protects local workflows where writes immediately affect retrieval: findings become surprising, TODOs become queryable, annotations enter context, renamed tags update vocabulary, feature queries remain complete, and authored relations traverse correctly.",
-      "tags": ["mcp", "editing"],
+      "tags": [
+        "mcp",
+        "editing"
+      ],
       "feature_id": "mcp-server",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/mcp/tools/writes.ts", "relation": "test-of", "closeness": 5},
-        {"path": "src/cli/context.ts", "relation": "test-of", "closeness": 4},
-        {"path": "src/cli/graph.ts", "relation": "test-of", "closeness": 4}
+        {
+          "path": "src/mcp/tools/writes.ts",
+          "relation": "test-of",
+          "closeness": 5
+        },
+        {
+          "path": "src/cli/context.ts",
+          "relation": "test-of",
+          "closeness": 4
+        },
+        {
+          "path": "src/cli/graph.ts",
+          "relation": "test-of",
+          "closeness": 4
+        }
       ]
     },
     "src/frontend/components/GraphView.test.ts": {
-      "title": "Graph Focus And Viewport Regression Contracts",
-      "summary": "Protects pure focus, viewport, position, hover-label, duplicate-edge, and weighted-ordering helpers. It does not exercise canvas interaction, the full React view, or code-topology correctness.",
-      "tags": ["frontend", "graph-traversal"],
+      "title": "Graph Navigation And Project Execution Regression Contracts",
+      "summary": "Protects pure focus, viewport, position, hover-label, duplicate-edge, weighted-ordering, project dependency direction, selected-task attachments, provenance-bearing structural edges, and local layout parsing. It does not exercise full browser canvas interaction or code-topology correctness.",
+      "tags": [
+        "frontend",
+        "graph-traversal"
+      ],
       "feature_id": "web-ui",
       "authority_level": "guideline",
       "status": "active",
       "related_files": [
-        {"path": "src/frontend/components/GraphView.tsx", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/frontend/components/GraphView.tsx",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/frontend/components/TableView.test.ts": {
       "title": "Manifest Table Interpretation Contracts",
       "summary": "Protects helper logic that turns staged activity into compact previews, exposes freshness recommendations, and filters rows by recency. It does not exercise full table rendering or review interactions.",
-      "tags": ["frontend", "review-feed"],
+      "tags": [
+        "frontend",
+        "review-feed"
+      ],
       "feature_id": "web-ui",
       "authority_level": "guideline",
       "status": "active",
       "related_files": [
-        {"path": "src/frontend/components/TableView.tsx", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/frontend/components/TableView.tsx",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/frontend/components/FileTree.test.ts": {
       "title": "File-Tree Attention Heat Contracts",
       "summary": "Protects activity weighting and normalization helpers used by file-tree heat. It does not exercise tree interaction, path search, selection, or rendered navigation behavior.",
-      "tags": ["frontend", "analytics"],
+      "tags": [
+        "frontend",
+        "analytics"
+      ],
       "feature_id": "web-ui",
       "authority_level": "guideline",
       "status": "active",
       "related_files": [
-        {"path": "src/frontend/components/FileTree.tsx", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/frontend/components/FileTree.tsx",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/frontend/lib/authority.test.ts": {
       "title": "Authority Display Label Contracts",
       "summary": "Pins compact and canonical authority labels plus conflict-precedence help text. It does not exercise score editing, persistence, or review attribution.",
-      "tags": ["frontend", "trust"],
+      "tags": [
+        "frontend",
+        "trust"
+      ],
       "feature_id": "web-ui",
       "authority_level": "guideline",
       "status": "active",
       "related_files": [
-        {"path": "src/frontend/lib/authority.ts", "relation": "test-of", "closeness": 4}
+        {
+          "path": "src/frontend/lib/authority.ts",
+          "relation": "test-of",
+          "closeness": 4
+        }
       ]
     },
     "src/backend/__tests__/analytics.test.ts": {
       "title": "Local Analytics Persistence And Scoring Contracts",
       "summary": "Protects BOM-tolerant sidecar reads, per-file and daily counter semantics, search-hit behavior, and engagement weighting. It tests the analytics library, not route registration or HTTP behavior.",
-      "tags": ["analytics", "persistence", "privacy"],
+      "tags": [
+        "analytics",
+        "persistence",
+        "privacy"
+      ],
       "feature_id": "agent-analytics",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/backend/lib/analytics.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/backend/lib/analytics.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/backend/__tests__/tree-walker.test.ts": {
       "title": "Filesystem Tree Discovery Contracts",
       "summary": "Protects filesystem discovery plus exclusion of ignored dependencies and the CanopyTag metadata directory. It tests the tree-walker library, not HTTP routing or file-tree UI interaction.",
-      "tags": ["retrieval", "local-first"],
+      "tags": [
+        "retrieval",
+        "local-first"
+      ],
       "feature_id": "web-ui",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/backend/lib/tree-walker.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/backend/lib/tree-walker.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/cli/__tests__/analytics-hook.test.ts": {
       "title": "Analytics Hook Search-Heat Contracts",
       "summary": "Executes the hook in temporary repositories and protects Grep, Glob, and Bash ripgrep hit accounting plus BOM-tolerant metadata reads. It covers emitted analytics records, not installer merging, concurrency, or every PostToolUse event.",
-      "tags": ["analytics", "integration", "privacy"],
+      "tags": [
+        "analytics",
+        "integration",
+        "privacy"
+      ],
       "feature_id": "agent-analytics",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "hooks/canopytag-analytics.mjs", "relation": "test-of", "closeness": 5}
+        {
+          "path": "hooks/canopytag-analytics.mjs",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/cli/__tests__/hook-install.test.ts": {
       "title": "Analytics Hook Installer Contracts",
       "summary": "Runs the installer against temporary repositories and protects absolute command generation, in-place upgrade of legacy relative hooks without duplicates, and preservation of existing BOM-prefixed settings. It does not cover hook event recording.",
-      "tags": ["cli", "integration", "privacy"],
+      "tags": [
+        "cli",
+        "integration",
+        "privacy"
+      ],
       "feature_id": "agent-analytics",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/cli/hook.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/cli/hook.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "tests/e2e/app-smoke.spec.ts": {
       "title": "Welcome And Config Proxy Smoke Contracts",
       "summary": "Checks welcome-screen entry actions and frontend proxy reachability for GET config. It does not exercise repository switching, directory browsing, or the backend's network-exposure boundary.",
-      "tags": ["frontend", "onboarding", "api"],
+      "tags": [
+        "frontend",
+        "onboarding",
+        "api"
+      ],
       "feature_id": "web-ui",
       "authority_level": "guideline",
       "status": "active",
       "related_files": [
-        {"path": "src/frontend/components/WelcomeScreen.tsx", "relation": "test-of", "closeness": 4},
-        {"path": "src/backend/routes/config.ts", "relation": "test-of", "closeness": 4}
+        {
+          "path": "src/frontend/components/WelcomeScreen.tsx",
+          "relation": "test-of",
+          "closeness": 4
+        },
+        {
+          "path": "src/backend/routes/config.ts",
+          "relation": "test-of",
+          "closeness": 4
+        }
       ]
     },
     "AGENTS.md": {
@@ -977,12 +1737,17 @@
       "summary": "Stable operating contract for contributors: architecture, product boundaries, shared-versus-local data rules, agent workflow, trust semantics, and validation. Read it before changing CanopyTag or its dogfood metadata; fast-changing feature details belong in nearby docs.",
       "authority_level": "standard",
       "status": "active",
-      "tags": ["docs", "agent-interface", "governance", "onboarding"],
+      "tags": [
+        "docs",
+        "agent-interface",
+        "governance",
+        "onboarding"
+      ],
       "feature_id": "docs"
     },
     "README.md": {
       "title": "Public-Facing Project Overview",
-      "summary": "Public entry point for installation and the local CLI/MCP workflow. It presents authored catalogue discovery and post-rg enrichment as complementary, keeps source as truth, and documents local active-work coordination, shared-versus-local data, and the loopback default for the unauthenticated backend.",
+      "summary": "Public entry point for installation and the local CLI/MCP workflow. It presents authored catalogue discovery and post-rg enrichment as complementary, documents purposeful scope coverage and provider proposal separation, and preserves local-data, active-work, and loopback security boundaries.",
       "validity": 4,
       "clarity": 5,
       "completeness": 3,
@@ -991,85 +1756,112 @@
       "last_reviewed": "2026-08-02",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["docs", "onboarding"],
-      "feature_id": "docs",
-      "todos": [
-        {
-          "id": "RT-006",
-          "text": "README previously referenced legacy/internal metadata paths; public guidance now points to canopytag/canopy.json.",
-          "priority": 2,
-          "difficulty": 1,
-          "status": "done",
-          "completed_at": "2026-03-27T12:00:00-06:00",
-          "tags": ["docs", "release-blocker"],
-          "created_at": "2026-03-27T12:00:00-06:00",
-          "created_by": {"role": "agent", "name": "claude-opus"}
-        },
-        {
-          "id": "RT-007",
-          "text": "No mention of CLI tools (stats, ls, query, health) in README. These are the primary agent interface and should be prominently documented.",
-          "priority": 2,
-          "difficulty": 2,
-          "status": "done",
-          "completed_at": "2026-03-27T12:00:00-06:00",
-          "tags": ["docs", "cli"],
-          "created_at": "2026-03-27T12:00:00-06:00",
-          "created_by": {"role": "agent", "name": "claude-opus"}
-        }
+      "tags": [
+        "docs",
+        "onboarding"
       ],
-      "comments": [],
-      "related_files": [
-        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3},
-        {"path": "docs/cli-cheatsheet.md", "closeness": 4},
-        {"path": "docs/repo-local-data.md", "closeness": 5},
-        {"path": "docs/roadmap.md", "closeness": 3}
-      ]
-    },
-    "docs/cli-cheatsheet.md": {
-      "title": "CLI Cheatsheet",
-      "summary": "Compact agent sequence: discover with authored search, confirm with rg, enrich and compare exact paths, traverse relations, check or claim active work before editing, then review TODO, health, doctor, and analytics signals.",
-      "validity": 5,
-      "clarity": 5,
-      "completeness": 4,
-      "stability": 4,
-      "scores_reviewed": false,
-      "last_reviewed": "2026-08-02",
-      "authority_level": "guideline",
-      "status": "active",
-      "tags": ["docs", "cli", "agent-interface"],
-      "feature_id": "docs",
-      "related_files": [
-        {"path": "README.md", "closeness": 4},
-        {"path": "docs/repo-local-data.md", "closeness": 3},
-        {"path": "src/cli/compare.ts", "closeness": 3, "relation": "doc-for"},
-        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3}
-      ]
-    },
-    "docs/repo-local-data.md": {
-      "title": "Repo-Local Data And Public Repo Hygiene",
-      "summary": "Canonical boundary between reviewable shared metadata and local-only identity, analytics, active-work claims, MCP, and hook configuration. It documents the same-checkout limit of the default work sidecar, portable repo-root resolution, and the UTF-8 write versus BOM-tolerant read contract.",
-      "validity": 5,
-      "clarity": 5,
-      "completeness": 4,
-      "stability": 4,
-      "scores_reviewed": false,
-      "last_reviewed": "2026-08-02",
-      "authority_level": "guideline",
-      "status": "active",
-      "tags": ["docs", "privacy", "local-first", "public-release"],
       "feature_id": "docs",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "README.md", "closeness": 5},
-        {"path": "docs/cli-cheatsheet.md", "closeness": 3},
-        {"path": "docs/roadmap.md", "closeness": 3},
-        {"path": "canopytag/canopy.json", "relation": "doc-for", "closeness": 5}
+        {
+          "path": "docs/canopytag-vs-ripgrep.md",
+          "closeness": 3
+        },
+        {
+          "path": "docs/cli-cheatsheet.md",
+          "closeness": 4
+        },
+        {
+          "path": "docs/repo-local-data.md",
+          "closeness": 5
+        },
+        {
+          "path": "docs/roadmap.md",
+          "closeness": 3
+        }
+      ]
+    },
+    "docs/cli-cheatsheet.md": {
+      "title": "CLI Cheatsheet",
+      "summary": "Compact agent sequence: discover with authored search, confirm with rg, enrich and compare paths, inspect projects and purposeful scope coverage, coordinate active work, then review TODO, health, doctor, and analytics signals.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-08-02",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": [
+        "docs",
+        "cli",
+        "agent-interface"
+      ],
+      "feature_id": "docs",
+      "related_files": [
+        {
+          "path": "README.md",
+          "closeness": 4
+        },
+        {
+          "path": "docs/repo-local-data.md",
+          "closeness": 3
+        },
+        {
+          "path": "src/cli/compare.ts",
+          "closeness": 3,
+          "relation": "doc-for"
+        },
+        {
+          "path": "docs/canopytag-vs-ripgrep.md",
+          "closeness": 3
+        }
+      ]
+    },
+    "docs/repo-local-data.md": {
+      "title": "Repo-Local Data And Public Repo Hygiene",
+      "summary": "Canonical boundary between authored shared metadata, optionally shared provenance-bearing generated proposals, and local-only identity, analytics, active-work, MCP, and hook state. It documents provider non-authority, same-checkout claims, portable roots, and the UTF-8/BOM read contract.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 4,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-08-02",
+      "authority_level": "guideline",
+      "status": "active",
+      "tags": [
+        "docs",
+        "privacy",
+        "local-first",
+        "public-release"
+      ],
+      "feature_id": "docs",
+      "todos": [],
+      "comments": [],
+      "related_files": [
+        {
+          "path": "README.md",
+          "closeness": 5
+        },
+        {
+          "path": "docs/cli-cheatsheet.md",
+          "closeness": 3
+        },
+        {
+          "path": "docs/roadmap.md",
+          "closeness": 3
+        },
+        {
+          "path": "canopytag/canopy.json",
+          "relation": "doc-for",
+          "closeness": 5
+        }
       ]
     },
     "docs/roadmap.md": {
       "title": "Public Roadmap",
-      "summary": "Curated public roadmap covering prerelease status, project HTTP/UI parity, production-scope coverage, task/dependency/resource context, agent navigation, analytics, graph views, structural overlays, and release boundaries.",
+      "summary": "Curated public roadmap covering prerelease status, implemented project UI and purposeful production-scope coverage, completed external-pattern comparison gates, agent navigation, analytics, graph views, structural overlays, and release boundaries.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
@@ -1078,32 +1870,123 @@
       "last_reviewed": "2026-08-20",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["docs", "strategy", "design"],
+      "tags": [
+        "docs",
+        "strategy",
+        "design"
+      ],
       "feature_id": "docs",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "README.md", "closeness": 3},
-        {"path": "docs/repo-local-data.md", "closeness": 3},
-        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3},
-        {"path": "docs/design/document-lifecycle-marks.md", "closeness": 4},
-        {"path": "docs/design/canopy-cartographer-integration.md", "closeness": 5},
-        {"path": "docs/architecture-md-and-codeowners.md", "closeness": 3}
+        {
+          "path": "README.md",
+          "closeness": 3
+        },
+        {
+          "path": "docs/repo-local-data.md",
+          "closeness": 3
+        },
+        {
+          "path": "docs/canopytag-vs-ripgrep.md",
+          "closeness": 3
+        },
+        {
+          "path": "docs/design/document-lifecycle-marks.md",
+          "closeness": 4
+        },
+        {
+          "path": "docs/design/canopy-cartographer-integration.md",
+          "closeness": 5
+        },
+        {
+          "path": "docs/architecture-md-and-codeowners.md",
+          "closeness": 3
+        }
       ]
     },
     "docs/design/project-layer.md": {
       "title": "Project Context And Control Plane",
-      "summary": "Canonical project-layer design: documents the implemented thin CLI/MCP V1 and the accepted target for human/agent task dependencies, milestones, resources, tools, attribution, evidence, production-scope coverage, purposeful graph views, API/UI parity, and a bounded fresh-agent implementation handoff.",
-      "tags": ["design", "project-context", "project-management", "production-scope", "visualization", "schema", "agent-interface"],
+      "summary": "Canonical project-layer design: documents implemented project API/UI parity, authored production-scope coverage, rich project tasks with typed dependencies/resources/receipts, milestones, computed readiness, local claims, directed visualization, and external-pattern adapter gates without surrendering authored truth.",
+      "tags": [
+        "design",
+        "project-context",
+        "project-management",
+        "production-scope",
+        "visualization",
+        "schema",
+        "agent-interface"
+      ],
       "feature_id": "docs",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/cli/projects.ts", "relation": "doc-for", "closeness": 5},
-        {"path": "src/shared/types.ts", "relation": "doc-for", "closeness": 5},
-        {"path": "src/mcp/tools/writes.ts", "relation": "doc-for", "closeness": 4},
-        {"path": "src/backend/lib/agent-manifest.ts", "relation": "doc-for", "closeness": 4},
-        {"path": "docs/roadmap.md", "closeness": 4}
+        {
+          "path": "src/cli/projects.ts",
+          "relation": "doc-for",
+          "closeness": 5
+        },
+        {
+          "path": "src/shared/types.ts",
+          "relation": "doc-for",
+          "closeness": 5
+        },
+        {
+          "path": "src/mcp/tools/writes.ts",
+          "relation": "doc-for",
+          "closeness": 4
+        },
+        {
+          "path": "src/backend/lib/agent-manifest.ts",
+          "relation": "doc-for",
+          "closeness": 4
+        },
+        {
+          "path": "docs/roadmap.md",
+          "closeness": 4
+        },
+        {
+          "path": "docs/design/project-pattern-comparison.md",
+          "closeness": 5
+        }
+      ]
+    },
+    "docs/design/project-pattern-comparison.md": {
+      "title": "Project Pattern Comparison",
+      "summary": "Evidence-led RT-017 comparison of CanopyTag's representative project packet with agent-native dependency tracking, human PM, software-catalog, and JSON Canvas patterns. It classifies adopt/adapt/reject decisions and records export, privacy, API, backup, attribution, review, and undo gates for any future adapter.",
+      "validity": 5,
+      "clarity": 5,
+      "completeness": 4,
+      "stability": 3,
+      "scores_reviewed": false,
+      "last_reviewed": "2026-08-25",
+      "authority_level": "specification",
+      "status": "active",
+      "tags": [
+        "design",
+        "project-context",
+        "project-management",
+        "agent-interface",
+        "human-ui",
+        "interoperability",
+        "privacy"
+      ],
+      "feature_id": "docs",
+      "related_files": [
+        {
+          "path": "docs/design/project-layer.md",
+          "relation": "implements",
+          "closeness": 5
+        },
+        {
+          "path": "docs/roadmap.md",
+          "closeness": 4
+        },
+        {
+          "path": "canopytag/canopy.json",
+          "relation": "doc-for",
+          "closeness": 4
+        }
       ]
     },
     "docs/design/document-lifecycle-marks.md": {
@@ -1117,19 +2000,54 @@
       "last_reviewed": "2026-08-01",
       "authority_level": "blueprint",
       "status": "draft",
-      "tags": ["docs", "design", "schema", "lifecycle", "agent-interface"],
+      "tags": [
+        "docs",
+        "design",
+        "schema",
+        "lifecycle",
+        "agent-interface"
+      ],
       "feature_id": "lifecycle-trust",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "src/shared/types.ts", "closeness": 5, "relation": "doc-for"},
-        {"path": "src/shared/lifecycle.ts", "closeness": 5, "relation": "doc-for"},
-        {"path": "src/cli/context.ts", "closeness": 4, "relation": "doc-for"},
-        {"path": "src/cli/compare.ts", "closeness": 4, "relation": "doc-for"},
-        {"path": "src/cli/health.ts", "closeness": 4, "relation": "doc-for"},
-        {"path": "docs/roadmap.md", "closeness": 4},
-        {"path": "docs/surprise-and-traversal.md", "closeness": 3},
-        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 3}
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 5,
+          "relation": "doc-for"
+        },
+        {
+          "path": "src/shared/lifecycle.ts",
+          "closeness": 5,
+          "relation": "doc-for"
+        },
+        {
+          "path": "src/cli/context.ts",
+          "closeness": 4,
+          "relation": "doc-for"
+        },
+        {
+          "path": "src/cli/compare.ts",
+          "closeness": 4,
+          "relation": "doc-for"
+        },
+        {
+          "path": "src/cli/health.ts",
+          "closeness": 4,
+          "relation": "doc-for"
+        },
+        {
+          "path": "docs/roadmap.md",
+          "closeness": 4
+        },
+        {
+          "path": "docs/surprise-and-traversal.md",
+          "closeness": 3
+        },
+        {
+          "path": "docs/canopytag-vs-ripgrep.md",
+          "closeness": 3
+        }
       ]
     },
     "docs/design/canopy-cartographer-integration.md": {
@@ -1143,15 +2061,32 @@
       "last_reviewed": "2026-06-26",
       "authority_level": "blueprint",
       "status": "draft",
-      "tags": ["design", "cartography", "integration", "retrieval"],
+      "tags": [
+        "design",
+        "cartography",
+        "integration",
+        "retrieval"
+      ],
       "feature_id": "docs",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "docs/roadmap.md", "closeness": 5},
-        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 4},
-        {"path": "docs/surprise-and-traversal.md", "closeness": 4},
-        {"path": "docs/architecture-md-and-codeowners.md", "closeness": 3}
+        {
+          "path": "docs/roadmap.md",
+          "closeness": 5
+        },
+        {
+          "path": "docs/canopytag-vs-ripgrep.md",
+          "closeness": 4
+        },
+        {
+          "path": "docs/surprise-and-traversal.md",
+          "closeness": 4
+        },
+        {
+          "path": "docs/architecture-md-and-codeowners.md",
+          "closeness": 3
+        }
       ]
     },
     "docs/canopytag-vs-ripgrep.md": {
@@ -1165,14 +2100,27 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["docs", "strategy", "retrieval"],
+      "tags": [
+        "docs",
+        "strategy",
+        "retrieval"
+      ],
       "feature_id": "docs",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "docs/architecture-md-and-codeowners.md", "closeness": 4},
-        {"path": "docs/roadmap.md", "closeness": 3},
-        {"path": "README.md", "closeness": 3}
+        {
+          "path": "docs/architecture-md-and-codeowners.md",
+          "closeness": 4
+        },
+        {
+          "path": "docs/roadmap.md",
+          "closeness": 3
+        },
+        {
+          "path": "README.md",
+          "closeness": 3
+        }
       ]
     },
     "docs/architecture-md-and-codeowners.md": {
@@ -1186,13 +2134,22 @@
       "last_reviewed": "2026-03-27",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["docs", "strategy"],
+      "tags": [
+        "docs",
+        "strategy"
+      ],
       "feature_id": "docs",
       "todos": [],
       "comments": [],
       "related_files": [
-        {"path": "docs/canopytag-vs-ripgrep.md", "closeness": 4},
-        {"path": "docs/roadmap.md", "closeness": 3}
+        {
+          "path": "docs/canopytag-vs-ripgrep.md",
+          "closeness": 4
+        },
+        {
+          "path": "docs/roadmap.md",
+          "closeness": 3
+        }
       ]
     },
     "docs/design/agent-analytics.md": {
@@ -1200,7 +2157,12 @@
       "summary": "Approved design and privacy contract for local-only agent activity heat across the hook, MCP-side increments, storage, CLI, and UI. The ignored sidecar is not MCP-exposed, is read-only through the loopback UI API, and hook installation writes a machine-specific absolute path that must remain uncommitted or be reviewed before sharing.",
       "authority_level": "blueprint",
       "status": "active",
-      "tags": ["design", "analytics", "privacy", "local-first"],
+      "tags": [
+        "design",
+        "analytics",
+        "privacy",
+        "local-first"
+      ],
       "feature_id": "agent-analytics"
     },
     "docs/surprise-and-traversal.md": {
@@ -1208,36 +2170,65 @@
       "summary": "Design note for routing across feature boundaries and recording expectation violations that filenames cannot convey. It prioritizes lightweight gotchas and drift signals, explicitly rejects a probabilistic surprise engine, and leaves several traversal questions open.",
       "authority_level": "blueprint",
       "status": "draft",
-      "tags": ["design", "retrieval", "graph-traversal", "agent-interface"],
+      "tags": [
+        "design",
+        "retrieval",
+        "graph-traversal",
+        "agent-interface"
+      ],
       "feature_id": "docs"
     },
     "src/cli/analytics.ts": {
       "title": "Local Analytics CLI",
       "summary": "Agent and human command for hot-file activity, navigation trends, and explicit analytics clearing or date pruning. It reads only the local sidecar and recalculates totals after pruning; its output is behavioral heat, not semantic relevance.",
-      "tags": ["cli", "analytics", "privacy"],
+      "tags": [
+        "cli",
+        "analytics",
+        "privacy"
+      ],
       "feature_id": "agent-analytics",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "docs/design/agent-analytics.md", "relation": "implements", "closeness": 4}
+        {
+          "path": "docs/design/agent-analytics.md",
+          "relation": "implements",
+          "closeness": 4
+        }
       ]
     },
     "hooks/canopytag-analytics.mjs": {
       "title": "Claude Code Local Analytics Hook",
       "summary": "Optional Claude Code PostToolUse adapter that records local file touches and search-result heat without storing query strings. It must fail silently and never block agent work; concurrent writers may undercount because analytics are not an audit log.",
-      "tags": ["analytics", "privacy", "integration"],
+      "tags": [
+        "analytics",
+        "privacy",
+        "integration"
+      ],
       "feature_id": "agent-analytics",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "docs/design/agent-analytics.md", "relation": "implements", "closeness": 5},
-        {"path": "src/cli/hook.ts", "closeness": 4}
+        {
+          "path": "docs/design/agent-analytics.md",
+          "relation": "implements",
+          "closeness": 5
+        },
+        {
+          "path": "src/cli/hook.ts",
+          "closeness": 4
+        }
       ]
     },
     "src/cli/hook.ts": {
       "title": "Claude Analytics Hook Installer",
       "summary": "Installs or upgrades CanopyTag's PostToolUse analytics hook in .claude/settings.json without clobbering unrelated settings or duplicating entries. Generated commands use this checkout's absolute hook path, so output warns that local configuration needs review before public sharing.",
-      "tags": ["cli", "analytics", "integration", "privacy"],
+      "tags": [
+        "cli",
+        "analytics",
+        "integration",
+        "privacy"
+      ],
       "feature_id": "agent-analytics",
       "authority_level": "specification",
       "status": "active"
@@ -1245,7 +2236,11 @@
     "src/cli/mcp.ts": {
       "title": "Project-Local MCP Configuration Scaffolder",
       "summary": "Merges a CanopyTag server entry into an existing .mcp.json while preserving unrelated servers, refuses to replace a differing CanopyTag entry without force, and supports a print-only preview. Generated configuration contains local absolute paths.",
-      "tags": ["cli", "mcp", "integration"],
+      "tags": [
+        "cli",
+        "mcp",
+        "integration"
+      ],
       "feature_id": "mcp-server",
       "authority_level": "specification",
       "status": "active"
@@ -1253,7 +2248,10 @@
     "src/cli/tags.ts": {
       "title": "Tag Vocabulary CLI",
       "summary": "Exposes live in-use tag counts, substring filtering, and soft declared-vocabulary health checks through the shared tag hygiene engine. Its search filters tags already present on cards; it is not fuzzy catalogue retrieval.",
-      "tags": ["cli", "retrieval"],
+      "tags": [
+        "cli",
+        "retrieval"
+      ],
       "feature_id": "cli-tools",
       "authority_level": "specification",
       "status": "active"
@@ -1269,16 +2267,42 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["cli", "retrieval"],
+      "tags": [
+        "cli",
+        "retrieval"
+      ],
       "feature_id": "cli-tools",
       "related_files": [
-        {"path": "src/shared/types.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/backend/lib/git-info.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/cli/stats.ts", "closeness": 4},
-        {"path": "src/cli/ls.ts", "closeness": 4},
-        {"path": "src/cli/query.ts", "closeness": 4},
-        {"path": "src/cli/compare.ts", "closeness": 4},
-        {"path": "src/mcp/tools/reads.ts", "closeness": 4}
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/backend/lib/git-info.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/cli/stats.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/cli/ls.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/cli/query.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/cli/compare.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/mcp/tools/reads.ts",
+          "closeness": 4
+        }
       ]
     },
     "src/cli/context.ts": {
@@ -1292,12 +2316,26 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["cli", "agent-interface"],
+      "tags": [
+        "cli",
+        "agent-interface"
+      ],
       "feature_id": "cli-tools",
       "related_files": [
-        {"path": "src/shared/types.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/cli/shared.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/cli/query.ts", "closeness": 3}
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/cli/shared.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/cli/query.ts",
+          "closeness": 3
+        }
       ]
     },
     "src/cli/compare.ts": {
@@ -1311,19 +2349,40 @@
       "last_reviewed": "2026-04-25",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["cli", "agent-interface", "quality"],
+      "tags": [
+        "cli",
+        "agent-interface",
+        "quality"
+      ],
       "feature_id": "cli-tools",
       "related_files": [
-        {"path": "src/cli/shared.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/cli/context.ts", "closeness": 4},
-        {"path": "src/cli/health.ts", "closeness": 4},
-        {"path": "src/mcp/tools/reads.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "docs/cli-cheatsheet.md", "closeness": 3}
+        {
+          "path": "src/cli/shared.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/cli/context.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/cli/health.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/mcp/tools/reads.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "docs/cli-cheatsheet.md",
+          "closeness": 3
+        }
       ]
     },
     "src/cli/coverage.ts": {
-      "title": "canopytag coverage — Annotation Coverage & Orphan Detection",
-      "summary": "Reports what percentage of repo files are annotated, groups unannotated files by kind, and detects orphaned canopy entries. Exposes both an unfiltered tracked-file inventory for maintenance checks and coverage discovery with .ctagignore and Canopy-directory filtering. buildCoverage performs the pure set-diff computation; optional --detail shows field completeness. Also registered as canopytag_coverage MCP tool.",
+      "title": "canopytag coverage — Purposeful Scope Coverage",
+      "summary": "Leads with named authored scope coverage, partitions file and directory targets into annotated, unannotated, missing, or wrong-kind states, and keeps whole-repository percentage informational. Optional generated scope candidates retain provider provenance and freshness and never affect authored counts. Tracked-file discovery, ignore filtering, orphans, and detail mode remain available.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
@@ -1332,7 +2391,10 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["cli", "agent-interface"],
+      "tags": [
+        "cli",
+        "agent-interface"
+      ],
       "feature_id": "cli-tools",
       "todos": [
         {
@@ -1341,20 +2403,36 @@
           "priority": 2,
           "difficulty": 2,
           "status": "open",
-          "tags": ["retrieval", "agent-interface"],
+          "tags": [
+            "retrieval",
+            "agent-interface"
+          ],
           "created_at": "2026-08-01T21:44:14.974Z",
-          "created_by": {"role": "agent", "name": "codex"}
+          "created_by": {
+            "role": "agent",
+            "name": "codex"
+          }
         }
       ],
       "related_files": [
-        {"path": "src/cli/shared.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/mcp/tools/reads.ts", "closeness": 4},
-        {"path": "src/cli/stats.ts", "closeness": 3}
+        {
+          "path": "src/cli/shared.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/mcp/tools/reads.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/cli/stats.ts",
+          "closeness": 3
+        }
       ]
     },
     "src/cli/doctor.ts": {
       "title": "canopytag doctor — Deterministic Maintenance Checks",
-      "summary": "Consolidates objective CanopyTag maintenance evidence: malformed nested metadata, unsafe or missing paths, directory/untracked/orphaned annotation cards, duplicate TODO/comment IDs, Git-backed review drift, feature canonical-file health, portable repo-root usage, and pending agent review. The pure inspection layer is shared by bounded text/JSON CLI output and the read-only MCP tool; it never invents or rewrites semantic metadata.",
+      "summary": "Consolidates objective CanopyTag maintenance evidence including authored scope shape, project task/milestone identity, dependency references and cycles, typed resources, safe owned/excluded paths, retained completion receipts, other malformed metadata, missing references, ID collisions, review drift, portable roots, and pending review. Its pure bounded inspection layer never invents or rewrites semantic metadata.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -1363,13 +2441,34 @@
       "last_reviewed": "2026-08-01",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["cli", "maintenance", "trust", "agent-interface", "local-first"],
+      "tags": [
+        "cli",
+        "maintenance",
+        "trust",
+        "agent-interface",
+        "local-first"
+      ],
       "feature_id": "cli-tools",
       "related_files": [
-        {"path": "src/cli/coverage.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/cli/shared.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/backend/lib/agent-manifest.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/mcp/tools/reads.ts", "closeness": 4}
+        {
+          "path": "src/cli/coverage.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/cli/shared.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/backend/lib/agent-manifest.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/mcp/tools/reads.ts",
+          "closeness": 4
+        }
       ]
     },
     "src/cli/graph.ts": {
@@ -1383,12 +2482,25 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["cli", "graph-traversal"],
+      "tags": [
+        "cli",
+        "graph-traversal"
+      ],
       "feature_id": "cli-tools",
       "related_files": [
-        {"path": "src/shared/types.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/mcp/tools/reads.ts", "closeness": 4},
-        {"path": "src/cli/query.ts", "closeness": 3}
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/mcp/tools/reads.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/cli/query.ts",
+          "closeness": 3
+        }
       ]
     },
     "src/cli/init.ts": {
@@ -1402,11 +2514,22 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["cli", "onboarding"],
+      "tags": [
+        "cli",
+        "onboarding"
+      ],
       "feature_id": "cli-tools",
       "related_files": [
-        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/cli/shared.ts", "closeness": 4, "relation": "fed-by"}
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/cli/shared.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        }
       ]
     },
     "src/mcp/server.ts": {
@@ -1420,25 +2543,41 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["mcp", "agent-interface"],
+      "tags": [
+        "mcp",
+        "agent-interface"
+      ],
       "feature_id": "mcp-server",
       "related_files": [
-        {"path": "src/mcp/tools/reads.ts", "closeness": 5},
-        {"path": "src/mcp/tools/writes-registration.ts", "closeness": 5},
-        {"path": "src/mcp/tools/active-work.ts", "closeness": 5}
+        {
+          "path": "src/mcp/tools/reads.ts",
+          "closeness": 5
+        },
+        {
+          "path": "src/mcp/tools/writes-registration.ts",
+          "closeness": 5
+        },
+        {
+          "path": "src/mcp/tools/active-work.ts",
+          "closeness": 5
+        }
       ]
     },
     "src/mcp/tools/agent-manifest.ts": {
       "title": "Agent Manifest Review Report",
       "summary": "Renders pending or historical agent-review entries with proposed fields, staged-versus-applied state, freshness suggestions, TODOs, rationale, and outcomes. File and status filters are exact, and output ordering is deterministic by date then ID.",
-      "tags": ["mcp", "review-feed", "governance"],
+      "tags": [
+        "mcp",
+        "review-feed",
+        "governance"
+      ],
       "feature_id": "activity-review",
       "authority_level": "specification",
       "status": "active"
     },
     "src/mcp/tools/reads.ts": {
       "title": "MCP Read Tools — Agent Query Interface",
-      "summary": "Registers 15 read-only MCP tools spanning orientation, projects, authored search, exact-file trust comparison, scoped TODOs, health, tag hygiene, activity review, relationship traversal, coverage, and deterministic doctor checks. It reuses CLI builders and wires analytics tracking for query/context access.",
+      "summary": "Registers 15 read-only MCP tools spanning orientation, computed project task readiness and execution packets, authored search, exact-file trust comparison, scoped TODOs, health, tag hygiene, activity review, relationship traversal, purposeful authored coverage, and deterministic doctor checks. Project reads derive local claimant context; coverage reads non-counting provider proposals.",
       "validity": 5,
       "clarity": 4,
       "completeness": 5,
@@ -1447,7 +2586,10 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["mcp", "agent-interface"],
+      "tags": [
+        "mcp",
+        "agent-interface"
+      ],
       "feature_id": "mcp-server",
       "comments": [
         {
@@ -1456,41 +2598,94 @@
           "type": "note",
           "confidence": 5,
           "created_at": "2026-04-25T00:00:00Z",
-          "author": {"role": "agent", "name": "codex"}
+          "author": {
+            "role": "agent",
+            "name": "codex"
+          }
         }
       ],
       "related_files": [
-        {"path": "src/mcp/server.ts", "closeness": 5},
-        {"path": "src/cli/shared.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/backend/lib/canopy.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/cli/compare.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/cli/coverage.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/cli/doctor.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/cli/graph.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/backend/lib/analytics.ts", "closeness": 3}
+        {
+          "path": "src/mcp/server.ts",
+          "closeness": 5
+        },
+        {
+          "path": "src/cli/shared.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/cli/compare.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/cli/coverage.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/cli/doctor.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/cli/graph.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/backend/lib/analytics.ts",
+          "closeness": 3
+        }
       ]
     },
     "src/mcp/tools/active-work.ts": {
       "title": "MCP Active Work Coordination Tools",
       "summary": "Registers agent-first tools to query, claim, renew, and release local expiring work. It shares the CLI claim engine, emits snake-case JSON, links TODOs without mutating them, reports conflicts explicitly, and keeps all coordination offline in the ignored target-repo sidecar.",
-      "tags": ["mcp", "coordination", "agent-interface", "local-first"],
+      "tags": [
+        "mcp",
+        "coordination",
+        "agent-interface",
+        "local-first"
+      ],
       "feature_id": "mcp-server",
       "authority_level": "specification",
       "status": "active",
       "related_files": [
-        {"path": "src/backend/lib/active-work.ts", "relation": "fed-by", "closeness": 5},
-        {"path": "src/mcp/server.ts", "closeness": 5}
+        {
+          "path": "src/backend/lib/active-work.ts",
+          "relation": "fed-by",
+          "closeness": 5
+        },
+        {
+          "path": "src/mcp/server.ts",
+          "closeness": 5
+        }
       ]
     },
     "src/mcp/__tests__/active-work.test.ts": {
       "title": "MCP Active Work Surface Contract",
       "summary": "Pins the four bounded MCP coordination tool names so check-in, query, renewal, and check-out remain discoverable to agent harnesses.",
-      "tags": ["mcp", "coordination", "tests"],
+      "tags": [
+        "mcp",
+        "coordination",
+        "tests"
+      ],
       "feature_id": "mcp-server",
       "authority_level": "guideline",
       "status": "active",
       "related_files": [
-        {"path": "src/mcp/tools/active-work.ts", "relation": "test-of", "closeness": 5}
+        {
+          "path": "src/mcp/tools/active-work.ts",
+          "relation": "test-of",
+          "closeness": 5
+        }
       ]
     },
     "src/mcp/tools/writes.ts": {
@@ -1504,26 +2699,32 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["mcp", "persistence"],
-      "feature_id": "mcp-server",
-      "todos": [
-        {
-          "id": "RT-009",
-          "text": "AGENT_AUTHOR is hardcoded to { role: 'agent', name: 'claude' }. Should be dynamic to support non-Claude agents writing annotations.",
-          "priority": 3,
-          "difficulty": 2,
-          "status": "done",
-          "tags": ["extensibility"],
-          "created_at": "2026-04-07T00:00:00-06:00",
-          "completed_at": "2026-04-24T19:15:00.000Z",
-          "created_by": {"role": "agent", "name": "claude-opus"}
-        }
+      "tags": [
+        "mcp",
+        "persistence"
       ],
+      "feature_id": "mcp-server",
+      "todos": [],
       "related_files": [
-        {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/mcp/tools/tags.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/mcp/tools/writes-registration.ts", "closeness": 5},
-        {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"}
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/mcp/tools/tags.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/mcp/tools/writes-registration.ts",
+          "closeness": 5
+        },
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        }
       ]
     },
     "src/mcp/tools/writes-registration.ts": {
@@ -1537,11 +2738,20 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["mcp"],
+      "tags": [
+        "mcp"
+      ],
       "feature_id": "mcp-server",
       "related_files": [
-        {"path": "src/mcp/tools/writes.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/mcp/server.ts", "closeness": 5}
+        {
+          "path": "src/mcp/tools/writes.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/mcp/server.ts",
+          "closeness": 5
+        }
       ]
     },
     "src/mcp/tools/tags.ts": {
@@ -1555,17 +2765,30 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["mcp", "schema"],
+      "tags": [
+        "mcp",
+        "schema"
+      ],
       "feature_id": "mcp-server",
       "related_files": [
-        {"path": "src/mcp/tools/writes.ts", "closeness": 5},
-        {"path": "src/mcp/tools/reads.ts", "closeness": 4},
-        {"path": "src/shared/types.ts", "closeness": 3, "relation": "fed-by"}
+        {
+          "path": "src/mcp/tools/writes.ts",
+          "closeness": 5
+        },
+        {
+          "path": "src/mcp/tools/reads.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 3,
+          "relation": "fed-by"
+        }
       ]
     },
     "src/backend/server.ts": {
       "title": "Fastify Web Server — Bootstrap & Route Registration",
-      "summary": "Web UI backend bootstrap: selects the repository, loads CanopyTag metadata, registers API routes, and runs the archive sweep. It binds to loopback by default; non-loopback exposure must be explicit and is unauthenticated.",
+      "summary": "Web UI backend bootstrap: selects the repository, loads CanopyTag metadata, registers file, project, review, and supporting API routes, and runs the archive sweep. It binds to loopback by default; non-loopback exposure must be explicit and is unauthenticated.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
@@ -1574,15 +2797,43 @@
       "last_reviewed": "2026-08-01",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["api", "security"],
+      "tags": [
+        "api",
+        "security"
+      ],
       "feature_id": "web-ui",
       "related_files": [
-        {"path": "src/backend/lib/canopy.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/backend/lib/network.ts", "closeness": 5, "relation": "fed-by"},
-        {"path": "src/backend/routes/file.ts", "closeness": 4},
-        {"path": "src/backend/routes/tree.ts", "closeness": 4},
-        {"path": "src/backend/lib/tree-walker.ts", "closeness": 3, "relation": "fed-by"},
-        {"path": "src/frontend/App.tsx", "closeness": 3}
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/backend/lib/network.ts",
+          "closeness": 5,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/backend/routes/file.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/backend/routes/projects.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/backend/routes/tree.ts",
+          "closeness": 4
+        },
+        {
+          "path": "src/backend/lib/tree-walker.ts",
+          "closeness": 3,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/frontend/App.tsx",
+          "closeness": 3
+        }
       ]
     },
     "src/backend/lib/network.ts": {
@@ -1596,12 +2847,24 @@
       "last_reviewed": "2026-08-01",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["api", "security"],
+      "tags": [
+        "api",
+        "security"
+      ],
       "feature_id": "web-ui",
       "related_files": [
-        {"path": "src/backend/server.ts", "closeness": 5},
-        {"path": "src/backend/__tests__/network.test.ts", "closeness": 5},
-        {"path": "README.md", "closeness": 4}
+        {
+          "path": "src/backend/server.ts",
+          "closeness": 5
+        },
+        {
+          "path": "src/backend/__tests__/network.test.ts",
+          "closeness": 5
+        },
+        {
+          "path": "README.md",
+          "closeness": 4
+        }
       ]
     },
     "src/backend/__tests__/network.test.ts": {
@@ -1615,11 +2878,23 @@
       "last_reviewed": "2026-08-01",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["api", "security", "tests"],
+      "tags": [
+        "api",
+        "security",
+        "tests"
+      ],
       "feature_id": "web-ui",
       "related_files": [
-        {"path": "src/backend/lib/network.ts", "closeness": 5, "relation": "test-of"},
-        {"path": "src/backend/server.ts", "closeness": 4, "relation": "test-of"}
+        {
+          "path": "src/backend/lib/network.ts",
+          "closeness": 5,
+          "relation": "test-of"
+        },
+        {
+          "path": "src/backend/server.ts",
+          "closeness": 4,
+          "relation": "test-of"
+        }
       ]
     },
     "src/backend/lib/analytics.ts": {
@@ -1633,13 +2908,33 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "specification",
       "status": "active",
-      "tags": ["analytics", "persistence", "privacy", "local-first"],
+      "tags": [
+        "analytics",
+        "persistence",
+        "privacy",
+        "local-first"
+      ],
       "feature_id": "agent-analytics",
       "related_files": [
-        {"path": "docs/design/agent-analytics.md", "relation": "implements", "closeness": 5},
-        {"path": "src/shared/types.ts", "closeness": 4, "relation": "fed-by"},
-        {"path": "src/mcp/tools/reads.ts", "closeness": 3},
-        {"path": "src/cli/shared.ts", "closeness": 3, "relation": "fed-by"}
+        {
+          "path": "docs/design/agent-analytics.md",
+          "relation": "implements",
+          "closeness": 5
+        },
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 4,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/mcp/tools/reads.ts",
+          "closeness": 3
+        },
+        {
+          "path": "src/cli/shared.ts",
+          "closeness": 3,
+          "relation": "fed-by"
+        }
       ]
     },
     "src/backend/lib/git-info.ts": {
@@ -1653,10 +2948,16 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["trust", "retrieval"],
+      "tags": [
+        "trust",
+        "retrieval"
+      ],
       "feature_id": "annotation-engine",
       "related_files": [
-        {"path": "src/cli/shared.ts", "closeness": 4}
+        {
+          "path": "src/cli/shared.ts",
+          "closeness": 4
+        }
       ]
     },
     "src/backend/lib/tree-walker.ts": {
@@ -1670,12 +2971,25 @@
       "last_reviewed": "2026-04-07",
       "authority_level": "guideline",
       "status": "active",
-      "tags": ["frontend", "api"],
+      "tags": [
+        "frontend",
+        "api"
+      ],
       "feature_id": "web-ui",
       "related_files": [
-        {"path": "src/backend/routes/tree.ts", "closeness": 5},
-        {"path": "src/shared/types.ts", "closeness": 3, "relation": "fed-by"},
-        {"path": "src/cli/coverage.ts", "closeness": 2}
+        {
+          "path": "src/backend/routes/tree.ts",
+          "closeness": 5
+        },
+        {
+          "path": "src/shared/types.ts",
+          "closeness": 3,
+          "relation": "fed-by"
+        },
+        {
+          "path": "src/cli/coverage.ts",
+          "closeness": 2
+        }
       ]
     }
   },
@@ -1702,46 +3016,217 @@
       "summary": "Cross-surface contracts and deterministic transformations for schema, case conversion, lifecycle interpretation, and bounded authored catalogue search. These modules define behavior reused by CLI, MCP, backend, and UI without owning source topology."
     }
   },
+  "scope_sets": {
+    "production_candidate": {
+      "name": "CanopyTag production candidate",
+      "description": "Release-facing entrypoints, core authored-context engines, human/agent access surfaces, and canonical operating guidance that should remain fully routable before a public release.",
+      "members": [
+        {
+          "path": "package.json",
+          "kind": "file",
+          "role": "resource"
+        },
+        {
+          "path": "bin/canopytag.mjs",
+          "kind": "file",
+          "role": "entrypoint"
+        },
+        {
+          "path": "README.md",
+          "kind": "file",
+          "role": "canonical_document"
+        },
+        {
+          "path": "docs/cli-cheatsheet.md",
+          "kind": "file",
+          "role": "canonical_document"
+        },
+        {
+          "path": "docs/repo-local-data.md",
+          "kind": "file",
+          "role": "canonical_document"
+        },
+        {
+          "path": "docs/design/project-layer.md",
+          "kind": "file",
+          "role": "canonical_document"
+        },
+        {
+          "path": "src/shared/types.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/shared/project-tasks.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/shared/case-transform.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/backend/lib/canopy.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/backend/lib/scope-proposals.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/backend/server.ts",
+          "kind": "file",
+          "role": "entrypoint"
+        },
+        {
+          "path": "src/cli/stats.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/cli/query.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/cli/context.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/cli/compare.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/cli/coverage.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/cli/doctor.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/cli/projects.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/mcp/server.ts",
+          "kind": "file",
+          "role": "entrypoint"
+        },
+        {
+          "path": "src/mcp/tools/reads.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/mcp/tools/writes-registration.ts",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/frontend/App.tsx",
+          "kind": "file",
+          "role": "entrypoint"
+        },
+        {
+          "path": "src/frontend/components/TableView.tsx",
+          "kind": "file",
+          "role": "component"
+        },
+        {
+          "path": "src/cli",
+          "kind": "directory",
+          "role": "component"
+        },
+        {
+          "path": "src/mcp",
+          "kind": "directory",
+          "role": "component"
+        },
+        {
+          "path": "docs",
+          "kind": "directory",
+          "role": "canonical_document"
+        }
+      ]
+    }
+  },
   "features": {
     "annotation-engine": {
       "name": "Annotation Engine",
       "description": "Authored metadata model and persistence boundary for summaries, trust, lifecycle, relationships, TODOs, comments, features, archives, and merged reads. Generated cartography should remain in provenance-rich sidecars rather than silently becoming canonical metadata.",
-      "tags": ["schema", "persistence", "trust"],
+      "tags": [
+        "schema",
+        "persistence",
+        "trust"
+      ],
       "status": "active",
       "canonical_file": "src/shared/types.ts"
     },
     "cli-tools": {
       "name": "Agent-Facing CLI",
       "description": "Local command surface for orientation, bounded authored catalogue search, comparison, health, maintenance, TODOs, coverage, analytics, MCP setup, hooks, and advisory active-work claims. Commands verify repo-local metadata without requiring the web server, and MCP reuses several engines.",
-      "tags": ["cli", "agent-interface", "retrieval"],
+      "tags": [
+        "cli",
+        "agent-interface",
+        "retrieval"
+      ],
       "status": "active",
       "canonical_file": "bin/canopytag.mjs"
     },
     "web-ui": {
       "name": "Web UI",
       "description": "React and Fastify interface for browsing and editing annotations, tables, authored graphs, local analytics, activity review, profiles, and repository selection. Its unauthenticated local-repository backend must remain loopback-only unless exposure is explicit.",
-      "tags": ["frontend", "api", "editing", "security"],
+      "tags": [
+        "frontend",
+        "api",
+        "editing",
+        "security"
+      ],
       "status": "active",
       "canonical_file": "src/frontend/App.tsx"
     },
     "mcp-server": {
       "name": "MCP Server",
       "description": "Local stdio adapter exposing catalogue reads, semantic relationship traversal, attributed mutations, staged suggestions, activity review, and expiring work coordination to compatible agents. It reuses shared engines instead of becoming a second intelligence store or orchestrator.",
-      "tags": ["mcp", "agent-interface", "review-feed", "retrieval"],
+      "tags": [
+        "mcp",
+        "agent-interface",
+        "review-feed",
+        "retrieval"
+      ],
       "status": "active",
       "canonical_file": "src/mcp/server.ts"
     },
     "docs": {
       "name": "Documentation And Positioning",
       "description": "Public usage, contributor contracts, product positioning, lifecycle designs, and roadmap. README serves users, AGENTS governs contributors, and blueprint or draft design notes must not silently outrank current implementation.",
-      "tags": ["docs", "strategy", "governance", "onboarding"],
+      "tags": [
+        "docs",
+        "strategy",
+        "governance",
+        "onboarding"
+      ],
       "status": "active",
       "canonical_file": "README.md"
     },
     "lifecycle-trust": {
       "name": "Lifecycle And Trust Signals",
       "description": "Optional trust modifiers for temporary, provisional, superseded, condensation, and review-needed context. Read paths preserve and warn on authored marks without replacing authority, freshness, quality scores, or explicit human resolution.",
-      "tags": ["lifecycle", "trust", "schema", "agent-interface"],
+      "tags": [
+        "lifecycle",
+        "trust",
+        "schema",
+        "agent-interface"
+      ],
       "status": "active",
       "canonical_file": "docs/design/document-lifecycle-marks.md",
       "open_questions": [
@@ -1752,7 +3237,12 @@
     "agent-analytics": {
       "name": "Local Agent Analytics",
       "description": "Optional local activity heat from client hooks and CanopyTag queries. It helps humans inspect navigation patterns without uploading source or storing query strings; behavioral frequency is not treated as semantic authority.",
-      "tags": ["analytics", "privacy", "local-first", "agent-interface"],
+      "tags": [
+        "analytics",
+        "privacy",
+        "local-first",
+        "agent-interface"
+      ],
       "status": "active",
       "canonical_file": "src/backend/lib/analytics.ts",
       "open_questions": [
@@ -1763,7 +3253,12 @@
     "activity-review": {
       "name": "Agent Activity Review",
       "description": "Attributed review feed for direct agent writes and non-canonical suggestions. Humans can agree, fix, or reject entries with undo context, separating immediately useful agent work from later confidence and governance decisions.",
-      "tags": ["review-feed", "agent-interface", "governance", "editing"],
+      "tags": [
+        "review-feed",
+        "agent-interface",
+        "governance",
+        "editing"
+      ],
       "status": "active",
       "canonical_file": "src/backend/lib/agent-manifest.ts",
       "open_questions": [
@@ -1777,27 +3272,72 @@
       "name": "Project context and accountability control plane",
       "description": "Evolve the implemented thin project umbrella into a usable human/agent context spine connecting objectives, tasks, dependencies, milestones, resources, tools, documentation, production scopes, attribution, actions, review, and evidence without becoming a monolithic scheduler or copying generated topology into authored truth.",
       "status": "active",
-      "owners": [{"role": "human", "name": "jeff"}],
-      "feature_ids": ["annotation-engine", "cli-tools", "mcp-server", "activity-review", "docs"],
+      "owners": [
+        {
+          "role": "human",
+          "name": "jeff"
+        }
+      ],
+      "feature_ids": [
+        "annotation-engine",
+        "cli-tools",
+        "mcp-server",
+        "activity-review",
+        "docs"
+      ],
       "files": [
         "docs/design/project-layer.md",
+        "docs/design/project-pattern-comparison.md",
+        "docs/repo-local-data.md",
         "src/shared/types.ts",
+        "src/shared/project-tasks.ts",
+        "src/shared/project-tasks.test.ts",
+        "src/shared/case-transform.ts",
         "src/backend/lib/canopy.ts",
+        "src/backend/lib/scope-proposals.ts",
         "src/backend/lib/agent-manifest.ts",
+        "src/backend/__tests__/scope-proposals.test.ts",
+        "src/cli/coverage.ts",
+        "src/cli/__tests__/coverage.test.ts",
         "src/cli/projects.ts",
         "src/cli/query.ts",
         "src/cli/context.ts",
         "src/cli/todos.ts",
         "src/cli/doctor.ts",
+        "src/cli/__tests__/doctor.test.ts",
         "src/mcp/tools/reads.ts",
         "src/mcp/tools/writes.ts",
         "src/mcp/tools/writes-registration.ts",
         "src/backend/server.ts",
+        "src/backend/routes/projects.ts",
         "src/frontend/lib/api.ts",
         "src/frontend/stores/workspace.ts",
         "src/frontend/components/TableView.tsx",
+        "src/frontend/components/ProjectLane.tsx",
+        "src/frontend/components/GraphView.tsx",
+        "src/frontend/components/GraphView.test.ts",
         "src/frontend/components/FileDetail.tsx",
         "docs/roadmap.md"
+      ],
+      "milestones": [
+        {
+          "id": "MS-001",
+          "name": "Agent-readable execution packet",
+          "description": "A project task can carry deterministic readiness, resources, safe edit scope, and retained completion evidence without changing file TODOs.",
+          "completed_at": "2026-08-21T21:02:00.000Z"
+        },
+        {
+          "id": "MS-002",
+          "name": "Directed human execution view",
+          "description": "One bounded dependency/timeline view explains project ordering, resources, evidence, and saved layout without becoming a generic graph canvas.",
+          "completed_at": "2026-08-25T03:39:00.000Z"
+        },
+        {
+          "id": "MS-003",
+          "name": "External pattern comparison",
+          "description": "One representative project is compared against bounded agent, PM, catalogue, and canvas references before adapter decisions.",
+          "completed_at": "2026-08-25T05:18:25.736Z"
+        }
       ],
       "todos": [
         {
@@ -1806,69 +3346,465 @@
           "priority": 3,
           "difficulty": 2,
           "status": "done",
-          "tags": ["project-context", "ui", "dogfood"],
+          "tags": [
+            "project-context",
+            "ui",
+            "dogfood"
+          ],
           "created_at": "2026-08-20T22:45:00Z",
           "completed_at": "2026-08-21T00:45:00Z",
-          "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "project-layer-2026-08-20"}
+          "created_by": {
+            "role": "agent",
+            "name": "ChatGPT 5.6 Sol",
+            "session": "project-layer-2026-08-20"
+          }
         },
         {
           "id": "RT-013",
           "text": "Implement project HTTP API and human UI parity before expanding the persisted schema: project lane/detail, file backlinks including unannotated linked files, inherited project tasks, bounded task presentation, safe mutation, and matching CLI/MCP/API/UI counts.",
           "priority": 1,
           "difficulty": 4,
-          "status": "open",
-          "tags": ["project-context", "api", "ui", "parity", "human-review"],
+          "status": "done",
+          "tags": [
+            "project-context",
+            "api",
+            "ui",
+            "parity",
+            "human-review"
+          ],
           "created_at": "2026-08-21T00:45:00Z",
-          "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "canopytag-control-plane-handoff-2026-08-20"}
+          "completed_at": "2026-08-21T17:45:00Z",
+          "created_by": {
+            "role": "agent",
+            "name": "ChatGPT 5.6 Sol",
+            "session": "canopytag-control-plane-handoff-2026-08-20"
+          }
         },
         {
           "id": "RT-014",
           "text": "Design named authored scope sets such as production_candidate, alpha_critical, and supported_research; report meaningful coverage per scope, accept provenance-bearing generated membership proposals, and treat supported directory subjects separately from missing files.",
           "priority": 1,
           "difficulty": 4,
-          "status": "open",
-          "tags": ["production-scope", "coverage", "cartography", "doctor"],
+          "status": "done",
+          "tags": [
+            "production-scope",
+            "coverage",
+            "cartography",
+            "doctor"
+          ],
           "created_at": "2026-08-21T00:45:00Z",
-          "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "canopytag-control-plane-handoff-2026-08-20"}
+          "completed_at": "2026-08-21T18:15:38Z",
+          "created_by": {
+            "role": "agent",
+            "name": "ChatGPT 5.6 Sol",
+            "session": "canopytag-control-plane-handoff-2026-08-20"
+          }
         },
         {
           "id": "RT-015",
           "text": "Specify the smallest backward-compatible Task, dependency, milestone, ResourceRef, and ActionReceipt contract needed for fresh-agent handoffs, computed readiness, owned paths/exclusions, tools, documents, inputs/outputs, validation, attribution, and retained completion evidence.",
           "priority": 2,
           "difficulty": 5,
-          "status": "open",
-          "tags": ["project-management", "task-graph", "dependencies", "resources", "accountability"],
+          "status": "done",
+          "why_now": "RT-013 made projects visible to humans and agents and RT-014 established purposeful production coverage; the next leverage point is making one project packet executable without reconstructing conversation history.",
+          "milestone_id": "MS-001",
+          "dependencies": [
+            {
+              "type": "depends_on",
+              "task_id": "RT-014",
+              "reason": "Purposeful coverage was intentionally completed before expanding the project execution schema."
+            }
+          ],
+          "owners": [
+            {
+              "role": "agent",
+              "name": "ChatGPT 5.6 Sol",
+              "session": "codex-rt015-2026-08-21"
+            }
+          ],
+          "reviewers": [
+            {
+              "role": "human",
+              "name": "jeff"
+            }
+          ],
+          "owned_paths": [
+            "src/shared/types.ts",
+            "src/shared/project-tasks.ts",
+            "src/shared/project-tasks.test.ts",
+            "src/cli/projects.ts",
+            "src/cli/doctor.ts",
+            "src/backend/routes/projects.ts",
+            "src/mcp/tools/reads.ts",
+            "src/frontend/components/ProjectLane.tsx",
+            "src/cli/__tests__/projects.test.ts",
+            "src/cli/__tests__/doctor.test.ts",
+            "src/backend/__tests__/projects-routes.test.ts",
+            "src/frontend/components/ProjectLane.test.tsx",
+            "src/backend/__tests__/case-transform.test.ts",
+            "README.md",
+            "docs/cli-cheatsheet.md",
+            "docs/design/project-layer.md",
+            "docs/roadmap.md",
+            "canopytag/canopy.json"
+          ],
+          "excluded_paths": [
+            "src/frontend/components/GraphView.tsx",
+            "src/frontend/components/GraphView.test.ts"
+          ],
+          "resources": [
+            {
+              "kind": "documentation",
+              "role": "governs",
+              "ref": "docs/design/project-layer.md"
+            },
+            {
+              "kind": "file",
+              "role": "implements",
+              "ref": "src/shared/types.ts"
+            },
+            {
+              "kind": "file",
+              "role": "implements",
+              "ref": "src/shared/project-tasks.ts"
+            },
+            {
+              "kind": "procedure",
+              "role": "use_for",
+              "ref": "canopytag projects PRJ-001"
+            },
+            {
+              "kind": "command",
+              "role": "validates",
+              "ref": "npm run build"
+            },
+            {
+              "kind": "test",
+              "role": "validates",
+              "ref": "npm test -- --run"
+            },
+            {
+              "kind": "output",
+              "role": "must_produce",
+              "ref": "A fresh-agent project packet with computed readiness and retained evidence"
+            }
+          ],
+          "acceptance": [
+            "Every existing Project.todos entry and every file Todo round-trips without migration.",
+            "depends_on and blocks edges produce deterministic readiness while parent_child and related remain non-blocking.",
+            "Live active-work path claims surface claimant context without entering canopy.json.",
+            "CLI, MCP, HTTP, and the Projects tab expose matching task readiness and execution context.",
+            "Doctor reports malformed task, milestone, dependency, resource, path, and receipt contracts including blocking cycles.",
+            "Build, focused tests, full tests, doctor, and production_candidate coverage pass with retained validation evidence."
+          ],
+          "tags": [
+            "project-management",
+            "task-graph",
+            "dependencies",
+            "resources",
+            "accountability"
+          ],
           "created_at": "2026-08-21T00:45:00Z",
-          "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "canopytag-control-plane-handoff-2026-08-20"}
+          "completed_at": "2026-08-21T21:02:00.000Z",
+          "receipts": [
+            {
+              "id": "AR-RT015-001",
+              "kind": "validation",
+              "outcome": "passed",
+              "summary": "401 tests across 49 files, the production build, diff check, 27/27 production scope coverage, doctor with zero errors, and an npm pack containing 127 entries with no QA artifacts all passed.",
+              "actor": {
+                "role": "agent",
+                "name": "ChatGPT 5.6 Sol",
+                "session": "codex-rt015-2026-08-21"
+              },
+              "recorded_at": "2026-08-21T21:04:30.000Z",
+              "resources": [
+                {
+                  "kind": "test",
+                  "role": "validates",
+                  "ref": "npm test -- --run"
+                },
+                {
+                  "kind": "command",
+                  "role": "validates",
+                  "ref": "npm run build"
+                },
+                {
+                  "kind": "command",
+                  "role": "validates",
+                  "ref": "canopytag doctor"
+                },
+                {
+                  "kind": "command",
+                  "role": "validates",
+                  "ref": "canopytag coverage --scope production_candidate"
+                },
+                {
+                  "kind": "command",
+                  "role": "validates",
+                  "ref": "npm pack --dry-run --json"
+                }
+              ]
+            },
+            {
+              "id": "AR-RT015-002",
+              "kind": "output",
+              "outcome": "recorded",
+              "summary": "A real-browser Projects tab showed readiness counts, milestones, blockers, active claims, and expandable execution packets with zero console errors.",
+              "actor": {
+                "role": "agent",
+                "name": "ChatGPT 5.6 Sol",
+                "session": "codex-rt015-2026-08-21"
+              },
+              "recorded_at": "2026-08-21T21:02:00.000Z",
+              "resources": [
+                {
+                  "kind": "tool",
+                  "role": "validates",
+                  "ref": "Playwright CLI"
+                },
+                {
+                  "kind": "output",
+                  "role": "must_produce",
+                  "ref": "Projects tab execution packet"
+                }
+              ],
+              "residual_risk": "Task mutation remains read-only and directed dependency layout work remains RT-016."
+            }
+          ],
+          "residual_risks": [
+            "Project task mutation remains read-only until a separately reviewed write contract is justified.",
+            "Directed dependency layout and visualization remain explicitly scoped to RT-016."
+          ],
+          "created_by": {
+            "role": "agent",
+            "name": "ChatGPT 5.6 Sol",
+            "session": "canopytag-control-plane-handoff-2026-08-20"
+          }
         },
         {
           "id": "RT-016",
           "text": "Replace the one-force-graph assumption with one bounded prototype view: directed project/task dependency flow with readable cards, groups, labeled edges, saved human layout, resources/evidence, and provenance-bearing structural overlays kept visually distinct.",
           "priority": 2,
           "difficulty": 4,
-          "status": "open",
-          "tags": ["visualization", "graph", "dependency-flow", "canvas", "provenance"],
+          "status": "done",
+          "why_now": "The authored execution graph now has stable task, dependency, resource, milestone, and receipt semantics; one purposeful human view can be evaluated without inventing its data model at render time.",
+          "milestone_id": "MS-002",
+          "dependencies": [
+            {
+              "type": "depends_on",
+              "task_id": "RT-015",
+              "reason": "Visualization must consume the frozen execution contract instead of defining a second task truth."
+            }
+          ],
+          "owners": [
+            {
+              "role": "human",
+              "name": "jeff"
+            }
+          ],
+          "owned_paths": [
+            "src/frontend/components/GraphView.tsx",
+            "src/frontend/components/GraphView.test.ts"
+          ],
+          "resources": [
+            {
+              "kind": "documentation",
+              "role": "governs",
+              "ref": "docs/design/project-layer.md"
+            },
+            {
+              "kind": "file",
+              "role": "implements",
+              "ref": "src/frontend/components/GraphView.tsx"
+            },
+            {
+              "kind": "test",
+              "role": "validates",
+              "ref": "src/frontend/components/GraphView.test.ts"
+            },
+            {
+              "kind": "output",
+              "role": "must_produce",
+              "ref": "One directed project/task dependency view with saved human layout"
+            }
+          ],
+          "acceptance": [
+            "The view answers one bounded project-ordering question with readable directed edges and cards.",
+            "Authored task/resource/evidence edges remain visually distinct from any provenance-bearing generated overlay.",
+            "Saved layout does not become a second source of project truth.",
+            "Task mutation and external-tool comparison remain outside this slice."
+          ],
+          "tags": [
+            "visualization",
+            "graph",
+            "dependency-flow",
+            "canvas",
+            "provenance"
+          ],
           "created_at": "2026-08-21T00:45:00Z",
-          "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "canopytag-control-plane-handoff-2026-08-20"}
+          "completed_at": "2026-08-25T03:39:00.000Z",
+          "receipts": [
+            {
+              "id": "AR-RT016-001",
+              "kind": "validation",
+              "outcome": "passed",
+              "summary": "Focused graph execution tests, the full 404-test suite across 49 files, and the production build passed; the graph projection preserves directed dependency semantics, selected-task attachments, local layout validation, and provenance-bearing structural-edge separation.",
+              "actor": {
+                "role": "agent",
+                "name": "Codex GPT-5",
+                "session": "codex-rt016-2026-08-24"
+              },
+              "recorded_at": "2026-08-25T03:39:00.000Z",
+              "resources": [
+                {
+                  "kind": "test",
+                  "role": "validates",
+                  "ref": "npm test -- --run"
+                },
+                {
+                  "kind": "command",
+                  "role": "validates",
+                  "ref": "npm run build"
+                }
+              ]
+            },
+            {
+              "id": "AR-RT016-002",
+              "kind": "output",
+              "outcome": "recorded",
+              "summary": "A real browser verified the Project graph at 1440px and 1024px: milestone swimlanes, directed readiness edges, selected-task resources, browser-local layout reset, and the explicit no-provider overlay state all rendered with zero console errors.",
+              "actor": {
+                "role": "agent",
+                "name": "Codex GPT-5",
+                "session": "codex-rt016-2026-08-24"
+              },
+              "recorded_at": "2026-08-25T03:39:00.000Z",
+              "resources": [
+                {
+                  "kind": "tool",
+                  "role": "validates",
+                  "ref": "Playwright CLI"
+                },
+                {
+                  "kind": "output",
+                  "role": "must_produce",
+                  "ref": "Project execution view"
+                }
+              ],
+              "residual_risk": "No provider-backed structural edge artifact exists yet, so the view intentionally renders an explicit empty overlay state."
+            }
+          ],
+          "residual_risks": [
+            "Browser-local layout is deliberately a view-only convenience until a real shared or interoperable layout workflow is justified.",
+            "A future structural provider must supply visible provenance before its edges can be rendered."
+          ],
+          "created_by": {
+            "role": "agent",
+            "name": "ChatGPT 5.6 Sol",
+            "session": "canopytag-control-plane-handoff-2026-08-20"
+          }
         },
         {
           "id": "RT-017",
           "text": "Run a bounded comparison of one representative project against agent-native dependency tracking, human PM, software-catalog, and canvas patterns; record what to adopt, adapt, or reject without installing a new authority into a downstream repo.",
           "priority": 3,
           "difficulty": 3,
-          "status": "open",
-          "tags": ["benchmark", "project-management", "agent-tools", "human-ui"],
+          "status": "done",
+          "completed_at": "2026-08-25T05:18:25.736Z",
+          "why_now": "Comparison is valuable only after CanopyTag has one native execution packet and one bounded human view to compare honestly against external patterns.",
+          "milestone_id": "MS-003",
+          "dependencies": [
+            {
+              "type": "depends_on",
+              "task_id": "RT-016",
+              "reason": "Compare a real native project view rather than a design aspiration."
+            }
+          ],
+          "owners": [
+            {
+              "role": "human",
+              "name": "jeff"
+            }
+          ],
+          "owned_paths": [
+            "docs/design/project-pattern-comparison.md",
+            "docs/design/project-layer.md",
+            "docs/roadmap.md",
+            "canopytag/canopy.json"
+          ],
+          "resources": [
+            {
+              "kind": "documentation",
+              "role": "governs",
+              "ref": "docs/design/project-layer.md"
+            },
+            {
+              "kind": "output",
+              "role": "must_produce",
+              "ref": "A bounded adopt/adapt/reject comparison with export, privacy, API, backup, and attribution evidence"
+            },
+            {
+              "kind": "documentation",
+              "role": "implements",
+              "ref": "docs/design/project-pattern-comparison.md"
+            }
+          ],
+          "acceptance": [
+            "One representative project is reproduced only far enough to compare the selected agent, PM, catalogue, and canvas patterns.",
+            "Every proposed adapter concept is classified adopt, adapt, or reject with evidence and product-boundary impact.",
+            "No external tool becomes authoritative or is installed into a downstream repository merely for the comparison."
+          ],
+          "tags": [
+            "benchmark",
+            "project-management",
+            "agent-tools",
+            "human-ui"
+          ],
+          "receipts": [
+            {
+              "id": "AR-RT017-001",
+              "kind": "output",
+              "outcome": "recorded",
+              "summary": "The documented comparison maps PRJ-001 to Beads, Plane, Backstage, and JSON Canvas patterns; it adopts the native packet and provenance boundaries, conditionally adapts a future one-way Canvas export, and rejects external authority or synchronization pending explicit gates.",
+              "actor": {
+                "role": "agent",
+                "name": "Codex GPT-5",
+                "session": "codex-rt017-20260825"
+              },
+              "recorded_at": "2026-08-25T05:18:25.736Z",
+              "resources": [
+                {
+                  "kind": "documentation",
+                  "role": "must_produce",
+                  "ref": "docs/design/project-pattern-comparison.md"
+                }
+              ],
+              "residual_risk": "The comparison is a desk evaluation of official materials, not a version-pinned export/import or self-hosted deployment trial."
+            }
+          ],
+          "residual_risks": [
+            "No external adapter is justified until its version-pinned mapping, export/restore, privacy/API, attribution, review, and undo behavior are tested in a separately owned packet.",
+            "JSON Canvas remains only a future one-way view/export candidate; browser-local layout stays the current non-authoritative convenience."
+          ],
           "created_at": "2026-08-21T00:45:00Z",
-          "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "canopytag-control-plane-handoff-2026-08-20"}
+          "created_by": {
+            "role": "agent",
+            "name": "ChatGPT 5.6 Sol",
+            "session": "canopytag-control-plane-handoff-2026-08-20"
+          }
         }
       ],
       "open_questions": [
-        "Which task and resource fields are necessary for a fresh agent to execute safely without recreating an enterprise tracker?",
-        "Should saved human graph layouts use a CanopyTag view record or an interoperable JSON Canvas-style artifact?",
-        "Which external task or PM systems earn adapter status after a bounded comparison, and which concepts should be implemented directly?"
+        "Do real shared-layout workflows justify a CanopyTag view record or interoperable JSON Canvas-style artifact beyond browser-local positions?",
+        "Which repeated, version-pinned workflow would justify a narrowly scoped one-way adapter after it proves mapping, privacy, restore, attribution, review, and undo behavior?"
       ],
       "created_at": "2026-08-20T22:45:00Z",
-      "created_by": {"role": "agent", "name": "ChatGPT 5.6 Sol", "session": "project-layer-2026-08-20"}
+      "created_by": {
+        "role": "agent",
+        "name": "ChatGPT 5.6 Sol",
+        "session": "project-layer-2026-08-20"
+      }
     }
   }
 }

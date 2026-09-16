@@ -1,5 +1,14 @@
 import { create } from 'zustand';
-import type { TreeNode, MergedFileRecord, Feature, ViewMode, AgentNote, CanopyAnalytics, CanopyProfile } from '../../shared/types';
+import type {
+  AgentNote,
+  CanopyAnalytics,
+  CanopyProfile,
+  Feature,
+  MergedFileRecord,
+  ProjectSummary,
+  TreeNode,
+  ViewMode,
+} from '../../shared/types';
 import { api } from '../lib/api';
 
 interface RepoConfig {
@@ -21,6 +30,9 @@ interface WorkspaceState {
   index: MergedFileRecord[];
   tags: string[];
   features: Record<string, Feature>;
+  projects: ProjectSummary[];
+  activeProjectId: string | null;
+  projectGraphNavigationId: string | null;
   agentNotes: AgentNote[];
   analytics: CanopyAnalytics | null;
   profile: CanopyProfile | null;
@@ -37,9 +49,13 @@ interface WorkspaceState {
   loadIndex: () => Promise<void>;
   loadTags: () => Promise<void>;
   loadFeatures: () => Promise<void>;
+  loadProjects: () => Promise<void>;
   selectFile: (path: string) => Promise<void>;
   selectDirectory: (path: string) => Promise<void>;
   setViewMode: (mode: ViewMode) => void;
+  openProject: (projectId: string) => void;
+  openProjectGraph: (projectId: string) => void;
+  clearProjectGraphNavigation: () => void;
   setSearchQuery: (query: string) => void;
   refreshSelectedFile: () => Promise<void>;
   flashSave: (path: string) => void;
@@ -59,6 +75,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   index: [],
   tags: [],
   features: {},
+  projects: [],
+  activeProjectId: null,
+  projectGraphNavigationId: null,
   agentNotes: [],
   analytics: null,
   profile: null,
@@ -80,6 +99,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
     index: [],
     tags: [],
     features: {},
+    projects: [],
+    activeProjectId: null,
+    projectGraphNavigationId: null,
     agentNotes: [],
     analytics: null,
     profile: null,
@@ -88,16 +110,17 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   initialize: async () => {
     set({ loading: true, error: null });
     try {
-      const [tree, tags, features, index, agentNotes, profile, analytics] = await Promise.all([
+      const [tree, tags, features, projects, index, agentNotes, profile, analytics] = await Promise.all([
         api.fetchTree(),
         api.fetchTags(),
         api.fetchFeatures(),
+        api.fetchProjects(),
         api.fetchIndex(),
         api.fetchAgentNotes(),
         api.fetchProfile(),
         api.fetchAnalytics().catch(() => null),  // optional — don't fail init
       ]);
-      set({ tree, tags, features, index, agentNotes, analytics, profile, loading: false, connected: true });
+      set({ tree, tags, features, projects, index, agentNotes, analytics, profile, loading: false, connected: true });
     } catch (err: any) {
       set({ error: err.message, loading: false });
     }
@@ -155,6 +178,15 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
     }
   },
 
+  loadProjects: async () => {
+    try {
+      const projects = await api.fetchProjects();
+      set({ projects });
+    } catch (err: any) {
+      set({ error: err.message });
+    }
+  },
+
   updateProfile: async (name: string) => {
     try {
       const profile = await api.updateProfile({ name });
@@ -186,6 +218,13 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   },
 
   setViewMode: (mode) => set({ viewMode: mode }),
+  openProject: (projectId) => set({ activeProjectId: projectId, viewMode: 'table' }),
+  openProjectGraph: (projectId) => set({
+    activeProjectId: projectId,
+    projectGraphNavigationId: projectId,
+    viewMode: 'graph',
+  }),
+  clearProjectGraphNavigation: () => set({ projectGraphNavigationId: null }),
   setSearchQuery: (query) => set({ searchQuery: query }),
 
   flashSave: (filePath: string) => {

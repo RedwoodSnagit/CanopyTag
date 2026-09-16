@@ -7,6 +7,7 @@ export function ViewToggle() {
   const modes: { value: ViewMode; label: string }[] = [
     { value: 'explorer', label: 'Explorer' },
     { value: 'table', label: 'Table' },
+    { value: 'projects', label: 'Projects' },
     { value: 'graph', label: 'Graph' },
     { value: 'analytics', label: 'Analytics' },
   ];

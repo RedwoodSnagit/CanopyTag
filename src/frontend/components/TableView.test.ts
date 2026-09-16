@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentManifestEntry } from '../../shared/types';
-import { buildManifestKinds, buildManifestPreview, filterManifestRowsByRecency, toManifestRow } from './TableView';
+import type { AgentManifestEntry, MergedFileRecord, ProjectSummary } from '../../shared/types';
+import { buildManifestKinds, buildManifestPreview, buildTodoRows, countOpenTodoRows, filterManifestRowsByRecency, toManifestRow } from './TableView';
 
 function entry(overrides: Partial<AgentManifestEntry> = {}): AgentManifestEntry {
   return {
@@ -59,5 +59,54 @@ describe('TableView manifest helpers', () => {
     const rows = filterManifestRowsByRecency([recent, older], '30d', new Date('2026-04-23T12:00:00.000Z'));
 
     expect(rows).toEqual([recent]);
+  });
+
+  it('aggregates project-owned TODOs with file TODOs without fabricating a file scope', () => {
+    const fileTodo = {
+      id: 'RT-001',
+      text: 'File task',
+      priority: 2 as const,
+      status: 'open' as const,
+      createdAt: '2026-08-20T00:00:00Z',
+      createdBy: { role: 'human' as const, name: 'Owner' },
+    };
+    const file: MergedFileRecord = {
+      path: 'src/file.ts',
+      extension: '.ts',
+      tags: [],
+      todos: [fileTodo],
+      comments: [],
+      relatedFiles: [],
+      openTodoCount: 1,
+      projects: [],
+    };
+    const project: ProjectSummary = {
+      project: {
+        id: 'PRJ-001',
+        name: 'Project context',
+        status: 'active',
+        todos: [{ ...fileTodo, id: 'RT-002', text: 'Project task' }],
+        createdAt: '2026-08-20T00:00:00Z',
+        createdBy: { role: 'human', name: 'Owner' },
+      },
+      fileCount: 1,
+      todoCount: 1,
+      openTodoCount: 1,
+      readyTaskCount: 1,
+      blockedTaskCount: 0,
+      claimedTaskCount: 0,
+      milestoneCount: 0,
+    };
+
+    const rows = buildTodoRows([file], [project]);
+    expect(rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ todoId: 'RT-001', filePath: 'src/file.ts', scopeKind: 'file' }),
+      expect.objectContaining({ todoId: 'RT-002', filePath: 'PRJ-001', scopeKind: 'project' }),
+    ]));
+    expect(countOpenTodoRows([
+      ...rows,
+      { ...rows[0], todoId: 'RT-003', status: 'deferred' },
+      { ...rows[0], todoId: 'RT-004', status: 'done' },
+    ])).toBe(2);
   });
 });

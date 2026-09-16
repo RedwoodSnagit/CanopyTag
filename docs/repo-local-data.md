@@ -17,9 +17,20 @@ intended to be reviewable project knowledge:
 - `canopytag/settings.json` - repo-local CanopyTag settings.
 - `canopytag/tags.json` - optional tag vocabulary.
 - `canopytag/canopy_archive.json` - optional completed TODO/archive data.
+- `canopytag/generated/scope-membership.json` - optional provider-generated
+  membership proposals. This is evidence, not authored truth: it must retain
+  provider, fingerprint, generation time, and freshness deadline, and it never
+  changes `scope_sets` coverage until a separate reviewed promotion edits
+  `canopy.json`.
 
 Treat these like documentation. If the repo is public, review them before
 committing or publishing.
+
+Generated artifacts deserve a separate sharing decision. Small reproducible
+JSON evidence can be committed when collaborators benefit from the same view;
+large indexes, caches, and machine-local provider output should be ignored and
+regenerated. The presence of a generated artifact never makes its proposals
+canonical.
 
 `repo_root` in `canopy.json` is portable metadata only. New repos should keep it
 blank. Runtime tools should use `--repo`, `REPO_ROOT`, the current working

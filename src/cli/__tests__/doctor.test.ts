@@ -211,6 +211,157 @@ describe('inspectCanopyDoctor', () => {
     ]));
     expect(report.checked.projects).toBe(1);
   });
+
+  it('accepts a complete rich project task packet with retained evidence', () => {
+    const canopy = makeCanopy({
+      files: { 'src/app.ts': {} },
+      features: {},
+      projects: {
+        'PRJ-001': {
+          id: 'PRJ-001',
+          name: 'Execution packet',
+          status: 'active',
+          milestones: [{ id: 'MS-001', name: 'Contract frozen', completedAt: '2026-08-21T02:00:00Z' }],
+          todos: [{
+            id: 'RT-001',
+            text: 'Freeze the task contract.',
+            priority: 2,
+            status: 'done',
+            whyNow: 'Fresh agents need deterministic context.',
+            milestoneId: 'MS-001',
+            ownedPaths: ['src/app.ts'],
+            excludedPaths: ['src/graph.ts'],
+            resources: [{ kind: 'file', role: 'implements', ref: 'src/app.ts' }],
+            acceptance: ['The project packet retains validation evidence.'],
+            receipts: [{
+              id: 'AR-001',
+              kind: 'validation',
+              outcome: 'passed',
+              summary: 'Focused and full tests passed.',
+              actor: { role: 'agent', name: 'Test Agent' },
+              recordedAt: '2026-08-21T02:00:00Z',
+              resources: [{ kind: 'command', role: 'validates', ref: 'npm test -- --run' }],
+            }],
+            createdAt: '2026-08-21T00:00:00Z',
+            completedAt: '2026-08-21T02:00:00Z',
+            createdBy: { role: 'agent', name: 'Test Agent' },
+          }],
+          createdAt: '2026-08-21T00:00:00Z',
+          createdBy: { role: 'human', name: 'Owner' },
+        },
+      },
+    });
+
+    const report = inspectCanopyDoctor(canopy, {
+      repoFiles: new Set(['src/app.ts']),
+      pathExists: candidate => candidate === 'src/app.ts',
+    });
+
+    expect(report.ok).toBe(true);
+    expect(report.issues).toHaveLength(0);
+  });
+
+  it('reports malformed task edges, cycles, resources, milestones, and completion evidence', () => {
+    const task = (id: string, dependsOn: string) => ({
+      id,
+      text: id,
+      priority: 2 as const,
+      status: 'open' as const,
+      dependencies: [{ type: 'depends_on' as const, taskId: dependsOn }],
+      createdAt: '2026-08-21T00:00:00Z',
+      createdBy: { role: 'human' as const, name: 'Owner' },
+    });
+    const canopy = makeCanopy({
+      projects: {
+        'PRJ-001': {
+          id: 'PRJ-001',
+          name: 'Broken task graph',
+          status: 'active',
+          milestones: [{ id: 'MS-001', name: 'First' }, { id: 'MS-001', name: 'Duplicate' }],
+          todos: [
+            { ...task('RT-001', 'RT-002'), milestoneId: 'MS-999' },
+            { ...task('RT-002', 'RT-001'), resources: [{ kind: 'file' as const, role: 'implements' as const, ref: '../outside.ts' }] },
+            {
+              ...task('RT-003', 'RT-999'),
+              status: 'done' as const,
+              completedAt: '2026-08-21T01:00:00Z',
+              whyNow: 'This is a rich task.',
+            },
+          ],
+          createdAt: '2026-08-21T00:00:00Z',
+          createdBy: { role: 'human', name: 'Owner' },
+        },
+      },
+    });
+
+    const report = inspectCanopyDoctor(canopy, { repoFiles: new Set() });
+    const codes = report.issues.map(issue => issue.code);
+
+    expect(codes).toEqual(expect.arrayContaining([
+      'duplicate-project-milestone-id',
+      'missing-task-milestone',
+      'missing-task-dependency',
+      'task-dependency-cycle',
+      'unsafe-task-resource-path',
+      'missing-task-completion-receipt',
+    ]));
+  });
+
+  it('validates authored scope members while accepting supported directory subjects', () => {
+    const canopy = makeCanopy({
+      scopeSets: {
+        production_candidate: {
+          name: 'Production candidate',
+          members: [
+            { path: 'src/app.ts', kind: 'file', role: 'entrypoint' },
+            { path: 'docs', kind: 'directory', role: 'canonical_document' },
+            { path: 'src/missing.ts', kind: 'file', role: 'component' },
+            { path: 'src/app.ts', kind: 'file', role: 'component' },
+          ],
+        },
+      },
+    });
+    const report = inspectCanopyDoctor(canopy, {
+      repoFiles: new Set(['src/app.ts', 'docs/guide.md']),
+      pathKind: subject => subject === 'docs'
+        ? 'directory'
+        : subject === 'src/app.ts' ? 'file' : undefined,
+    });
+    const codes = report.issues.map(issue => issue.code);
+
+    expect(codes).toContain('missing-scope-member');
+    expect(codes).toContain('duplicate-scope-member');
+    expect(report.issues).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'missing-scope-member', message: expect.stringContaining('docs') }),
+    ]));
+    expect(report.checked.scopes).toBe(1);
+  });
+
+  it('reports malformed scope paths, kinds, roles, and wrong subject kinds', () => {
+    const canopy = makeCanopy({
+      scopeSets: {
+        broken_scope: {
+          name: 'Broken scope',
+          members: [
+            { path: '../outside.ts', kind: 'file' },
+            { path: 'src/app.ts', kind: 'symbol' as any },
+            { path: 'docs', kind: 'directory', role: 'owner' as any },
+          ],
+        },
+      },
+    });
+    const report = inspectCanopyDoctor(canopy, {
+      repoFiles: new Set(['docs']),
+      pathKind: subject => subject === 'docs' ? 'file' : undefined,
+    });
+    const codes = report.issues.map(issue => issue.code);
+    expect(codes).toEqual(expect.arrayContaining([
+      'unsafe-scope-member',
+      'invalid-scope-member-kind',
+      'invalid-scope-member-role',
+      'scope-member-kind-mismatch',
+    ]));
+  });
 });
 
 describe('inspectCanopyDoctor — agent attribution', () => {

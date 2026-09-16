@@ -11,6 +11,7 @@ relationship context.
 canopytag stats --repo /path/to/repo
 canopytag ls --sort attention --repo /path/to/repo
 canopytag coverage --repo /path/to/repo
+canopytag coverage --scope production_candidate --repo /path/to/repo
 canopytag doctor --repo /path/to/repo
 ```
 
@@ -90,11 +91,26 @@ and malformed lifecycle metadata alongside authority/quality findings.
 
 `doctor` checks facts that can be automated safely: malformed nested metadata,
 broken or unsafe paths, orphaned cards, duplicate TODO/comment/project IDs,
-project references, Git-backed review drift, feature entry points, portable
+project references, authored scope-set members and subject kinds, Git-backed
+review drift, feature entry points, portable
 `repo_root` usage, and pending agent review. It does not rewrite summaries,
 scores, authority, tags, or relationships. Use
 `canopytag doctor --strict` when warnings should fail a local check or CI job;
 use `--format json` for machine-readable output.
+
+## Check Purposeful Coverage
+
+```bash
+canopytag coverage
+canopytag coverage --scope production_candidate --detail
+```
+
+When `scope_sets` are present, the default report leads with each authored
+scope and labels whole-repository percentage as informational. A selected scope
+separates annotated, unannotated, missing/wrong-kind, file, and directory
+subjects. Optional provider output at
+`canopytag/generated/scope-membership.json` is shown with its fingerprint and
+freshness deadline; proposals never change authored counts.
 
 ## Follow Multi-File Work
 
@@ -105,10 +121,14 @@ canopytag query --project PRJ-001 --detail 3
 canopytag context --project PRJ-001
 ```
 
-A project is a thin context umbrella: why the work exists, which features and
-files it implicates, open questions, and TODOs that have no honest single-file
-home. File context inherits those project TODOs read-only; nothing is copied
-onto the file card. Projects are not boards, sprints, or dependency graphs.
+A project packet explains why the work exists, which features and files it
+implicates, and which project-owned tasks are ready, blocked, or claimed.
+Project tasks may add typed dependencies, milestones, owned/excluded paths,
+resources, acceptance evidence, and retained action receipts. Readiness is
+computed from authored task state plus live local work claims; it is never
+persisted as a second truth. File context inherits project tasks read-only and
+nothing is copied onto the file card. Projects are not boards, schedulers, or
+autonomous dispatch systems.
 
 ## Coordinate Concurrent Edits
 

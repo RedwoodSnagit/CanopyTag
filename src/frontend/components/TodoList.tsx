@@ -92,16 +92,17 @@ export function TodoList({ path, todos }: Props) {
   };
 
   const sortedTodos = [...todos].sort((a, b) => {
-    // Open items first, then by priority
-    if (a.status === 'done' && b.status !== 'done') return 1;
-    if (a.status !== 'done' && b.status === 'done') return -1;
+    // Active items first, then deferred/done history, then by priority.
+    const aOpen = a.status === 'open' || a.status === 'in_progress';
+    const bOpen = b.status === 'open' || b.status === 'in_progress';
+    if (aOpen !== bOpen) return aOpen ? -1 : 1;
     return a.priority - b.priority;
   });
 
   return (
     <div>
       <label className="text-text-primary text-sm uppercase tracking-wider block mb-1">
-        TODOs {todos.length > 0 && <span className="text-text-muted">({todos.filter(t => t.status !== 'done').length} open)</span>}
+        TODOs {todos.length > 0 && <span className="text-text-muted">({todos.filter(t => t.status === 'open' || t.status === 'in_progress').length} open)</span>}
       </label>
 
       {sortedTodos.length > 0 && (

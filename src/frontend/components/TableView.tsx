@@ -8,14 +8,15 @@ import {
   type SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-import type { AgentManifestEntry, Author, MergedFileRecord, Priority } from '../../shared/types';
+import type { AgentManifestEntry, Author, MergedFileRecord, Priority, ProjectSummary } from '../../shared/types';
 import { checkAuthorityHealth, normalizeAuthor } from '../../shared/types';
 import { useWorkspace } from '../stores/workspace';
 import { PRIORITY_COLORS } from '../lib/tokens';
 import { api } from '../lib/api';
 import { formatAuthorityLabel } from '../lib/authority';
+import { ProjectLane } from './ProjectLane';
 
-type TableMode = 'files' | 'scores' | 'todos' | 'activity';
+type TableMode = 'files' | 'scores' | 'todos' | 'projects' | 'activity';
 type ScoreFocus = 'all' | 'attention' | 'unreviewed' | 'underscored' | 'promotion' | 'low-stability';
 type ScoreHealthStatus = 'healthy' | 'underscored' | 'promotion-candidate' | 'unscored' | 'no-authority';
 type ManifestRecency = 'all' | '7d' | '30d' | '90d';
@@ -39,7 +40,7 @@ const STATUS_DANGER_CLASS = 'border-[var(--color-status-danger-border)] bg-[var(
 const STATUS_PURPLE_CLASS = 'border-[var(--color-status-purple-border)] bg-[var(--color-status-purple-bg)] text-[var(--color-status-purple-text)]';
 const STATUS_NEUTRAL_CLASS = 'border-[var(--color-status-neutral-border)] bg-[var(--color-status-neutral-bg)] text-[var(--color-status-neutral-text)]';
 
-interface TodoRow {
+export interface TodoRow {
   todoId: string;
   text: string;
   priority: Priority;
@@ -52,6 +53,54 @@ interface TodoRow {
   fileTags: string[];
   authority: string | undefined;
   fileStatus: string | undefined;
+  scopeKind: 'file' | 'project';
+}
+
+export function buildTodoRows(index: MergedFileRecord[], projects: ProjectSummary[]): TodoRow[] {
+  const rows: TodoRow[] = [];
+  for (const file of index) {
+    for (const todo of file.todos) {
+      rows.push({
+        todoId: todo.id,
+        text: todo.text,
+        priority: todo.priority,
+        status: todo.status,
+        difficulty: todo.difficulty,
+        todoTags: todo.tags ?? [],
+        createdBy: todo.createdBy,
+        createdAt: todo.createdAt,
+        filePath: file.path,
+        fileTags: file.tags,
+        authority: file.authorityLevel,
+        fileStatus: file.status,
+        scopeKind: 'file',
+      });
+    }
+  }
+  for (const { project } of projects) {
+    for (const todo of project.todos ?? []) {
+      rows.push({
+        todoId: todo.id,
+        text: todo.text,
+        priority: todo.priority,
+        status: todo.status,
+        difficulty: todo.difficulty,
+        todoTags: todo.tags ?? [],
+        createdBy: todo.createdBy,
+        createdAt: todo.createdAt,
+        filePath: project.id,
+        fileTags: [],
+        authority: undefined,
+        fileStatus: project.status,
+        scopeKind: 'project',
+      });
+    }
+  }
+  return rows;
+}
+
+export function countOpenTodoRows(rows: TodoRow[]): number {
+  return rows.filter(row => row.status === 'open' || row.status === 'in_progress').length;
 }
 
 interface ScoreRow {
@@ -780,7 +829,7 @@ function ScoreTable({ scoreRows, onRowClick }: { scoreRows: ScoreRow[]; onRowCli
   );
 }
 
-function TodoTable({ todoRows, onRowClick }: { todoRows: TodoRow[]; onRowClick: (path: string) => void }) {
+function TodoTable({ todoRows, onRowClick }: { todoRows: TodoRow[]; onRowClick: (row: TodoRow) => void }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'priority', desc: false }]);
   const [globalFilter, setGlobalFilter] = useState('');
 
@@ -835,8 +884,13 @@ function TodoTable({ todoRows, onRowClick }: { todoRows: TodoRow[]; onRowClick: 
         },
       }),
       todoColumnHelper.accessor('filePath', {
-        header: 'File',
+        header: 'Scope',
         cell: info => <span className={MONO_SECONDARY_CLASS}>{info.getValue()}</span>,
+      }),
+      todoColumnHelper.accessor('scopeKind', {
+        header: 'Kind',
+        cell: info => <span className="text-[10px] uppercase tracking-wide text-text-muted">{info.getValue()}</span>,
+        size: 70,
       }),
       todoColumnHelper.accessor('createdBy', {
         header: 'By',
@@ -907,7 +961,7 @@ function TodoTable({ todoRows, onRowClick }: { todoRows: TodoRow[]; onRowClick: 
             {table.getRowModel().rows.map(row => (
               <tr
                 key={row.id}
-                onClick={() => onRowClick(row.original.filePath)}
+                onClick={() => onRowClick(row.original)}
                 className={TABLE_ROW_CLASS}
               >
                 {row.getVisibleCells().map(cell => (
@@ -1199,9 +1253,19 @@ function ManifestTable({
   );
 }
 
-export function TableView() {
-  const { index, selectFile, setViewMode, loadIndex } = useWorkspace();
-  const [tableMode, setTableMode] = useState<TableMode>('files');
+export function TableView({ initialMode = 'files' }: { initialMode?: TableMode }) {
+  const {
+    activeProjectId,
+    index,
+    loadIndex,
+    loadProjects,
+    openProjectGraph,
+    openProject,
+    projects,
+    selectFile,
+    setViewMode,
+  } = useWorkspace();
+  const [tableMode, setTableMode] = useState<TableMode>(initialMode);
   const [manifestEntries, setManifestEntries] = useState<AgentManifestEntry[]>([]);
   const [manifestLoading, setManifestLoading] = useState(false);
   const [manifestError, setManifestError] = useState<string | null>(null);
@@ -1229,6 +1293,14 @@ export function TableView() {
     }
   }, [tableMode]);
 
+  useEffect(() => {
+    if (activeProjectId) setTableMode('projects');
+  }, [activeProjectId]);
+
+  useEffect(() => {
+    setTableMode(initialMode);
+  }, [initialMode]);
+
   const fileData = useMemo(
     () =>
       index.filter(
@@ -1250,30 +1322,11 @@ export function TableView() {
   );
 
   const todoRows = useMemo<TodoRow[]>(() => {
-    const rows: TodoRow[] = [];
-    for (const file of index) {
-      for (const todo of file.todos) {
-        rows.push({
-          todoId: todo.id,
-          text: todo.text,
-          priority: todo.priority,
-          status: todo.status,
-          difficulty: todo.difficulty,
-          todoTags: todo.tags ?? [],
-          createdBy: todo.createdBy,
-          createdAt: todo.createdAt,
-          filePath: file.path,
-          fileTags: file.tags,
-          authority: file.authorityLevel,
-          fileStatus: file.status,
-        });
-      }
-    }
-    return rows;
-  }, [index]);
+    return buildTodoRows(index, projects);
+  }, [index, projects]);
 
   const openTodoCount = useMemo(
-    () => todoRows.filter(row => row.status !== 'done').length,
+    () => countOpenTodoRows(todoRows),
     [todoRows]
   );
 
@@ -1285,6 +1338,15 @@ export function TableView() {
   const handleRowClick = (path: string) => {
     selectFile(path);
     setViewMode('explorer');
+  };
+
+  const handleTodoRowClick = (row: TodoRow) => {
+    if (row.scopeKind === 'project') {
+      openProject(row.filePath);
+      setTableMode('projects');
+      return;
+    }
+    handleRowClick(row.filePath);
   };
 
   const handleReview = async (id: string, action: 'agree' | 'fix' | 'reject', note?: string) => {
@@ -1332,6 +1394,18 @@ export function TableView() {
           TODOs {todoRows.length > 0 && <span className="ml-1 text-text-secondary">({openTodoCount})</span>}
         </button>
         <button
+          onClick={() => setTableMode('projects')}
+          className={`rounded px-2 py-1 text-xs transition-colors ${
+            tableMode === 'projects'
+              ? 'bg-accent text-on-accent'
+              : 'bg-surface text-text-muted hover:text-text-secondary'
+          }`}
+        >
+          Projects {projects.some(item => item.project.status !== 'done') && (
+            <span className="ml-1 text-text-secondary">({projects.filter(item => item.project.status !== 'done').length})</span>
+          )}
+        </button>
+        <button
           onClick={() => setTableMode('activity')}
           className={`rounded px-2 py-1 text-xs transition-colors ${
             tableMode === 'activity'
@@ -1348,7 +1422,16 @@ export function TableView() {
       ) : tableMode === 'scores' ? (
         <ScoreTable scoreRows={scoreRows} onRowClick={handleRowClick} />
       ) : tableMode === 'todos' ? (
-        <TodoTable todoRows={todoRows} onRowClick={handleRowClick} />
+        <TodoTable todoRows={todoRows} onRowClick={handleTodoRowClick} />
+      ) : tableMode === 'projects' ? (
+        <ProjectLane
+          projects={projects}
+          activeProjectId={activeProjectId}
+          onSelectProject={openProject}
+          onOpenGraph={openProjectGraph}
+          onOpenFile={handleRowClick}
+          onProjectsChanged={loadProjects}
+        />
       ) : (
         <ManifestTable
           rows={manifestRows}

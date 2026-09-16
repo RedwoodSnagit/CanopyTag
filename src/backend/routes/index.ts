@@ -17,7 +17,7 @@ export async function indexRoutes(app: FastifyInstance) {
     const records = Array.from(allPaths).map((filePath) => {
       const repoItem = repoIndex.get(filePath);
       const canopyItem = canopy.files[filePath];
-      return mergeFileRecord(filePath, repoItem, canopyItem);
+      return mergeFileRecord(filePath, repoItem, canopyItem, canopy.projects);
     });
 
     return records;

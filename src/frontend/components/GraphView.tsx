@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Feature, MergedFileRecord, Priority } from '../../shared/types';
+import type {
+  Feature,
+  MergedFileRecord,
+  Priority,
+  ProjectDetail,
+  Task,
+  TaskReadiness,
+  TaskReadinessState,
+} from '../../shared/types';
 import { checkAuthorityHealth } from '../../shared/types';
+import { api } from '../lib/api';
 import { heatColor, PRIORITY_COLORS } from '../lib/tokens';
 import { useWorkspace } from '../stores/workspace';
 
-type GraphMode = 'overview' | 'focus';
+type GraphMode = 'overview' | 'focus' | 'project';
 type DirectionMode = 'both' | 'in' | 'out';
 type ColorMode = 'feature' | 'authority' | 'heat';
 
@@ -545,17 +554,688 @@ function GraphLegend({ colorMode }: { colorMode: ColorMode }) {
   );
 }
 
+// ---- Project execution view -------------------------------------------------
+//
+// This is intentionally a view over the project packet, not another project
+// model. Its local positions only change how this browser draws cards; task
+// status, dependencies, resources, and receipts keep their single authored
+// source in canopy.json.
+
+const PROJECT_LAYOUT_STORAGE_PREFIX = 'canopytag:project-layout:v1';
+const PROJECT_TASK_CARD = { width: 210, height: 82 };
+const PROJECT_ATTACHMENT_CARD = { width: 240, height: 42 };
+
+type ProjectEdgeKind = 'dependency' | 'context' | 'resource' | 'evidence' | 'structural';
+
+interface ProjectTaskNode {
+  id: string;
+  task: Task;
+  readiness: TaskReadiness;
+  groupId: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface ProjectAttachmentNode {
+  id: string;
+  kind: 'resource' | 'receipt';
+  label: string;
+  detail: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface ProjectExecutionGroup {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface ProjectExecutionEdge {
+  id: string;
+  source: string;
+  target: string;
+  kind: ProjectEdgeKind;
+  label: string;
+  provider?: string;
+  fingerprint?: string;
+}
+
+/** A future structural provider must supply source, provenance, and evidence. */
+export interface ProjectStructuralEdge {
+  id: string;
+  sourceTaskId: string;
+  targetTaskId: string;
+  label: string;
+  provider: string;
+  fingerprint: string;
+}
+
+export interface ProjectExecutionGraph {
+  taskNodes: ProjectTaskNode[];
+  attachmentNodes: ProjectAttachmentNode[];
+  groups: ProjectExecutionGroup[];
+  edges: ProjectExecutionEdge[];
+  selectedTaskId: string | null;
+  width: number;
+  height: number;
+}
+
+export interface ProjectLayout {
+  positions: Record<string, ManualNodePosition>;
+}
+
+function shortGraphLabel(value: string, length = 30): string {
+  return value.length > length ? `${value.slice(0, Math.max(1, length - 1))}…` : value;
+}
+
+function taskReadiness(task: Task, byTaskId: Map<string, TaskReadiness>): TaskReadiness {
+  return byTaskId.get(task.id) ?? {
+    taskId: task.id,
+    state: task.status === 'open' ? 'ready' : task.status,
+    blockers: [],
+    claims: [],
+  };
+}
+
+function preferredProjectTaskId(detail: ProjectDetail): string | null {
+  const taskOrder: TaskReadinessState[] = ['in_progress', 'claimed', 'ready', 'blocked', 'deferred', 'done'];
+  const byTaskId = new Map(detail.taskReadiness.map(item => [item.taskId, item]));
+  const tasks = detail.project.todos ?? [];
+  for (const state of taskOrder) {
+    const task = tasks.find(candidate => taskReadiness(candidate, byTaskId).state === state);
+    if (task) return task.id;
+  }
+  return tasks[0]?.id ?? null;
+}
+
+function dependencyEdge(task: Task, dependency: NonNullable<Task['dependencies']>[number]): {
+  source: string;
+  target: string;
+  kind: 'dependency' | 'context';
+  label: string;
+  blocksReadiness: boolean;
+} {
+  if (dependency.type === 'depends_on') {
+    return {
+      source: dependency.taskId,
+      target: task.id,
+      kind: 'dependency',
+      label: dependency.reason ? `required · ${dependency.reason}` : 'required',
+      blocksReadiness: true,
+    };
+  }
+  if (dependency.type === 'blocks') {
+    return {
+      source: task.id,
+      target: dependency.taskId,
+      kind: 'dependency',
+      label: dependency.reason ? `blocks · ${dependency.reason}` : 'blocks',
+      blocksReadiness: true,
+    };
+  }
+  return {
+    source: dependency.type === 'parent_child' ? dependency.taskId : task.id,
+    target: dependency.type === 'parent_child' ? task.id : dependency.taskId,
+    kind: 'context',
+    label: dependency.reason ?? (dependency.type === 'parent_child' ? 'parent / child' : 'related'),
+    blocksReadiness: false,
+  };
+}
+
+function taskRanks(tasks: Task[], edges: Array<{ source: string; target: string; blocksReadiness: boolean }>): Map<string, number> {
+  const taskIds = new Set(tasks.map(task => task.id));
+  const outgoing = new Map<string, string[]>();
+  const incomingCount = new Map(tasks.map(task => [task.id, 0]));
+  const ranks = new Map(tasks.map(task => [task.id, 0]));
+
+  for (const edge of edges) {
+    if (!edge.blocksReadiness || !taskIds.has(edge.source) || !taskIds.has(edge.target)) continue;
+    const targets = outgoing.get(edge.source) ?? [];
+    targets.push(edge.target);
+    outgoing.set(edge.source, targets);
+    incomingCount.set(edge.target, (incomingCount.get(edge.target) ?? 0) + 1);
+  }
+
+  const ready = tasks
+    .filter(task => (incomingCount.get(task.id) ?? 0) === 0)
+    .map(task => task.id)
+    .sort();
+
+  while (ready.length > 0) {
+    const current = ready.shift()!;
+    for (const target of outgoing.get(current) ?? []) {
+      ranks.set(target, Math.max(ranks.get(target) ?? 0, (ranks.get(current) ?? 0) + 1));
+      const remaining = (incomingCount.get(target) ?? 0) - 1;
+      incomingCount.set(target, remaining);
+      if (remaining === 0) {
+        ready.push(target);
+        ready.sort((left, right) => left.localeCompare(right));
+      }
+    }
+  }
+  return ranks;
+}
+
+function milestoneLabel(detail: ProjectDetail, milestoneId: string | undefined): string {
+  if (!milestoneId) return 'Other project work';
+  const milestone = detail.project.milestones?.find(candidate => candidate.id === milestoneId);
+  return milestone ? `${milestone.id} · ${milestone.name}` : milestoneId;
+}
+
+/** Build one readable project-ordering view from existing authored task data. */
+export function buildProjectExecutionGraph(
+  detail: ProjectDetail,
+  selectedTaskId: string | null,
+  positions: Record<string, ManualNodePosition> = {},
+  structuralOverlay: ProjectStructuralEdge[] = [],
+): ProjectExecutionGraph {
+  const tasks = detail.project.todos ?? [];
+  const taskIds = new Set(tasks.map(task => task.id));
+  const readinessByTaskId = new Map(detail.taskReadiness.map(item => [item.taskId, item]));
+  const dependencies = tasks.flatMap(task => (task.dependencies ?? [])
+    .filter(dependency => taskIds.has(dependency.taskId))
+    .map(dependency => ({ task, ...dependencyEdge(task, dependency) })));
+  const ranks = taskRanks(tasks, dependencies);
+  const selected = taskIds.has(selectedTaskId ?? '') ? selectedTaskId : preferredProjectTaskId(detail);
+
+  const milestoneOrder = new Map((detail.project.milestones ?? []).map((milestone, index) => [milestone.id, index]));
+  const groupMembers = new Map<string, Task[]>();
+  for (const task of tasks) {
+    const groupId = task.milestoneId ?? '__other__';
+    const members = groupMembers.get(groupId) ?? [];
+    members.push(task);
+    groupMembers.set(groupId, members);
+  }
+  const groups = [...groupMembers.entries()]
+    .sort(([left], [right]) => {
+      const leftRank = left === '__other__' ? Number.MAX_SAFE_INTEGER : milestoneOrder.get(left) ?? Number.MAX_SAFE_INTEGER - 1;
+      const rightRank = right === '__other__' ? Number.MAX_SAFE_INTEGER : milestoneOrder.get(right) ?? Number.MAX_SAFE_INTEGER - 1;
+      return leftRank - rightRank || left.localeCompare(right);
+    });
+  const maxRank = Math.max(0, ...[...ranks.values()]);
+  const taskAreaWidth = 180 + ((maxRank + 1) * 260);
+  let nextY = 70;
+  const groupNodes: ProjectExecutionGroup[] = [];
+  const taskNodes: ProjectTaskNode[] = [];
+
+  for (const [groupId, members] of groups) {
+    const ordered = [...members].sort((left, right) =>
+      (ranks.get(left.id) ?? 0) - (ranks.get(right.id) ?? 0)
+      || left.id.localeCompare(right.id));
+    const height = Math.max(130, 72 + (ordered.length * 104));
+    groupNodes.push({
+      id: groupId,
+      label: milestoneLabel(detail, groupId === '__other__' ? undefined : groupId),
+      x: 44,
+      y: nextY,
+      width: taskAreaWidth,
+      height,
+    });
+    ordered.forEach((task, index) => {
+      const original = {
+        x: 94 + ((ranks.get(task.id) ?? 0) * 260),
+        y: nextY + 42 + (index * 104),
+      };
+      const override = positions[task.id];
+      taskNodes.push({
+        id: task.id,
+        task,
+        readiness: taskReadiness(task, readinessByTaskId),
+        groupId,
+        x: override?.x ?? original.x,
+        y: override?.y ?? original.y,
+        width: PROJECT_TASK_CARD.width,
+        height: PROJECT_TASK_CARD.height,
+      });
+    });
+    nextY += height + 22;
+  }
+
+  const attachmentNodes: ProjectAttachmentNode[] = [];
+  const selectedTask = tasks.find(task => task.id === selected);
+  if (selectedTask) {
+    const attachmentItems = [
+      ...(selectedTask.resources ?? []).map((resource, index) => ({
+        id: `resource:${selectedTask.id}:${index}`,
+        kind: 'resource' as const,
+        label: `${resource.role.replace('_', ' ')} · ${resource.kind}`,
+        detail: resource.label ?? resource.ref,
+      })),
+      ...(selectedTask.receipts ?? []).map((receipt, index) => ({
+        id: `receipt:${selectedTask.id}:${index}`,
+        kind: 'receipt' as const,
+        label: `${receipt.kind} · ${receipt.outcome}`,
+        detail: receipt.summary,
+      })),
+    ];
+    const attachmentColumns = Math.max(1, Math.floor((taskAreaWidth - 52) / (PROJECT_ATTACHMENT_CARD.width + 16)));
+    const attachmentRows = Math.max(1, Math.ceil(attachmentItems.length / attachmentColumns));
+    const contextHeight = Math.max(112, 60 + (attachmentRows * 58));
+    const contextY = nextY;
+    groupNodes.push({
+      id: '__selected_context__',
+      label: `${selectedTask.id} context · resources and evidence`,
+      x: 44,
+      y: contextY,
+      width: taskAreaWidth,
+      height: contextHeight,
+    });
+    attachmentItems.forEach((attachment, index) => {
+      const column = index % attachmentColumns;
+      const row = Math.floor(index / attachmentColumns);
+      attachmentNodes.push({
+        ...attachment,
+        x: 70 + (column * (PROJECT_ATTACHMENT_CARD.width + 16)),
+        y: contextY + 46 + (row * 58),
+        width: PROJECT_ATTACHMENT_CARD.width,
+        height: PROJECT_ATTACHMENT_CARD.height,
+      });
+    });
+    nextY += contextHeight + 22;
+  }
+
+  const edges: ProjectExecutionEdge[] = dependencies.map((edge, index) => ({
+    id: `dependency:${index}:${edge.source}:${edge.target}`,
+    source: edge.source,
+    target: edge.target,
+    kind: edge.kind,
+    label: edge.label,
+  }));
+  for (const attachment of attachmentNodes) {
+    edges.push({
+      id: `attachment:${attachment.id}`,
+      source: attachment.kind === 'resource' ? attachment.id : selected!,
+      target: attachment.kind === 'resource' ? selected! : attachment.id,
+      kind: attachment.kind === 'resource' ? 'resource' : 'evidence',
+      label: attachment.kind === 'resource' ? 'resource' : 'recorded evidence',
+    });
+  }
+  for (const edge of structuralOverlay) {
+    if (!taskIds.has(edge.sourceTaskId) || !taskIds.has(edge.targetTaskId)) continue;
+    edges.push({
+      id: `structural:${edge.id}`,
+      source: edge.sourceTaskId,
+      target: edge.targetTaskId,
+      kind: 'structural',
+      label: edge.label,
+      provider: edge.provider,
+      fingerprint: edge.fingerprint,
+    });
+  }
+
+  return {
+    taskNodes,
+    attachmentNodes,
+    groups: groupNodes,
+    edges,
+    selectedTaskId: selected,
+    width: Math.max(980, taskAreaWidth + 88),
+    height: Math.max(480, nextY + 36),
+  };
+}
+
+export function projectLayoutStorageKey(repoRoot: string | undefined, projectId: string): string {
+  return `${PROJECT_LAYOUT_STORAGE_PREFIX}:${encodeURIComponent(repoRoot ?? 'current-repository')}:${projectId}`;
+}
+
+function validManualPosition(value: unknown): value is ManualNodePosition {
+  if (!value || typeof value !== 'object') return false;
+  const position = value as Record<string, unknown>;
+  return typeof position.x === 'number' && Number.isFinite(position.x)
+    && typeof position.y === 'number' && Number.isFinite(position.y);
+}
+
+export function readProjectLayout(storage: Pick<Storage, 'getItem'> | null, key: string): ProjectLayout {
+  if (!storage) return { positions: {} };
+  try {
+    const raw = storage.getItem(key);
+    if (!raw) return { positions: {} };
+    const parsed = JSON.parse(raw) as { positions?: Record<string, unknown> };
+    const positions = Object.fromEntries(Object.entries(parsed.positions ?? {})
+      .filter(([, position]) => validManualPosition(position))) as Record<string, ManualNodePosition>;
+    return { positions };
+  } catch {
+    return { positions: {} };
+  }
+}
+
+function browserStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function writeProjectLayout(storage: Pick<Storage, 'setItem'> | null, key: string, positions: Record<string, ManualNodePosition>): void {
+  try {
+    storage?.setItem(key, JSON.stringify({ positions } satisfies ProjectLayout));
+  } catch {
+    // Private browsing or a full local store should not break graph navigation.
+  }
+}
+
+function projectStateColor(state: TaskReadinessState): string {
+  switch (state) {
+    case 'ready': return 'var(--color-accent)';
+    case 'blocked': return 'var(--color-p1)';
+    case 'claimed': return 'var(--color-p2)';
+    case 'in_progress': return 'var(--color-closeness-3)';
+    case 'done': return 'var(--color-text-muted)';
+    case 'deferred': return 'var(--color-border)';
+    default: return 'var(--color-border)';
+  }
+}
+
+function projectEdgeStyle(kind: ProjectEdgeKind): { stroke: string; dash?: string; marker: boolean } {
+  switch (kind) {
+    case 'dependency': return { stroke: 'var(--color-accent)', marker: true };
+    case 'context': return { stroke: 'var(--color-text-muted)', dash: '5 5', marker: false };
+    case 'resource': return { stroke: 'var(--color-closeness-3)', dash: '3 4', marker: true };
+    case 'evidence': return { stroke: 'var(--color-closeness-5)', dash: '2 4', marker: true };
+    case 'structural': return { stroke: 'var(--color-text-muted)', dash: '9 5', marker: true };
+  }
+}
+
+function ProjectExecutionLegend() {
+  return (
+    <div className="rounded border border-border bg-surface p-3 text-xs text-text-muted">
+      <div className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">Execution view legend</div>
+      <div className="space-y-2">
+        <p><span className="font-medium text-accent">Solid arrow</span> — authored blocking dependency and execution order.</p>
+        <p><span className="font-medium text-[var(--color-closeness-3)]">Dotted arrow</span> — selected task resource.</p>
+        <p><span className="font-medium text-[var(--color-closeness-5)]">Fine dash</span> — retained receipt or evidence.</p>
+        <p><span className="font-medium text-text-muted">Long dash</span> — provider-backed structural overlay only; never inferred from authored relations.</p>
+      </div>
+    </div>
+  );
+}
+
+function ProjectExecutionGraph({
+  projectId,
+  repoRoot,
+}: {
+  projectId: string;
+  repoRoot?: string;
+}) {
+  const [detail, setDetail] = useState<ProjectDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [positions, setPositions] = useState<Record<string, ManualNodePosition>>({});
+  const [loadedLayoutKey, setLoadedLayoutKey] = useState<string | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const drag = useRef<{
+    pointerId: number;
+    taskId: string;
+    startClientX: number;
+    startClientY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
+  const layoutKey = useMemo(() => projectLayoutStorageKey(repoRoot, projectId), [projectId, repoRoot]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setDetail(null);
+    setSelectedTaskId(null);
+    setLoadedLayoutKey(null);
+    setPositions(readProjectLayout(browserStorage(), layoutKey).positions);
+    void api.fetchProject(projectId)
+      .then(result => {
+        if (!cancelled) {
+          setDetail(result);
+          setSelectedTaskId(preferredProjectTaskId(result));
+        }
+      })
+      .catch((reason: Error) => { if (!cancelled) setError(reason.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    setLoadedLayoutKey(layoutKey);
+    return () => { cancelled = true; };
+  }, [layoutKey, projectId]);
+
+  useEffect(() => {
+    if (loadedLayoutKey !== layoutKey) return;
+    writeProjectLayout(browserStorage(), layoutKey, positions);
+  }, [layoutKey, loadedLayoutKey, positions]);
+
+  const graph = useMemo(() => detail
+    ? buildProjectExecutionGraph(detail, selectedTaskId, positions)
+    : null, [detail, positions, selectedTaskId]);
+
+  useEffect(() => {
+    if (graph?.selectedTaskId && graph.selectedTaskId !== selectedTaskId) {
+      setSelectedTaskId(graph.selectedTaskId);
+    }
+  }, [graph?.selectedTaskId, selectedTaskId]);
+
+  const handleTaskPointerDown = (event: React.PointerEvent<SVGGElement>, node: ProjectTaskNode) => {
+    if (event.button !== 0) return;
+    const svg = svgRef.current;
+    if (!svg) return;
+    event.stopPropagation();
+    drag.current = {
+      pointerId: event.pointerId,
+      taskId: node.id,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      originX: node.x,
+      originY: node.y,
+    };
+    svg.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
+    const currentDrag = drag.current;
+    const svg = svgRef.current;
+    if (!currentDrag || !svg || currentDrag.pointerId !== event.pointerId || !graph) return;
+    const rect = svg.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const x = currentDrag.originX + (((event.clientX - currentDrag.startClientX) / rect.width) * graph.width);
+    const y = currentDrag.originY + (((event.clientY - currentDrag.startClientY) / rect.height) * graph.height);
+    setPositions(current => ({
+      ...current,
+      [currentDrag.taskId]: { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)) },
+    }));
+  };
+
+  const handlePointerUp = (event: React.PointerEvent<SVGSVGElement>) => {
+    const currentDrag = drag.current;
+    const svg = svgRef.current;
+    if (!currentDrag || !svg || currentDrag.pointerId !== event.pointerId) return;
+    if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+    drag.current = null;
+  };
+
+  if (loading) return <p className="p-4 text-sm text-text-muted">Loading project execution packet…</p>;
+  if (error) return <p className="p-4 text-sm text-[var(--color-p1)]">Could not load this project: {error}</p>;
+  if (!detail || !graph) return null;
+
+  const nodeById = new Map<string, ProjectTaskNode | ProjectAttachmentNode>([
+    ...graph.taskNodes.map(node => [node.id, node] as const),
+    ...graph.attachmentNodes.map(node => [node.id, node] as const),
+  ]);
+  const selectedTask = graph.taskNodes.find(node => node.id === graph.selectedTaskId) ?? null;
+  const hasSavedLayout = Object.keys(positions).length > 0;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-text-primary">{detail.project.id} execution flow</h2>
+          <p className="mt-1 text-xs text-text-muted">Question: what can move next, what blocks it, and what evidence or resources are attached?</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setPositions({})}
+          disabled={!hasSavedLayout}
+          className={`rounded border px-2 py-1 text-xs transition-colors ${
+            hasSavedLayout
+              ? 'border-border bg-surface text-text-secondary hover:border-accent hover:text-text-primary'
+              : 'border-border bg-surface text-text-muted opacity-50'
+          }`}
+        >
+          Reset saved layout
+        </button>
+      </div>
+
+      <div className="flex flex-wrap gap-2 text-xs text-text-muted">
+        <span className="rounded border border-border bg-surface px-2 py-1">{graph.taskNodes.length} tasks</span>
+        <span className="rounded border border-border bg-surface px-2 py-1">{graph.groups.length} milestone groups</span>
+        <span className="rounded border border-border bg-surface px-2 py-1">{graph.attachmentNodes.length} selected-task attachments</span>
+        <span className="rounded border border-border bg-surface px-2 py-1">Layout saves in this browser only</span>
+      </div>
+
+      <div className="rounded-xl border border-border bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_55%)] p-3">
+        <div className="overflow-auto">
+          <svg
+            ref={svgRef}
+            viewBox={`0 0 ${graph.width} ${graph.height}`}
+            role="img"
+            aria-label={`${detail.project.name} directed execution flow`}
+            className="select-none rounded-lg bg-surface"
+            style={{
+              width: '100%',
+              minWidth: '880px',
+              height: 'auto',
+              aspectRatio: `${graph.width} / ${graph.height}`,
+              userSelect: 'none',
+            }}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+          >
+            <defs>
+              <marker id="project-execution-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
+              </marker>
+            </defs>
+
+            {graph.groups.map(group => (
+              <g key={group.id}>
+                <rect x={group.x} y={group.y} width={group.width} height={group.height} rx="12" fill="var(--color-canvas)" stroke="var(--color-border)" strokeWidth="1" />
+                <text x={group.x + 16} y={group.y + 24} fontSize="12" fontWeight="700" fill="var(--color-text-secondary)">
+                  {shortGraphLabel(group.label, 46)}
+                </text>
+              </g>
+            ))}
+
+            <text x={graph.groups[0]?.x ?? 44} y="34" fontSize="11" fontWeight="700" fill="var(--color-text-secondary)">MILESTONE SWIMLANES</text>
+
+            {graph.edges.map(edge => {
+              const source = nodeById.get(edge.source);
+              const target = nodeById.get(edge.target);
+              if (!source || !target) return null;
+              const style = projectEdgeStyle(edge.kind);
+              const sourceCenter = { x: source.x + (source.width / 2), y: source.y + (source.height / 2) };
+              const targetCenter = { x: target.x + (target.width / 2), y: target.y + (target.height / 2) };
+              const labelX = Number(((sourceCenter.x + targetCenter.x) / 2).toFixed(2));
+              const labelY = Number((((sourceCenter.y + targetCenter.y) / 2) - 7).toFixed(2));
+              return (
+                <g key={edge.id} color={style.stroke}>
+                  <line
+                    x1={sourceCenter.x}
+                    y1={sourceCenter.y}
+                    x2={targetCenter.x}
+                    y2={targetCenter.y}
+                    stroke={style.stroke}
+                    strokeWidth={edge.kind === 'dependency' ? 2.2 : 1.5}
+                    strokeDasharray={style.dash}
+                    opacity={edge.kind === 'context' ? 0.65 : 0.9}
+                    markerEnd={style.marker ? 'url(#project-execution-arrow)' : undefined}
+                  />
+                  <text x={labelX} y={labelY} textAnchor="middle" fontSize="9" fill="var(--color-text-secondary)" stroke="var(--color-graph-label-bg)" strokeWidth="3" paintOrder="stroke">
+                    {shortGraphLabel(edge.provider ? `${edge.label} · ${edge.provider}` : edge.label, 36)}
+                  </text>
+                  {edge.provider && <title>{`${edge.provider} · ${edge.fingerprint}`}</title>}
+                </g>
+              );
+            })}
+
+            {graph.taskNodes.map(node => {
+              const selected = node.id === graph.selectedTaskId;
+              const color = projectStateColor(node.readiness.state);
+              return (
+                <g
+                  key={node.id}
+                  transform={`translate(${node.x} ${node.y})`}
+                  className="cursor-grab"
+                  onPointerDown={event => handleTaskPointerDown(event, node)}
+                  onClick={() => setSelectedTaskId(node.id)}
+                >
+                  <rect width={node.width} height={node.height} rx="10" fill="var(--color-surface)" stroke={selected ? 'var(--color-accent)' : color} strokeWidth={selected ? 2.4 : 1.4} />
+                  <rect width="6" height={node.height} rx="3" fill={color} />
+                  <text x="16" y="20" fontSize="11" fontWeight="700" fill="var(--color-text-primary)">{node.task.id}</text>
+                  <text x={node.width - 14} y="20" textAnchor="end" fontSize="10" fill={color}>{node.readiness.state.replace('_', ' ')}</text>
+                  <text x="16" y="42" fontSize="11" fill="var(--color-text-secondary)">{shortGraphLabel(node.task.text, 30)}</text>
+                  <text x="16" y="63" fontSize="9" fill="var(--color-text-muted)">
+                    {(node.task.resources?.length ?? 0)} resources · {(node.task.receipts?.length ?? 0)} receipts · {(node.readiness.blockers.length)} blockers
+                  </text>
+                  <title>{`${node.task.id}: ${node.task.text}`}</title>
+                </g>
+              );
+            })}
+
+            {graph.attachmentNodes.map(node => {
+              const color = node.kind === 'resource' ? 'var(--color-closeness-3)' : 'var(--color-closeness-5)';
+              return (
+                <g key={node.id} transform={`translate(${node.x} ${node.y})`}>
+                  <rect width={node.width} height={node.height} rx="8" fill="var(--color-canvas)" stroke={color} strokeWidth="1.2" strokeDasharray={node.kind === 'resource' ? '3 4' : '2 4'} />
+                  <text x="12" y="16" fontSize="9" fontWeight="700" fill={color}>{node.label}</text>
+                  <text x="12" y="31" fontSize="10" fill="var(--color-text-secondary)">{shortGraphLabel(node.detail, 34)}</text>
+                  <title>{node.detail}</title>
+                </g>
+              );
+            })}
+
+            {selectedTask && graph.attachmentNodes.length === 0 && (
+              <text x="70" y={graph.groups.find(group => group.id === '__selected_context__')!.y + 76} fontSize="11" fill="var(--color-text-muted)">
+                {selectedTask.task.id} has no recorded resources or receipts.
+              </text>
+            )}
+          </svg>
+        </div>
+      </div>
+
+      <div className="grid gap-3 xl:grid-cols-2">
+        <ProjectExecutionLegend />
+        <div className="rounded border border-border bg-surface p-3 text-xs text-text-muted">
+          <div className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">Structural overlay</div>
+          <p>No provider-backed structural edge artifact is available for this project, so none is drawn. Authored task/resource/evidence edges are never relabeled as generated structure.</p>
+          <p className="mt-2">When a provider supplies an edge with a provider name and artifact fingerprint, this view renders it as a long-dash overlay and keeps its provenance visible.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function GraphView() {
   const {
+    activeProjectId,
     analytics,
     features,
     index,
+    projectGraphNavigationId,
+    projects,
+    repoConfig,
     selectedFile,
+    clearProjectGraphNavigation,
     selectFile,
     setViewMode,
   } = useWorkspace();
 
-  const [graphMode, setGraphMode] = useState<GraphMode>('overview');
+  const [graphMode, setGraphMode] = useState<GraphMode>(() => projectGraphNavigationId ? 'project' : 'overview');
   const [direction, setDirection] = useState<DirectionMode>('both');
   const [colorMode, setColorMode] = useState<ColorMode>('feature');
   const [minCloseness, setMinCloseness] = useState(2);
@@ -563,6 +1243,7 @@ export function GraphView() {
   const [showEdgeLabels, setShowEdgeLabels] = useState(false);
   const [focusPath, setFocusPath] = useState<string | null>(selectedFile?.path ?? null);
   const [focusNodePositions, setFocusNodePositions] = useState<Record<string, ManualNodePosition>>({});
+  const [projectGraphProjectId, setProjectGraphProjectId] = useState<string | null>(projectGraphNavigationId ?? activeProjectId ?? null);
   const [draggingNodePath, setDraggingNodePath] = useState<string | null>(null);
   const [hoveredFocusPath, setHoveredFocusPath] = useState<string | null>(null);
   const [viewport, setViewport] = useState<GraphViewport>(() => INITIAL_GRAPH_VIEWPORT);
@@ -609,15 +1290,35 @@ export function GraphView() {
     setFocusPath(selectedFile?.path ?? null);
   }, [selectedFile?.path]);
 
+  useEffect(() => {
+    if (!projectGraphNavigationId) return;
+    setProjectGraphProjectId(projectGraphNavigationId);
+    setGraphMode('project');
+    clearProjectGraphNavigation();
+  }, [clearProjectGraphNavigation, projectGraphNavigationId]);
+
+  useEffect(() => {
+    if (activeProjectId && projects.some(item => item.project.id === activeProjectId)) {
+      setProjectGraphProjectId(activeProjectId);
+      return;
+    }
+    setProjectGraphProjectId(current => (
+      current && projects.some(item => item.project.id === current)
+        ? current
+        : projects[0]?.project.id ?? null
+    ));
+  }, [activeProjectId, projects]);
+
   const toCanvasPoint = (clientX: number, clientY: number) => {
     const svg = svgRef.current;
     if (!svg) return null;
-    const rect = svg.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return null;
-    return {
-      x: ((clientX - rect.left) / rect.width) * CANVAS.width,
-      y: ((clientY - rect.top) / rect.height) * CANVAS.height,
-    };
+    const matrix = svg.getScreenCTM();
+    if (!matrix) return null;
+    // Include SVG letterboxing so zoom and drag track the pointer at any aspect ratio.
+    const point = svg.createSVGPoint();
+    point.x = clientX;
+    point.y = clientY;
+    return point.matrixTransform(matrix.inverse());
   };
 
   const resetViewport = () => setViewport({ ...INITIAL_GRAPH_VIEWPORT });
@@ -664,12 +1365,11 @@ export function GraphView() {
   const handlePointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
     const nodeDrag = nodeDragState.current;
     if (nodeDrag && nodeDrag.pointerId === event.pointerId) {
-      const svg = svgRef.current;
-      if (!svg) return;
-      const rect = svg.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return;
-      const deltaX = ((event.clientX - nodeDrag.startClientX) / rect.width) * CANVAS.width / viewport.scale;
-      const deltaY = ((event.clientY - nodeDrag.startClientY) / rect.height) * CANVAS.height / viewport.scale;
+      const start = toCanvasPoint(nodeDrag.startClientX, nodeDrag.startClientY);
+      const current = toCanvasPoint(event.clientX, event.clientY);
+      if (!start || !current) return;
+      const deltaX = (current.x - start.x) / viewport.scale;
+      const deltaY = (current.y - start.y) / viewport.scale;
       if (Math.abs(event.clientX - nodeDrag.startClientX) + Math.abs(event.clientY - nodeDrag.startClientY) > 3) {
         nodeDrag.moved = true;
       }
@@ -686,10 +1386,11 @@ export function GraphView() {
     const drag = dragState.current;
     const svg = svgRef.current;
     if (!drag || !svg || drag.pointerId !== event.pointerId) return;
-    const rect = svg.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
-    const deltaX = ((event.clientX - drag.startClientX) / rect.width) * CANVAS.width;
-    const deltaY = ((event.clientY - drag.startClientY) / rect.height) * CANVAS.height;
+    const start = toCanvasPoint(drag.startClientX, drag.startClientY);
+    const current = toCanvasPoint(event.clientX, event.clientY);
+    if (!start || !current) return;
+    const deltaX = current.x - start.x;
+    const deltaY = current.y - start.y;
     setViewport(current => ({
       ...current,
       x: Number((drag.originX + deltaX).toFixed(3)),
@@ -1025,17 +1726,17 @@ export function GraphView() {
   const currentSummary = currentFocusFile?.summary;
   const currentHealth = currentFocusFile ? (currentFocusFile.authorityHealth ?? checkAuthorityHealth(currentFocusFile)) : null;
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="flex min-h-0 flex-1 overflow-hidden">
       <aside className="w-80 shrink-0 overflow-y-auto border-r border-border bg-surface p-4">
         <div className="mb-4">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">Graph Explorer</h2>
           <p className="mt-2 text-sm text-text-muted">
-            Overview groups the repo into relation-weighted clusters. Focus recenters on the selected file and its local relation graph.
+            Overview groups the repo into relation-weighted clusters. Focus recenters on a file. Project answers one execution-ordering question from its existing task packet.
           </p>
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2">
-            {(['overview', 'focus'] as GraphMode[]).map(mode => (
+            {(['overview', 'focus', 'project'] as GraphMode[]).map(mode => (
               <button
                 key={mode}
                 onClick={() => {
@@ -1048,12 +1749,12 @@ export function GraphView() {
                   : 'border-border bg-canvas text-text-muted hover:border-accent hover:text-text-primary'
               }`}
             >
-              {mode === 'overview' ? 'Overview' : 'Focus'}
+              {mode === 'overview' ? 'Overview' : mode === 'focus' ? 'Focus' : 'Project'}
             </button>
           ))}
         </div>
 
-        <div className="mb-4">
+        {graphMode !== 'project' && <div className="mb-4">
           <div className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">Color</div>
           <div className="flex flex-wrap gap-2">
             {(['feature', 'authority', 'heat'] as ColorMode[]).map(mode => (
@@ -1070,7 +1771,26 @@ export function GraphView() {
               </button>
             ))}
           </div>
-        </div>
+        </div>}
+
+        {graphMode === 'project' && (
+          <div className="mb-4 rounded border border-border bg-canvas p-3">
+            <label className="block text-[11px] uppercase tracking-wide text-text-secondary" htmlFor="project-graph-selector">Project packet</label>
+            {projects.length > 0 ? (
+              <select
+                id="project-graph-selector"
+                value={projectGraphProjectId ?? ''}
+                onChange={event => setProjectGraphProjectId(event.target.value || null)}
+                className="mt-2 w-full rounded border border-border bg-surface px-2 py-1.5 text-sm text-text-primary focus:border-accent focus:outline-none"
+              >
+                {projects.map(({ project }) => <option key={project.id} value={project.id}>{project.id} · {project.name}</option>)}
+              </select>
+            ) : (
+              <p className="mt-2 text-xs text-text-muted">No project packet is available in this repository.</p>
+            )}
+            <p className="mt-3 text-xs text-text-muted">Drag task cards to preserve a useful local arrangement. The layout is not saved into project metadata.</p>
+          </div>
+        )}
 
         {graphMode === 'focus' && (
           <div className="mb-4 rounded border border-border bg-canvas p-3">
@@ -1143,7 +1863,7 @@ export function GraphView() {
           </div>
         )}
 
-        <GraphLegend colorMode={colorMode} />
+        {graphMode === 'project' ? <ProjectExecutionLegend /> : <GraphLegend colorMode={colorMode} />}
 
         <div className="mt-4 rounded border border-border bg-canvas p-3">
           {graphMode === 'overview' ? (
@@ -1158,7 +1878,7 @@ export function GraphView() {
                 Click a cluster to recenter the graph on its anchor file.
               </p>
             </>
-          ) : focusGraph.centerFile ? (
+          ) : graphMode === 'focus' && focusGraph.centerFile ? (
             <>
               <div className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">Current Focus</div>
               <div className="mb-2 font-mono text-xs text-text-secondary">{focusGraph.centerFile.path}</div>
@@ -1186,14 +1906,25 @@ export function GraphView() {
                 Open In Explorer
               </button>
             </>
-          ) : (
+          ) : graphMode === 'focus' ? (
             <p className="text-sm text-text-muted">Select a file to seed the focus graph.</p>
+          ) : (
+            <>
+              <div className="mb-2 text-[11px] uppercase tracking-wide text-text-secondary">Project execution view</div>
+              <p className="text-sm text-text-muted">Milestone swimlanes and solid arrows show the authored task order. Selecting a card reveals only that task’s resources and receipts, keeping the canvas bounded.</p>
+              <p className="mt-3 text-xs text-text-muted">Generated structural edges are intentionally absent until a provider can supply visible provenance.</p>
+            </>
           )}
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto bg-canvas p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <main className={`min-h-0 min-w-0 flex-1 bg-canvas p-4 ${graphMode === 'project' ? 'overflow-auto' : 'flex flex-col overflow-hidden'}`}>
+        {graphMode === 'project' ? (
+          projectGraphProjectId
+            ? <ProjectExecutionGraph projectId={projectGraphProjectId} repoRoot={repoConfig?.repoRoot} />
+            : <p className="p-4 text-sm text-text-muted">Create or select a project packet to inspect execution order.</p>
+        ) : <>
+        <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-text-muted">
             Drag the canvas to pan. In Focus mode, hover nodes to spotlight direct relations or drag them to untangle dense neighborhoods.
           </p>
@@ -1231,11 +1962,11 @@ export function GraphView() {
             </button>
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_55%)] p-3">
+        <div className="min-h-0 flex-1 rounded-xl border border-border bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_55%)] p-3">
           <svg
             ref={svgRef}
             viewBox={`0 0 ${CANVAS.width} ${CANVAS.height}`}
-            className={`h-[680px] w-full select-none rounded-lg bg-surface ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+            className={`block h-full w-full select-none rounded-lg bg-surface ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
             style={{ userSelect: 'none' }}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -1458,6 +2189,7 @@ export function GraphView() {
             </g>
           </svg>
         </div>
+        </>}
       </main>
     </div>
   );

@@ -53,6 +53,45 @@ describe('snakeToCamel', () => {
     });
     expect(result.features.rideAnalysis).toBeUndefined();
   });
+
+  it('preserves authored scope IDs while converting member fields', () => {
+    const result = snakeToCamel({
+      scope_sets: {
+        production_candidate: {
+          name: 'Production candidate',
+          members: [{ path: 'src/app.ts', kind: 'file', created_at: '2026-08-21' }],
+        },
+      },
+    }) as any;
+    expect(result.scopeSets.production_candidate.members[0].createdAt).toBe('2026-08-21');
+    expect(result.scopeSets.productionCandidate).toBeUndefined();
+  });
+
+  it('converts nested project task packets without changing enum values', () => {
+    const result = snakeToCamel({
+      projects: {
+        'PRJ-001': {
+          todos: [{
+            id: 'RT-015',
+            why_now: 'Freeze the handoff contract.',
+            milestone_id: 'MS-001',
+            owned_paths: ['src/shared/types.ts'],
+            dependencies: [{ type: 'depends_on', task_id: 'RT-014' }],
+            resources: [{ kind: 'command', role: 'use_for', ref: 'canopytag projects PRJ-001' }],
+            receipts: [{ recorded_at: '2026-08-21', residual_risk: 'Write mutation remains deferred.' }],
+          }],
+        },
+      },
+    }) as any;
+
+    expect(result.projects['PRJ-001'].todos[0]).toMatchObject({
+      whyNow: 'Freeze the handoff contract.',
+      milestoneId: 'MS-001',
+      ownedPaths: ['src/shared/types.ts'],
+      dependencies: [{ type: 'depends_on', taskId: 'RT-014' }],
+      receipts: [{ recordedAt: '2026-08-21', residualRisk: 'Write mutation remains deferred.' }],
+    });
+  });
 });
 
 describe('camelToSnake', () => {
@@ -95,5 +134,41 @@ describe('camelToSnake', () => {
       open_questions: ['Ready?'],
     });
     expect(result.features.rideAnalysis).toBeUndefined();
+  });
+
+  it('preserves authored scope IDs while converting cards to snake_case', () => {
+    const result = camelToSnake({
+      scopeSets: {
+        production_candidate: {
+          name: 'Production candidate',
+          members: [{ path: 'src/app.ts', kind: 'file', createdAt: '2026-08-21' }],
+        },
+      },
+    }) as any;
+    expect(result.scope_sets.production_candidate.members[0].created_at).toBe('2026-08-21');
+    expect(result.scope_sets.productionCandidate).toBeUndefined();
+  });
+
+  it('writes project task packet fields as snake_case', () => {
+    const result = camelToSnake({
+      projects: {
+        'PRJ-001': {
+          todos: [{
+            id: 'RT-015',
+            whyNow: 'Freeze the handoff contract.',
+            milestoneId: 'MS-001',
+            ownedPaths: ['src/shared/types.ts'],
+            dependencies: [{ type: 'depends_on', taskId: 'RT-014' }],
+          }],
+        },
+      },
+    }) as any;
+
+    expect(result.projects['PRJ-001'].todos[0]).toMatchObject({
+      why_now: 'Freeze the handoff contract.',
+      milestone_id: 'MS-001',
+      owned_paths: ['src/shared/types.ts'],
+      dependencies: [{ type: 'depends_on', task_id: 'RT-014' }],
+    });
   });
 });
