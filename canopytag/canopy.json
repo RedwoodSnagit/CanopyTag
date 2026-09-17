@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo_root": "",
-  "last_modified_at": "2026-08-25T03:31:07.008Z",
+  "last_modified_at": "2026-09-17T05:28:39.092Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -323,7 +323,25 @@
       ],
       "feature_id": "activity-review",
       "authority_level": "specification",
-      "status": "active"
+      "status": "active",
+      "todos": [
+        {
+          "id": "RT-018",
+          "text": "CanopyTag does not populate agent_manifest.json, so the model-identity feature argued for in docs/design/project-layer.md is built but never self-hosted. The doc evidence therefore comes from a private external repo and no reader can reproduce it here. Dogfood it: record manifest entries for agent writes in this repo so the claims rest on in-repo, verifiable data.",
+          "priority": 2,
+          "difficulty": 3,
+          "status": "open",
+          "tags": [
+            "dogfooding",
+            "docs-integrity"
+          ],
+          "created_at": "2026-09-17T05:28:39.091Z",
+          "created_by": {
+            "role": "agent",
+            "name": "claude-opus-5"
+          }
+        }
+      ]
     },
     "src/backend/lib/merge.ts": {
       "title": "Authored And Generated Metadata Projection",

@@ -217,9 +217,9 @@ unchanged on-disk key and all-optional new fields. Existing `directories`
 entries load and save unchanged. The `assessment` comment type is additive to a
 union.
 
-Note that the working repo currently has **zero** directory entries
-despite 209 annotated files, so there is no meaningful legacy data to preserve —
-this is close to a greenfield surface in practice.
+Note that directory entries stay sparse in practice — CanopyTag's own index
+carries **7** directory entries against 113 annotated files — so there is
+little legacy data to preserve and this is close to a greenfield surface.
 
 ## Open Questions
 
