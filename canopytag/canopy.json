@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo_root": "",
-  "last_modified_at": "2026-09-17T05:28:39.092Z",
+  "last_modified_at": "2026-09-17T07:24:57.760Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -55,7 +55,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "standard",
       "status": "active",
       "tags": [
@@ -90,7 +90,11 @@
           "path": "docs/canopytag-vs-ripgrep.md",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/shared/project-tasks.ts": {
       "title": "Pure Project Task Readiness Projection",
@@ -227,7 +231,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -288,7 +292,11 @@
           "path": "src/backend/routes/file.ts",
           "closeness": 4
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/backend/lib/scope-proposals.ts": {
       "title": "Generated Scope Membership Proposal Boundary",
@@ -441,7 +449,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -470,7 +478,11 @@
           "closeness": 4,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/cli/ls.ts": {
       "title": "canopytag ls — Top N Files by Authority",
@@ -480,7 +492,7 @@
       "completeness": 5,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -504,7 +516,11 @@
           "closeness": 4,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/cli/query.ts": {
       "title": "canopytag query — Catalogue Search And Bounded Traversal",
@@ -514,7 +530,7 @@
       "completeness": 4,
       "stability": 3,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -556,7 +572,11 @@
           "path": "docs/canopytag-vs-ripgrep.md",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/cli/__tests__/query.test.ts": {
       "title": "Progressive Search And Relation Bounds",
@@ -579,13 +599,13 @@
     },
     "src/cli/health.ts": {
       "title": "canopytag health — Authority vs Quality Mismatch Detector",
-      "summary": "Surfaces files where declared authority doesn't match quality scores. !! = underscored (spec with low quality — red flag). ^^ = promotion candidate (idea scoring like a guideline). ?? = unscored (has authority but no scores). Uses checkAuthorityHealth() from types.ts. Compact output — 105 lines total.",
+      "summary": "Surfaces files where declared authority doesn't match quality scores. !! = underscored (spec with low quality — red flag). ^^ = promotion candidate (idea scoring like a guideline). ?? = unscored (has authority but no scores). Uses checkAuthorityHealth() from types.ts. Compact output sized for a prompt window.",
       "validity": 5,
       "clarity": 5,
       "completeness": 5,
       "stability": 5,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -607,7 +627,11 @@
           "closeness": 4,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/cli/todos.ts": {
       "title": "canopytag todos — Flat TODO Query",
@@ -617,7 +641,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -645,7 +669,11 @@
           "closeness": 4,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/cli/projects.ts": {
       "title": "canopytag projects — Agent Execution Packet",
@@ -741,7 +769,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -780,7 +808,11 @@
           "closeness": 4,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/backend/routes/projects.ts": {
       "title": "Project HTTP List, Detail, And Guarded Update API",
@@ -820,7 +852,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -840,7 +872,11 @@
           "path": "src/backend/routes/comment.ts",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/backend/routes/comment.ts": {
       "title": "Comment CRUD API",
@@ -850,7 +886,7 @@
       "completeness": 3,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -870,7 +906,11 @@
           "path": "src/backend/routes/todo.ts",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/backend/routes/tree.ts": {
       "title": "File Tree API",
@@ -880,7 +920,7 @@
       "completeness": 3,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -896,7 +936,11 @@
           "path": "src/frontend/App.tsx",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/backend/routes/directory.ts": {
       "title": "Directory Summary API",
@@ -906,7 +950,7 @@
       "completeness": 3,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -923,7 +967,11 @@
           "closeness": 4,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/backend/routes/features.ts": {
       "title": "Feature CRUD API",
@@ -933,7 +981,7 @@
       "completeness": 3,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -956,7 +1004,11 @@
           "closeness": 3,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/frontend/components/AnalyticsView.tsx": {
       "title": "Local Agent Activity Dashboard",
@@ -1096,13 +1148,13 @@
     },
     "src/frontend/App.tsx": {
       "title": "Root Layout & View Router",
-      "summary": "Top-level connected-state and view router. It gates the repository picker, then coordinates explorer, table, authored graph, analytics, settings, demo guidance, save or error notices, and the agent-note banner.",
+      "summary": "Top-level connected-state and view router. It gates the repository picker, then coordinates explorer, table, projects, authored graph, analytics, settings, demo guidance, save or error notices, and the agent-note banner.",
       "validity": 5,
       "clarity": 4,
       "completeness": 4,
       "stability": 3,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -1126,7 +1178,11 @@
           "path": "src/frontend/components/ScoreDisplay.tsx",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/frontend/components/FileDetail.tsx": {
       "title": "File Annotation Editor",
@@ -1136,7 +1192,7 @@
       "completeness": 4,
       "stability": 3,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -1180,7 +1236,11 @@
           "closeness": 4,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/frontend/components/ScoreDisplay.tsx": {
       "title": "Quality Scores & Authority Level UI",
@@ -1190,7 +1250,7 @@
       "completeness": 4,
       "stability": 3,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -1212,7 +1272,11 @@
           "closeness": 4,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/frontend/stores/workspace.ts": {
       "title": "Global UI State (Zustand)",
@@ -1222,7 +1286,7 @@
       "completeness": 4,
       "stability": 3,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -1259,7 +1323,11 @@
           "closeness": 4,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/backend/__tests__/canopy.test.ts": {
       "title": "Canopy Persistence Boundary Contracts",
@@ -1771,7 +1839,7 @@
       "completeness": 3,
       "stability": 3,
       "scores_reviewed": false,
-      "last_reviewed": "2026-08-02",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -1798,7 +1866,11 @@
           "path": "docs/roadmap.md",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "docs/cli-cheatsheet.md": {
       "title": "CLI Cheatsheet",
@@ -1808,7 +1880,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-08-02",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -1835,7 +1907,11 @@
           "path": "docs/canopytag-vs-ripgrep.md",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "docs/repo-local-data.md": {
       "title": "Repo-Local Data And Public Repo Hygiene",
@@ -1845,7 +1921,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-08-02",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -1875,7 +1951,11 @@
           "relation": "doc-for",
           "closeness": 5
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "docs/roadmap.md": {
       "title": "Public Roadmap",
@@ -1885,7 +1965,7 @@
       "completeness": 4,
       "stability": 2,
       "scores_reviewed": false,
-      "last_reviewed": "2026-08-20",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -1921,7 +2001,11 @@
           "path": "docs/architecture-md-and-codeowners.md",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "docs/design/project-layer.md": {
       "title": "Project Context And Control Plane",
@@ -1977,7 +2061,7 @@
       "completeness": 4,
       "stability": 3,
       "scores_reviewed": false,
-      "last_reviewed": "2026-08-25",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -2005,7 +2089,11 @@
           "relation": "doc-for",
           "closeness": 4
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "docs/design/document-lifecycle-marks.md": {
       "title": "Document Lifecycle Marks Proposal",
@@ -2015,7 +2103,7 @@
       "completeness": 4,
       "stability": 2,
       "scores_reviewed": false,
-      "last_reviewed": "2026-08-01",
+      "last_reviewed": "2026-09-17",
       "authority_level": "blueprint",
       "status": "draft",
       "tags": [
@@ -2066,7 +2154,11 @@
           "path": "docs/canopytag-vs-ripgrep.md",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "docs/design/canopy-cartographer-integration.md": {
       "title": "CanopyCartographer Integration Proposal",
@@ -2076,7 +2168,7 @@
       "completeness": 3,
       "stability": 2,
       "scores_reviewed": false,
-      "last_reviewed": "2026-06-26",
+      "last_reviewed": "2026-09-17",
       "authority_level": "blueprint",
       "status": "draft",
       "tags": [
@@ -2105,7 +2197,11 @@
           "path": "docs/architecture-md-and-codeowners.md",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "docs/canopytag-vs-ripgrep.md": {
       "title": "Positioning: When Metadata Beats Text Search",
@@ -2115,7 +2211,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -2139,7 +2235,11 @@
           "path": "README.md",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "docs/architecture-md-and-codeowners.md": {
       "title": "Where CanopyTag Fits in the Metadata Ecosystem",
@@ -2149,7 +2249,7 @@
       "completeness": 3,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-03-27",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -2168,7 +2268,11 @@
           "path": "docs/roadmap.md",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "docs/design/agent-analytics.md": {
       "title": "Agent Analytics Design And Privacy Contract",
@@ -2282,7 +2386,7 @@
       "completeness": 5,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -2321,7 +2425,11 @@
           "path": "src/mcp/tools/reads.ts",
           "closeness": 4
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/cli/context.ts": {
       "title": "canopytag context — Compact Agent Prompt Injection",
@@ -2331,7 +2439,7 @@
       "completeness": 4,
       "stability": 3,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -2354,7 +2462,11 @@
           "path": "src/cli/query.ts",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/cli/compare.ts": {
       "title": "canopytag compare - File Trust Comparator",
@@ -2364,7 +2476,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-25",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -2396,7 +2508,11 @@
           "path": "docs/cli-cheatsheet.md",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/cli/coverage.ts": {
       "title": "canopytag coverage — Purposeful Scope Coverage",
@@ -2406,7 +2522,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -2446,7 +2562,11 @@
           "path": "src/cli/stats.ts",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/cli/doctor.ts": {
       "title": "canopytag doctor — Deterministic Maintenance Checks",
@@ -2456,7 +2576,7 @@
       "completeness": 4,
       "stability": 3,
       "scores_reviewed": false,
-      "last_reviewed": "2026-08-01",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -2487,7 +2607,11 @@
           "path": "src/mcp/tools/reads.ts",
           "closeness": 4
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/cli/graph.ts": {
       "title": "Relation Graph Walker — Fan-in/Fan-out Engine",
@@ -2497,7 +2621,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -2519,17 +2643,21 @@
           "path": "src/cli/query.ts",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/cli/init.ts": {
       "title": "canopytag init — Repo Bootstrap",
-      "summary": "Creates canopytag/ directory with empty canopy.json and default settings.json. Safe to run on already-initialized repos — detects existing canopytag/canopy.json and prints status without overwriting. Prints next-step guidance pointing to stats, ls, and MCP tools. Simple script — no guard needed since it's only invoked directly.",
+      "summary": "Creates canopytag/ with an empty canopy.json, a default settings.json, an empty agent_manifest.json, and a local profile.local.json that it also adds to the repo's git exclude. Safe to run on already-initialized repos — detects an existing canopytag/canopy.json and reports each file's presence without overwriting. Prints next-step guidance pointing to stats, ls, and MCP config.",
       "validity": 5,
       "clarity": 5,
       "completeness": 5,
       "stability": 5,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -2548,7 +2676,11 @@
           "closeness": 4,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/mcp/server.ts": {
       "title": "MCP Server Entry Point",
@@ -2558,7 +2690,7 @@
       "completeness": 5,
       "stability": 5,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -2579,7 +2711,11 @@
           "path": "src/mcp/tools/active-work.ts",
           "closeness": 5
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/mcp/tools/agent-manifest.ts": {
       "title": "Agent Manifest Review Report",
@@ -2601,7 +2737,7 @@
       "completeness": 5,
       "stability": 3,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -2661,7 +2797,11 @@
           "path": "src/backend/lib/analytics.ts",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/mcp/tools/active-work.ts": {
       "title": "MCP Active Work Coordination Tools",
@@ -2714,7 +2854,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -2743,7 +2883,11 @@
           "closeness": 4,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/mcp/tools/writes-registration.ts": {
       "title": "MCP Write Tools — Zod Registration Layer",
@@ -2753,7 +2897,7 @@
       "completeness": 5,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -2770,17 +2914,21 @@
           "path": "src/mcp/server.ts",
           "closeness": 5
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/mcp/tools/tags.ts": {
       "title": "Tag Vocabulary Engine",
-      "summary": "Collects live tag vocabulary from canopy.json with usage counts. Supports search (substring match, alphabetical) and browse (top N by count). Includes fuzzy duplicate detection: Levenshtein distance <=2 and separator normalization (dash/underscore). buildTags() renders the full output with duplicate warnings. Used by canopytag_tags tool and by writes.ts to warn when new tags are near-duplicates of existing vocabulary.",
+      "summary": "Collects live tag vocabulary from canopy.json with usage counts. Supports search (substring match, alphabetical) and browse (top N by count). Includes fuzzy duplicate detection: Levenshtein distance within a length-dependent threshold — 1 for tags of four characters or fewer, otherwise 2, so abbreviations like 'api' and 'cli' are not flagged — plus separator normalization (dash/underscore). buildTags() renders the full output with duplicate warnings. Used by canopytag_tags and by writes.ts to warn when new tags are near-duplicates of existing vocabulary.",
       "validity": 5,
       "clarity": 5,
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -2802,7 +2950,11 @@
           "closeness": 3,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/backend/server.ts": {
       "title": "Fastify Web Server — Bootstrap & Route Registration",
@@ -2812,7 +2964,7 @@
       "completeness": 4,
       "stability": 3,
       "scores_reviewed": false,
-      "last_reviewed": "2026-08-01",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -2852,7 +3004,11 @@
           "path": "src/frontend/App.tsx",
           "closeness": 3
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/backend/lib/network.ts": {
       "title": "Backend Network Exposure Boundary",
@@ -2862,7 +3018,7 @@
       "completeness": 4,
       "stability": 5,
       "scores_reviewed": false,
-      "last_reviewed": "2026-08-01",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -2883,7 +3039,11 @@
           "path": "README.md",
           "closeness": 4
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/backend/__tests__/network.test.ts": {
       "title": "Backend Network Boundary Tests",
@@ -2893,7 +3053,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-08-01",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -2913,7 +3073,11 @@
           "closeness": 4,
           "relation": "test-of"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/backend/lib/analytics.ts": {
       "title": "Agent Activity Analytics Engine",
@@ -2923,7 +3087,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-09-17",
       "authority_level": "specification",
       "status": "active",
       "tags": [
@@ -2953,7 +3117,11 @@
           "closeness": 3,
           "relation": "fed-by"
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/backend/lib/git-info.ts": {
       "title": "Git Date Lookup",
@@ -2963,7 +3131,7 @@
       "completeness": 3,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -2976,7 +3144,11 @@
           "path": "src/cli/shared.ts",
           "closeness": 4
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     },
     "src/backend/lib/tree-walker.ts": {
       "title": "File System Tree Walker",
@@ -2986,7 +3158,7 @@
       "completeness": 4,
       "stability": 4,
       "scores_reviewed": false,
-      "last_reviewed": "2026-04-07",
+      "last_reviewed": "2026-09-17",
       "authority_level": "guideline",
       "status": "active",
       "tags": [
@@ -3008,7 +3180,11 @@
           "path": "src/cli/coverage.ts",
           "closeness": 2
         }
-      ]
+      ],
+      "last_reviewed_by": {
+        "role": "agent",
+        "name": "claude-opus-5"
+      }
     }
   },
   "directories": {
