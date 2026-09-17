@@ -1,7 +1,7 @@
 {
   "version": 1,
   "repo_root": "",
-  "last_modified_at": "2026-09-17T07:24:57.760Z",
+  "last_modified_at": "2026-09-17T07:29:30.936Z",
   "agent_notes": [
     {
       "text": "Self-hosting canopy.json created (TODO 5h). Agent-scored — all scores need human review. Relation graph covers CLI→schema, routes→canopy.ts, and docs→docs links. Run `canopytag health` to see what needs attention.",
@@ -2243,7 +2243,7 @@
     },
     "docs/architecture-md-and-codeowners.md": {
       "title": "Where CanopyTag Fits in the Metadata Ecosystem",
-      "summary": "Positions CanopyTag beside ARCHITECTURE.md, AGENTS.md, ADRs, CODEOWNERS, and external wikis rather than as their replacement. The ecosystem comparison remains useful, but at least one illustrative command no longer matches the implemented CLI.",
+      "summary": "Positions CanopyTag beside ARCHITECTURE.md, AGENTS.md, ADRs, CODEOWNERS, and external wikis rather than as their replacement. The ecosystem comparison remains useful, and its illustrative commands now match the implemented CLI.",
       "validity": 4,
       "clarity": 4,
       "completeness": 3,

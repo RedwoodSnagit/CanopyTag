@@ -154,7 +154,7 @@ They serve different workflows:
 | Workflow | Notion | CanopyTag |
 |---|---|---|
 | "I need to understand the auth system" | Open the Notion page, read the prose | `canopytag query --feature auth --detail full` |
-| "Which files need attention?" | Filter the Notion database by status | `canopytag query --goal "what needs work"` |
+| "Which files need attention?" | Filter the Notion database by status | `canopytag query --sort attention` |
 | "An agent needs context before editing a file" | Not possible without API wiring | Agent reads canopy.json or calls MCP tool |
 | "Who annotated this and when?" | Notion edit history (human only) | Author attribution with agent role + session |
 | "Did this annotation go stale?" | Manual check | `lastReviewed` vs git modification, drift detection |
