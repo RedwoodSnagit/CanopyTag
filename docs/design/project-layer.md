@@ -27,8 +27,8 @@ of work. It does not take ownership of linked feature or file records and does
 not move existing file TODOs.
 
 That thin layer is a safe V1, not the final product boundary. Real dogfooding
-on a private working repo showed that a project must eventually connect its
-objective to the ordered work, dependencies, milestones, tools,
+showed that a project must eventually connect its objective to the ordered
+work, dependencies, milestones, tools,
 documentation, data/resources, owners, agents, review, and completion
 evidence needed to carry it out. A fresh
 agent should be able to open one project packet, know what is ready, and produce
@@ -474,8 +474,8 @@ Project records are worthless if every `createdBy` reads `"agent"`.
 in order: the `agent_name` tool argument, `CANOPYTAG_AGENT_NAME`,
 `MCP_CLIENT_NAME`, then the literal fallback `'agent'`. The `AuthorSignature`
 type already carries `{ role, name, session }`. The mechanism is sound; nothing
-populates it. All 32 manifest entries in the working repo fell through
-to `'agent'`.
+populated it — agent writes fell through to the bare `'agent'` fallback, which
+reads like a real attribution while carrying no information.
 
 **Status: implemented 2026-08-17.** What shipped:
 
@@ -498,20 +498,23 @@ to `'agent'`.
    repo rather than one finding per record — hundreds of identical findings
    would crowd out every other check.
 
-Measured against the working repo on implementation: **34 agent-authored
-records across 24 files** carry no model identity, against 20 that do
-(`claude-opus`, `claude-opus-5`, `codex`, `gpt-5-codex`). The aggregate finding
-sorts below per-file `review-drift` warnings and is therefore hidden at the
-default `--limit 50`. Whether repo-level findings should outrank per-file ones
-in doctor's sort order is left open rather than changed unilaterally.
+Measured against this repo: all **11 agent-authored records** in `canopy.json`
+carry model identity (`ChatGPT 5.6 Sol`, `claude-opus`, `codex`,
+`claude-opus-5`); none fall through to the generic fallback. When the finding
+does fire it sorts below per-file `review-drift` warnings and is therefore
+hidden at the default `--limit 50`. Whether repo-level findings should outrank
+per-file ones in doctor's sort order is left open rather than changed
+unilaterally.
 
 The human side already works correctly via `profile.local.json` and needs no
 change. This is specifically an agent-side gap.
 
 Accountability, not just attribution: the manifest already models
 `status: pending → agreed | fixed | rejected` with `reviewer`, `reviewedAt`, and
-`reviewNote`. That loop is built and entirely unused — every entry in that
-repo is `pending`. Model identity is what makes the loop worth running, because
+`reviewNote`. That loop is built and entirely unused: CanopyTag writes no
+`agent_manifest.json` at all, so no entry has ever reached `agreed`, `fixed`,
+or `rejected` here (tracked as RT-018). Model identity is what makes the loop
+worth running, because
 "which model produced work I later had to fix" is only answerable once the name
 is real.
 
