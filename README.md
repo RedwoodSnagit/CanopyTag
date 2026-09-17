@@ -96,7 +96,8 @@ files, see [Repo-local data and public repo hygiene](./docs/repo-local-data.md).
 
 ## Quick Start
 
-Requires Node.js 18+.
+Requires Node.js 20.19+, 22.12+, or 24+ — the range supported by Vite and
+Vitest. Node 18, 21, and 23 will not work.
 
 ```bash
 git clone https://github.com/RedwoodSnagit/CanopyTag.git
